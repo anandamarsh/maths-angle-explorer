@@ -1139,7 +1139,7 @@ export default function ArcadeAngleScreen() {
           )}
 
           {/* Angle type label while aiming (L1 only) */}
-          {isAiming && level === 1 && Math.abs(gazeAngle) > 0.5 && (
+          {isAiming && level === 1 && !isMonster && !isPlatinum && Math.abs(gazeAngle) > 0.5 && (
             <AngleTypeLabel gazeAngle={gazeAngle} />
           )}
 
