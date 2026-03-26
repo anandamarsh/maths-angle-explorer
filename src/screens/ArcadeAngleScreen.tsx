@@ -799,13 +799,10 @@ export default function ArcadeAngleScreen() {
     setFlash({ text: "", ok: false, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
-    // All phases: retry same question — target stays, cannon resets
+    // All phases: retry same question — leave cannon angle and answer intact
     setIsFiring(null);
     setSpinAnim(null);
     setExplosion(null);
-    setAnswer("");
-    setGazeAngle(level === 3 ? 90 : 0);
-    lastTickAngleRef.current = -999;
   }
 
   earnEggRef.current         = earnEgg;
