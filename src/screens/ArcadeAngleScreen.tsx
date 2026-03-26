@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   makeQuestion,
-  makeMonsterL3Question,
   type AngleQuestion,
 } from "../game/angles";
 import {
@@ -70,7 +69,10 @@ const EGG_RADIUS = 130;
 const DEPLOY_MS = 900;
 const SHOT_MS = 380;
 const SPIN_MS = 600;
+const HIT_RESOLVE_MS = 1000;
 const L1_TARGET_RADIUS = 100;
+const MIN_AIM_RADIUS = 40;
+const LEVEL_TARGET_COUNT = 10;
 const ANGLE_HIT_TOL = 7.5;  // drag/snap tolerance
 const TYPED_TOL = 0.55;     // typed answer must be exact (allows ±0.5 for decimal rounding)
 const TICK_INTERVAL = 10;
@@ -128,6 +130,42 @@ function toSVGPoint(svg: SVGSVGElement, clientX: number, clientY: number) {
   return { x: r.x, y: r.y };
 }
 
+function pointInRect(x: number, y: number, left: number, top: number, width: number, height: number) {
+  return x >= left && x <= left + width && y >= top && y <= top + height;
+}
+
+function pointInCircle(x: number, y: number, cx: number, cy: number, r: number) {
+  return (x - cx) ** 2 + (y - cy) ** 2 <= r ** 2;
+}
+
+function rotatePoint(x: number, y: number, deg: number) {
+  const rad = (deg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return {
+    x: x * cos - y * sin,
+    y: x * sin + y * cos,
+  };
+}
+
+function isPointOnCannon(svgX: number, svgY: number, aimAngle: number) {
+  const localX = svgX - CX;
+  const localY = svgY - CY;
+
+  const onBase =
+    pointInRect(localX, localY, -22, -10, 44, 24) ||
+    pointInCircle(localX, localY, 0, 0, 12) ||
+    pointInCircle(localX, localY, -14, 13, 12) ||
+    pointInCircle(localX, localY, 14, 13, 12);
+
+  const barrelLocal = rotatePoint(localX, localY, aimAngle);
+  const onBarrel =
+    pointInRect(barrelLocal.x, barrelLocal.y, 0, -10, 60, 20) ||
+    pointInRect(barrelLocal.x, barrelLocal.y, 42, -11, 16, 22);
+
+  return onBase || onBarrel;
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 /** Retro arcade cannon centred at origin. Barrel rotates with aimAngle. */
@@ -161,14 +199,6 @@ function CannonSprite({ aimAngle, dragging }: { aimAngle: number; dragging: bool
       {/* Pivot hub */}
       <circle cx={0} cy={0} r={7} fill="#14532d" stroke="#22c55e" strokeWidth={1.5} />
       <circle cx={0} cy={0} r={3} fill="#86efac" />
-      {/* Aim halo while dragging */}
-      {dragging && (
-        <>
-          <circle cx={0} cy={0} r={36} fill="none" stroke="#4ade80" strokeWidth={1.5} opacity={0.3} />
-          <circle cx={0} cy={0} r={36} fill="none" stroke="#4ade80" strokeWidth={0.8}
-            style={{ filter: "drop-shadow(0 0 5px #4ade80) drop-shadow(0 0 12px #16a34a)" }} />
-        </>
-      )}
     </g>
   );
 }
@@ -287,19 +317,22 @@ function ProgressIcon({ collected, gamePhase }: {
 }
 
 /** Live angle value near the gaze arc midpoint; turns green on reveal. */
-function LiveAngleLabel({ gazeAngle, revealed, answerDeg }: {
+function LiveAngleLabel({ gazeAngle, revealed, answerDeg, baseAngle = 0 }: {
   gazeAngle: number;
   revealed: boolean;
   answerDeg: number;
+  baseAngle?: number;
 }) {
-  const arcAngle = revealed ? answerDeg : gazeAngle;
+  const displayAnswer = baseAngle === 0 ? answerDeg : answerDeg - baseAngle;
+  const arcAngle = revealed ? displayAnswer : gazeAngle - baseAngle;
   if (Math.abs(arcAngle) < 1 && !revealed) return null;
   const text = revealed
-    ? `${Math.round(answerDeg)}°`
-    : `${Math.round(gazeAngle)}°`;
-  // Place label at midpoint of the signed arc, at radius 88
-  const midAngle = arcAngle / 2;
-  const p = polarToXY(CX, CY, midAngle, 88);
+    ? `${Math.round(displayAnswer)}°`
+    : `${Math.round(gazeAngle - baseAngle)}°`;
+  // Keep the live sweep label away from the beam in L2.
+  const midAngle = baseAngle + arcAngle / 2;
+  const labelRadius = baseAngle === 0 ? 88 : 116;
+  const p = polarToXY(CX, CY, midAngle, labelRadius);
   return (
     <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
       fontSize={16} fontWeight="900" fontFamily="monospace"
@@ -332,6 +365,48 @@ function AngleTypeLabel({ gazeAngle }: { gazeAngle: number }) {
   );
 }
 
+function SetTypeLabel({ label }: { label: string }) {
+  const color = label.includes("COMPLEMENTARY")
+    ? "#22c55e"
+    : label.includes("SUPPLEMENTARY")
+      ? "#f97316"
+      : "#38bdf8";
+  const sublabel = label === "COMPLEMENTARY"
+    ? "SUM = 90°"
+    : label === "SUPPLEMENTARY"
+      ? "SUM = 180°"
+      : "SUM = 360°";
+  const textW = Math.max(label.length * 9 + 28, sublabel.length * 7 + 24);
+  const rectW = textW + 16;
+  const rectH = 40;
+  const rx = rectH / 2;
+  const rectX = CX - rectW / 2;
+  const rectY = 6;
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <rect x={rectX} y={rectY} width={rectW} height={rectH} rx={rx}
+        fill="rgba(5,10,25,0.97)" stroke={color} strokeWidth={1.8}
+        style={{ filter: `drop-shadow(0 0 8px ${color}90)` }} />
+      <text x={CX} y={rectY + 14} textAnchor="middle" dominantBaseline="middle"
+        fontSize={12} fontWeight="900" fontFamily="monospace"
+        fill={color} style={{ letterSpacing: "0.06em" }}>
+        {label}
+      </text>
+      <text x={CX} y={rectY + 28} textAnchor="middle" dominantBaseline="middle"
+        fontSize={9} fontWeight="900" fontFamily="monospace"
+        fill={color} opacity={0.95} style={{ letterSpacing: "0.08em" }}>
+        {sublabel}
+      </text>
+    </g>
+  );
+}
+
+function getMissingSectorRadius(question: AngleQuestion): number | null {
+  const missingIdx = question.sectorArcs?.findIndex((sector) => sector.missing) ?? -1;
+  if (missingIdx < 0) return null;
+  return 52 + missingIdx * 12;
+}
+
 /** Coordinate axes through cannon centre — full screen. */
 function CoordAxes() {
   // Axes extend to SVG edges
@@ -351,32 +426,38 @@ function CoordAxes() {
 }
 
 /** Bright aim beam + sector arc — shown while actively aiming or firing. */
-function GazeBeamDrag({ gazeAngle, level }: { gazeAngle: number; level: 1 | 2 | 3 }) {
+function GazeBeamDrag({ gazeAngle, level: _level, baseAngle = 0, arcRadiusOverride }: {
+  gazeAngle: number;
+  level: 1 | 2 | 3;
+  baseAngle?: number;
+  arcRadiusOverride?: number;
+}) {
   const ep = polarToXY(CX, CY, gazeAngle, BEAM_LEN);
   const beamColor = "#38bdf8";
+  const displaySweep = gazeAngle - baseAngle;
 
   // Arc: signed (handle negative angles for L1)
-  const absAngle = Math.abs(gazeAngle);
-  const a = ((gazeAngle % 360) + 360) % 360; // for comp/supp arcs on L2/L3
-  const arcR = 68;
+  const absAngle = Math.abs(displaySweep);
+  const arcR = arcRadiusOverride ?? 52;
 
   // Build signed arc path for the main angle arc
   function signedArcPath(): string {
     if (absAngle < 0.5) return "";
-    const start = polarToXY(CX, CY, 0, arcR);
+    const start = polarToXY(CX, CY, baseAngle, arcR);
     const end = polarToXY(CX, CY, gazeAngle, arcR);
     const largeArc = absAngle > 180 ? 1 : 0;
-    // sweepFlag=0 → CCW in SVG (positive math angle); sweepFlag=1 → CW in SVG (negative math angle)
-    const sweepFlag = gazeAngle >= 0 ? 0 : 1;
+    const sweepFlag = displaySweep >= 0 ? 0 : 1;
     return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${arcR} ${arcR} 0 ${largeArc} ${sweepFlag} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
   }
 
   // Arrowhead sits at the end of the arc and points along the tangent.
   function arcArrowhead(): { x: number; y: number; rot: number } | null {
     if (absAngle < 6) return null;
-    const travelSign = gazeAngle >= 0 ? 1 : -1;
-    const inset = Math.min(5, Math.max(2.5, absAngle * 0.03));
-    const tipAngle = gazeAngle - travelSign * Math.min(inset, absAngle / 4);
+    const travelSign = displaySweep >= 0 ? 1 : -1;
+    const inset = absAngle <= 90
+      ? Math.min(18, Math.max(10, absAngle * 0.18))
+      : Math.min(14, Math.max(7, absAngle * 0.12));
+    const tipAngle = gazeAngle - travelSign * Math.min(inset, absAngle / 3);
     const tip = polarToXY(CX, CY, tipAngle, arcR);
     // tangent direction at arc end: perpendicular to radius, in direction of arc travel
     const tangentAngle = travelSign > 0 ? tipAngle + 90 : tipAngle - 90;
@@ -385,24 +466,14 @@ function GazeBeamDrag({ gazeAngle, level }: { gazeAngle: number; level: 1 | 2 | 
 
   const arcD = signedArcPath();
   const arrow = arcArrowhead();
-  const compArcD = level === 2 && a > 0 && a < 90 ? arcPath(CX, CY, arcR, gazeAngle, 90) : "";
-  const suppArcD = level === 3 && a > 0 && a < 180 ? arcPath(CX, CY, arcR, gazeAngle, 180) : "";
+  const compArcD = "";
+  const suppArcD = "";
 
   return (
     <g style={{ pointerEvents: "none" }}>
-      {arcD && <path d={`M ${CX} ${CY} ${arcD} Z`} fill={beamColor} fillOpacity={0.12} />}
       {arcD && <path d={arcD} stroke={beamColor} strokeWidth={2.2} fill="none" strokeLinecap="round" />}
-      {/* Arrowhead on arc */}
-      {arrow && (
-        <g transform={`translate(${arrow.x}, ${arrow.y}) rotate(${arrow.rot})`}>
-          <path d="M 0 -5 L 4 3 L 0 1 L -4 3 Z" fill={beamColor} />
-        </g>
-      )}
       {compArcD && <path d={compArcD} stroke="#22c55e" strokeWidth={2} fill="none" strokeLinecap="round" strokeDasharray="5 4" opacity={0.75} />}
       {suppArcD && <path d={suppArcD} stroke="#a78bfa" strokeWidth={2} fill="none" strokeLinecap="round" strokeDasharray="5 4" opacity={0.75} />}
-      {/* Reference ray (0° axis) */}
-      <line x1={CX} y1={CY} x2={polarToXY(CX, CY, 0, BEAM_LEN).x} y2={polarToXY(CX, CY, 0, BEAM_LEN).y}
-        stroke={beamColor} strokeWidth={1.5} strokeLinecap="round" opacity={0.4} />
       {/* Aim ray */}
       <line x1={CX} y1={CY} x2={ep.x} y2={ep.y}
         stroke={beamColor} strokeWidth={7} strokeLinecap="round" opacity={0.18} />
@@ -411,6 +482,12 @@ function GazeBeamDrag({ gazeAngle, level }: { gazeAngle: number; level: 1 | 2 | 
         style={{ filter: `drop-shadow(0 0 5px ${beamColor})` }} />
       <circle cx={ep.x} cy={ep.y} r={7} fill={beamColor} fillOpacity={0.2} stroke={beamColor} strokeWidth={2} />
       <circle cx={ep.x} cy={ep.y} r={3.2} fill={beamColor} />
+      {/* Arrowhead on arc */}
+      {arrow && (
+        <g transform={`translate(${arrow.x}, ${arrow.y}) rotate(${arrow.rot})`}>
+          <path d="M 0 -6 L 5 4 L 0 2 L -5 4 Z" fill={beamColor} />
+        </g>
+      )}
     </g>
   );
 }
@@ -434,46 +511,63 @@ function L1Scene() {
   );
 }
 
-/** Level 2 scene: two rock walls at a right angle. */
-function L2Scene() {
-  const cx = CX, cy = CY;
+/** Level 2 scene: bounded angle set with divider rays and labelled sectors. */
+function L2Scene({
+  question,
+  showMissingMarker,
+  focusMissingAngle,
+}: {
+  question: AngleQuestion;
+  showMissingMarker: boolean;
+  focusMissingAngle: boolean;
+}) {
+  const dividerAngles = question.dividerAngles ?? [0, question.totalContext];
+  const sectors = question.sectorArcs ?? [];
+  const activeSector = sectors.find((sector) => sector.missing);
+  const activeFrom = activeSector?.fromAngle;
+  const activeTo = activeSector?.toAngle;
   return (
     <g>
-      <rect x={cx} y={cy - 12} width={W - cx + 5} height={24} rx={6} fill="#292524" stroke="#57534e" strokeWidth={2} />
-      <rect x={cx - 12} y={-5} width={24} height={cy + 5} rx={6} fill="#292524" stroke="#57534e" strokeWidth={2} />
-      <rect x={cx - 12} y={cy - 12} width={24} height={24} rx={4} fill="#44403c" stroke="#78716c" strokeWidth={2} />
-      <path d={`M ${cx + 14} ${cy} L ${cx + 14} ${cy - 14} L ${cx} ${cy - 14}`}
-        fill="none" stroke="#22c55e" strokeWidth={2} opacity={0.7} />
-      <ellipse cx={cx + 40} cy={cy - 10} rx={12} ry={5} fill="rgba(34,197,94,0.12)" />
-      <ellipse cx={cx + 5}  cy={cy - 50} rx={5}  ry={12} fill="rgba(34,197,94,0.12)" />
-    </g>
-  );
-}
-
-/** Level 3 scene: rocky ridge (180° line) with divider rays. */
-function L3Scene({ div1, div2 }: { div1?: number; div2?: number }) {
-  const spineEnd = polarToXY(CX, CY, 0, BEAM_LEN + 60);
-  const boundEnd = polarToXY(CX, CY, 180, BEAM_LEN + 60);
-  const r1 = div1 !== undefined ? polarToXY(CX, CY, div1, EGG_RADIUS + 20) : null;
-  const r2 = div2 !== undefined ? polarToXY(CX, CY, div2, EGG_RADIUS + 20) : null;
-  return (
-    <g>
-      <line x1={boundEnd.x} y1={boundEnd.y} x2={spineEnd.x} y2={spineEnd.y}
-        stroke="#78716c" strokeWidth={6} strokeLinecap="round" />
-      {[0.15, 0.35, 0.55, 0.72, 0.88].map((t, i) => {
-        const rx = boundEnd.x + (spineEnd.x - boundEnd.x) * t;
-        const ry = boundEnd.y + (spineEnd.y - boundEnd.y) * t;
+      {dividerAngles.map((angle, i) => {
+        const end = polarToXY(CX, CY, angle === 360 ? 0 : angle, EGG_RADIUS + 18);
+        const isActiveEdge = !focusMissingAngle || angle === activeFrom || angle === activeTo;
         return (
-          <ellipse key={i} cx={rx} cy={ry} rx={8 + (i % 3) * 3} ry={4 + (i % 2) * 2}
-            fill="#44403c" stroke="#57534e" strokeWidth={1} opacity={0.7} />
+          <line key={i} x1={CX} y1={CY} x2={end.x} y2={end.y}
+            stroke="rgba(248,250,252,0.95)"
+            strokeWidth={2}
+            strokeLinecap="round"
+            opacity={isActiveEdge ? 1 : 0.3} />
         );
       })}
-      <line x1={boundEnd.x} y1={boundEnd.y} x2={spineEnd.x} y2={spineEnd.y}
-        stroke="rgba(120,113,108,0.3)" strokeWidth={14} strokeLinecap="round" />
-      {r1 && <line x1={CX} y1={CY} x2={r1.x} y2={r1.y}
-        stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="4 4" />}
-      {r2 && <line x1={CX} y1={CY} x2={r2.x} y2={r2.y}
-        stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="4 4" />}
+      {sectors.map((sector, i) => {
+        const span = sector.toAngle - sector.fromAngle;
+        if (span < 4) return null;
+        const radius = 52 + i * 12;
+        const label = sector.missing && !showMissingMarker ? "" : sector.label;
+        const mid = sector.fromAngle + span / 2;
+        const labelRadius = radius + 16;
+        const p = polarToXY(CX, CY, mid, labelRadius);
+        const isActiveSector = !focusMissingAngle || sector.missing;
+        return (
+          <g key={i}>
+            <path d={arcPath(CX, CY, radius, sector.fromAngle, sector.toAngle)}
+              fill="none"
+              stroke={sector.missing ? "#fde047" : "rgba(248,250,252,0.92)"}
+              strokeWidth={2}
+              strokeLinecap="round"
+              opacity={isActiveSector ? 1 : 0.3} />
+            {label && (
+              <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
+                fontSize={9} fontWeight="900" fontFamily="monospace"
+                fill={sector.missing ? "#fde047" : "#f8fafc"}
+                stroke="rgba(0,0,0,0.95)" strokeWidth={3} paintOrder="stroke"
+                opacity={isActiveSector ? 1 : 0.3}>
+                {label}
+              </text>
+            )}
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -598,8 +692,8 @@ function GoldenTarget() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ArcadeAngleScreen() {
-  const [level, setLevel]               = useState<1 | 2 | 3>(1);
-  const [unlockedLevel, setUnlockedLevel] = useState<1 | 2 | 3>(1);
+  const [level, setLevel]               = useState<1 | 2>(1);
+  const [unlockedLevel, setUnlockedLevel] = useState<1 | 2>(1);
   const [screen, setScreen]             = useState<"playing" | "won" | "gameover">("playing");
   const [currentQ, setCurrentQ]         = useState<AngleQuestion>(() => makeQuestion(1));
   const [eggsCollected, setEggsCollected] = useState(0);
@@ -650,6 +744,7 @@ export default function ArcadeAngleScreen() {
   const earnMonsterEggRef = useRef(() => {});
   const earnPlatinumEggRef = useRef(() => {});
   const loseEggRef       = useRef(() => {});
+  const submitLockRef    = useRef(false);
 
   gamePhaseRef.current  = gamePhase;
   currentQRef.current   = currentQ;
@@ -677,29 +772,40 @@ export default function ArcadeAngleScreen() {
   const handleKeypadChangeRef = useRef((_v: string) => {});
   const doSubmitRef           = useRef(() => {});
   useEffect(() => {
-    if (!window.matchMedia("(pointer: fine)").matches) return; // skip on touch-only
     function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (sceneBusyRef.current) return;
       const tag = (document.activeElement as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const k = e.key;
-      if (k === "Enter") { if (canFireRef.current) doSubmitRef.current(); return; }
-      if (!/^[0-9]$/.test(k) && k !== "Backspace" && k !== "." && k !== "-") return;
+      if (k === "Enter") {
+        e.preventDefault();
+        if (keypadValueRef.current.trim() !== "") {
+          window.setTimeout(() => doSubmitRef.current(), 0);
+        }
+        return;
+      }
+      const isDigit = /^[0-9]$/.test(k);
+      const isBackspace = k === "Backspace" || k === "Delete";
+      const isMinus = k === "-" || k === "Subtract";
+      const isDecimal = k === "." || k === "Decimal";
+      if (!isDigit && !isBackspace && !isMinus && !isDecimal) return;
       e.preventDefault();
       const val = keypadValueRef.current;
       let next: string;
-      if (k === "Backspace") {
+      if (isBackspace) {
         next = val.slice(0, -1);
-      } else if (k === "-") {
+      } else if (isMinus) {
         if (val.startsWith("-")) next = val.slice(1);
         else if (val !== "" && val !== "0") next = "-" + val;
         else return;
-      } else if (k === ".") {
+      } else if (isDecimal) {
         if (val.includes(".")) return;
         next = val === "" ? "0." : val + ".";
       } else {
         next = val === "0" ? k : val + k;
       }
+      keypadValueRef.current = next;
       handleKeypadChangeRef.current(next);
     }
     window.addEventListener("keydown", onKeyDown);
@@ -764,9 +870,10 @@ export default function ArcadeAngleScreen() {
     let animId = 0;
     function frame(now: number) {
       if (cancelled) return;
-      const t = Math.min(1, (now - t0) / SHOT_MS);
+      const elapsed = now - t0;
+      const t = Math.min(1, elapsed / SHOT_MS);
       setShotT(t);
-      if (t < 1) { animId = requestAnimationFrame(frame); return; }
+      if (elapsed < SHOT_MS) { animId = requestAnimationFrame(frame); return; }
       // Shot complete
       setIsFiring(null);
       if (hit) {
@@ -782,7 +889,7 @@ export default function ArcadeAngleScreen() {
           if (gamePhaseRef.current === "platinum") earnPlatinumEggRef.current();
           else if (gamePhaseRef.current === "monster") earnMonsterEggRef.current();
           else earnEggRef.current();
-        }, 560);
+        }, HIT_RESOLVE_MS);
       } else {
         loseEggRef.current();
       }
@@ -817,7 +924,11 @@ export default function ArcadeAngleScreen() {
   // ── Drag / aim handling ────────────────────────────────────────────────────
   const moveGaze = useCallback((svgX: number, svgY: number) => {
     if (sceneBusyRef.current) return;
+    const dx = svgX - CX;
+    const dy = svgY - CY;
+    if (Math.hypot(dx, dy) < MIN_AIM_RADIUS) return;
     const raw = pointerToAngle(CX, CY, svgX, svgY); // always [0, 360)
+    const q = currentQRef.current;
     let angle: number;
     if (level === 1) {
       const prevRaw = lastPointerAngleRef.current;
@@ -830,31 +941,44 @@ export default function ArcadeAngleScreen() {
       }
       dragAngleRef.current = Math.min(Math.max(angle, -360), 360);
       angle = dragAngleRef.current;
-    } else if (level === 2) {
-      angle = Math.min(Math.max(raw, 0), 90);
     } else {
-      angle = Math.min(Math.max(raw, 0), 180);
+      const start = q.startAngleDeg ?? 0;
+      const max = q.totalContext;
+      const reference = lastPointerAngleRef.current === null ? dragAngleRef.current : dragAngleRef.current;
+      const continuous = closestEquivalentAngle(raw, reference);
+      angle = Math.min(Math.max(continuous, start), max);
+      dragAngleRef.current = angle;
     }
     lastPointerAngleRef.current = raw;
 
     const SNAP_TARGETS = level === 1
       ? [-180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90, 120, 135, 150, 180]
-      : level === 2 ? [45] : [90];
+      : [q.hiddenAngleDeg];
     const snapped = snapAngleValue(angle, SNAP_TARGETS, 3);
     if (snapped !== angle) {
       if (snapped !== gazeAngleRef.current) playSnap();
       angle = snapped;
     }
-    if (Math.abs(angle - lastTickAngleRef.current) >= TICK_INTERVAL) {
-      lastTickAngleRef.current = angle;
-      playAngleTick(angle);
+    const tickAngle = level === 2
+      ? Math.max(0, angle - (q.startAngleDeg ?? 0))
+      : angle;
+    const tickInterval = level === 2 ? 5 : TICK_INTERVAL;
+    if (Math.abs(tickAngle - lastTickAngleRef.current) >= tickInterval) {
+      lastTickAngleRef.current = tickAngle;
+      const tickSoundAngle = level === 2
+        ? (tickAngle / Math.max(q.answer, 1)) * 360
+        : tickAngle;
+      playAngleTick(tickSoundAngle);
     }
     gazeAngleRef.current = angle; // update synchronously so next pointer event has correct base
     setGazeAngle(angle);
 
     // Normal rounds mirror drag into the keypad; special rounds do not.
     if (!currentQRef.current.promptLines && gamePhaseRef.current === "normal") {
-      setAnswer(String(Math.round(angle)));
+      const displayAngle = level === 2
+        ? angle - (currentQRef.current.startAngleDeg ?? 0)
+        : angle;
+      setAnswer(String(Math.round(displayAngle)));
     }
   }, [level]);
 
@@ -885,16 +1009,16 @@ export default function ArcadeAngleScreen() {
     if (sceneBusy) return;
     // In platinum the cannon is dead — only typing + fire moves it.
     if (gamePhase === "platinum") return;
+    if (!svgRef.current) return;
+    const { x, y } = toSVGPoint(svgRef.current, e.clientX, e.clientY);
+    if (!isPointOnCannon(x, y, revealGaze)) return;
     e.preventDefault();
+    lastTickAngleRef.current = -999;
     lastPointerAngleRef.current = null; // reset so first point sets the base
     dragAngleRef.current = gazeAngleRef.current;
     svgRef.current?.setPointerCapture(e.pointerId);
     draggingRef.current = true;
     setDragging(true);
-    if (svgRef.current) {
-      const { x, y } = toSVGPoint(svgRef.current, e.clientX, e.clientY);
-      moveGaze(x, y);
-    }
   }
 
   // ── Game logic ─────────────────────────────────────────────────────────────
@@ -904,15 +1028,14 @@ export default function ArcadeAngleScreen() {
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1600);
   }
 
-  function nextQuestion(targetLevel = level, targetPhase: "normal" | "monster" | "platinum" = gamePhase) {
-    const q = (targetPhase === "monster" || targetPhase === "platinum") && targetLevel === 3
-      ? makeMonsterL3Question()
-      : makeQuestion(targetLevel);
+  function nextQuestion(targetLevel = level) {
+    const q = makeQuestion(targetLevel);
+    submitLockRef.current = false;
     setCurrentQ(q);
     setAnswer("");
     setSubAnswers(["", "", ""]);
     setSubStep(0);
-    setGazeAngle(targetLevel === 3 ? 90 : 0);
+    setGazeAngle(q.startAngleDeg ?? 0);
     setIsFiring(null);
     setExplosion(null);
     setSpinAnim(null);
@@ -927,8 +1050,8 @@ export default function ArcadeAngleScreen() {
 
   function earnEgg() {
     const newEggs = eggsCollected + 1;
-    if (newEggs === 5) {
-      setEggsCollected(5);
+    if (newEggs === LEVEL_TARGET_COUNT) {
+      setEggsCollected(LEVEL_TARGET_COUNT);
       window.setTimeout(() => startMonsterRound(), 950);
       return;
     }
@@ -937,13 +1060,13 @@ export default function ArcadeAngleScreen() {
     setFlash({ text: "", ok: true, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
-    window.setTimeout(() => nextQuestion(level, "normal"), 950);
+    window.setTimeout(() => nextQuestion(level), 950);
   }
 
   function earnMonsterEgg() {
     const newGolden = monsterEggs + 1;
-    if (newGolden === 5) {
-      setMonsterEggs(5);
+    if (newGolden === LEVEL_TARGET_COUNT) {
+      setMonsterEggs(LEVEL_TARGET_COUNT);
       window.setTimeout(() => startPlatinumRound(), 950);
       return;
     }
@@ -953,10 +1076,11 @@ export default function ArcadeAngleScreen() {
     setFlash({ text: "", ok: true, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
-    window.setTimeout(() => nextQuestion(level, "monster"), 950);
+    window.setTimeout(() => nextQuestion(level), 950);
   }
 
   function loseEgg() {
+    submitLockRef.current = false;
     playWrong();
     if (gamePhase === "monster" || gamePhase === "platinum") {
       setMonsterEggs((e) => Math.max(0, e - 1));
@@ -985,7 +1109,7 @@ export default function ArcadeAngleScreen() {
     setShowMonsterAnnounce(true);
     playMonsterStart();
     switchToMonsterMusic();
-    nextQuestion(level, "monster");
+    nextQuestion(level);
     window.setTimeout(() => setShowMonsterAnnounce(false), 2800);
   }
 
@@ -997,20 +1121,20 @@ export default function ArcadeAngleScreen() {
     setShowMonsterAnnounce(true);
     playMonsterStart();
     switchToMonsterMusic();
-    nextQuestion(level, "platinum");
+    nextQuestion(level);
     window.setTimeout(() => setShowMonsterAnnounce(false), 2800);
   }
 
   function earnPlatinumEgg() {
     const newPlat = monsterEggs + 1;
-    if (newPlat === 5) {
-      setMonsterEggs(5);
-      if (level === 3) {
+    if (newPlat === LEVEL_TARGET_COUNT) {
+      setMonsterEggs(LEVEL_TARGET_COUNT);
+      if (level === 2) {
         playGameComplete();
         setScreen("gameover");
       } else {
         playMonsterVictory();
-        if (!IS_DEV) setUnlockedLevel((u) => Math.max(u, level + 1) as 1 | 2 | 3);
+        if (!IS_DEV) setUnlockedLevel(() => 2);
         setScreen("won");
       }
       return;
@@ -1020,13 +1144,14 @@ export default function ArcadeAngleScreen() {
     setFlash({ text: "", ok: true, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
-    window.setTimeout(() => nextQuestion(level, "platinum"), 950);
+    window.setTimeout(() => nextQuestion(level), 950);
   }
 
-  function beginNewRun(targetLevel?: 1 | 2 | 3) {
+  function beginNewRun(targetLevel?: 1 | 2) {
     playButton();
     shuffleMusic();
     const lv = targetLevel ?? level;
+    submitLockRef.current = false;
     if (targetLevel) setLevel(targetLevel);
     const firstQ = makeQuestion(lv);
     setScreen("playing");
@@ -1040,7 +1165,7 @@ export default function ArcadeAngleScreen() {
     setSubAnswers(["", "", ""]);
     setSubStep(0);
     setRevealedAngle(null);
-    setGazeAngle(lv === 3 ? 90 : 0);
+    setGazeAngle(firstQ.startAngleDeg ?? 0);
     setIsFiring(null);
     setExplosion(null);
     setSpinAnim(null);
@@ -1049,13 +1174,14 @@ export default function ArcadeAngleScreen() {
 
   function resetCurrentQuestion() {
     playButton();
+    submitLockRef.current = false;
     setFlash(null);
     setDragging(false);
     draggingRef.current = false;
     setAnswer("");
     setSubAnswers(["", "", ""]);
     setSubStep(0);
-    setGazeAngle(level === 3 ? 90 : 0);
+    setGazeAngle(currentQRef.current.startAngleDeg ?? 0);
     setIsFiring(null);
     setExplosion(null);
     setSpinAnim(null);
@@ -1066,9 +1192,9 @@ export default function ArcadeAngleScreen() {
     if (!IS_DEV) return;
     const target = i + 1;
     if (gamePhase === "monster") {
-      if (target === 5) earnMonsterEgg(); else setMonsterEggs(target);
+      if (target === LEVEL_TARGET_COUNT) earnMonsterEgg(); else setMonsterEggs(target);
     } else {
-      if (target === 5) { setEggsCollected(5); startMonsterRound(); }
+      if (target === LEVEL_TARGET_COUNT) { setEggsCollected(LEVEL_TARGET_COUNT); startMonsterRound(); }
       else { setEggsCollected(target); nextQuestion(); }
     }
   }
@@ -1087,8 +1213,10 @@ export default function ArcadeAngleScreen() {
       const num = parseFloat(v);
       if (!isNaN(num)) {
         let clamped = num;
-        if (level === 2) clamped = Math.min(Math.max(num, 0), 90);
-        else if (level === 3) clamped = Math.min(Math.max(num, 0), 180);
+        if (level === 2) {
+          const start = currentQ.startAngleDeg ?? 0;
+          clamped = Math.min(Math.max(start + num, start), currentQ.totalContext);
+        }
         setGazeAngle(clamped);
       }
     }
@@ -1096,7 +1224,7 @@ export default function ArcadeAngleScreen() {
 
   // ── Submit / Fire ──────────────────────────────────────────────────────────
   function doSubmit() {
-    if (sceneBusy) return;
+    if (sceneBusy || submitLockRef.current) return;
 
     // Monster round single-step: typed value must be exact
     if (isMonster && !currentQ.promptLines) {
@@ -1104,7 +1232,11 @@ export default function ArcadeAngleScreen() {
       const typed = parseFloat(answer.trim());
       if (isNaN(typed)) return;
       const correct = angleDiffDeg(typed, currentQ.answer) < TYPED_TOL;
-      fireCannon(correct, typed);
+      const typedAim = level === 2
+        ? Math.min(Math.max((currentQ.startAngleDeg ?? 0) + typed, currentQ.startAngleDeg ?? 0), currentQ.totalContext)
+        : typed;
+      submitLockRef.current = true;
+      fireCannon(correct, typedAim);
       return;
     }
 
@@ -1113,7 +1245,11 @@ export default function ArcadeAngleScreen() {
       const typedAngle = parseFloat(answer.trim());
       if (isNaN(typedAngle)) return;
       playButton();
-      setSpinAnim({ from: gazeAngle, to: typedAngle, startT: performance.now() });
+      const spinTarget = level === 2
+        ? Math.min(Math.max((currentQ.startAngleDeg ?? 0) + typedAngle, currentQ.startAngleDeg ?? 0), currentQ.totalContext)
+        : typedAngle;
+      submitLockRef.current = true;
+      setSpinAnim({ from: gazeAngle, to: spinTarget, startT: performance.now() });
       return;
     }
 
@@ -1139,6 +1275,7 @@ export default function ArcadeAngleScreen() {
         return;
       }
       // Final step — fire!
+      submitLockRef.current = true;
       fireCannon(ok, ok ? currentQ.hiddenAngleDeg : gazeAngle);
       return;
     }
@@ -1147,12 +1284,17 @@ export default function ArcadeAngleScreen() {
     const trimmed = answer.trim();
     if (trimmed === "") {
       const correct = angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < ANGLE_HIT_TOL;
+      submitLockRef.current = true;
       fireCannon(correct, gazeAngle);
     } else {
       const guess = parseFloat(trimmed);
       if (isNaN(guess)) return;
       const correct = angleDiffDeg(guess, currentQ.answer) < TYPED_TOL;
-      fireCannon(correct, guess);
+      const guessAim = level === 2
+        ? Math.min(Math.max((currentQ.startAngleDeg ?? 0) + guess, currentQ.startAngleDeg ?? 0), currentQ.totalContext)
+        : guess;
+      submitLockRef.current = true;
+      fireCannon(correct, guessAim);
     }
   }
 
@@ -1162,7 +1304,6 @@ export default function ArcadeAngleScreen() {
   const isMonster = gamePhase === "monster";
   const isPlatinum = gamePhase === "platinum";
 
-  const qAsAny = currentQ as AngleQuestion & { div1?: number; div2?: number };
   const revealGaze = revealedAngle ?? gazeAngle;
   const aimForBeam = isFiring ? isFiring.aimAngle : revealGaze;
   const targetRadius = currentQ.level === 1 ? L1_TARGET_RADIUS : EGG_RADIUS;
@@ -1171,6 +1312,10 @@ export default function ArcadeAngleScreen() {
   const targetY = CY + (fh.y - CY) * deployT;
   const displayPrompt = panelVisible ? currentQ.prompt.slice(0, Math.max(typeIdx, 0)) : "";
   const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= currentQ.prompt.length);
+  const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
+  const activeArcRadius = level === 2 ? getMissingSectorRadius(currentQ) ?? 52 : 52;
+  const hasStartedL2Interaction = level === 2
+    && (dragging || answer.trim() !== "" || Math.abs(gazeAngle - baseAngle) > 0.5 || isFiring !== null || spinAnim !== null);
 
   const parsedAnswer = parseFloat(answer.trim());
   // isAiming: cannon is actively pointed somewhere (dragging, firing, spinAnim, or valid number typed)
@@ -1202,8 +1347,8 @@ export default function ArcadeAngleScreen() {
 
         {/* Centre HUD (flex-1 so it fills space, buttons sit on the right) */}
         <div className="flex-1 flex flex-col items-center gap-1">
-          <div className="flex items-center gap-1.5">
-            {([1, 2, 3] as const).map((lv) => {
+          <div className="grid grid-cols-5 gap-1.5 justify-items-center">
+            {([1, 2] as const).map((lv) => {
               const locked = !IS_DEV && lv > unlockedLevel && lv > level;
               return (
                 <button key={lv} onClick={() => !locked && beginNewRun(lv)}
@@ -1243,7 +1388,7 @@ export default function ArcadeAngleScreen() {
           )}
 
           <div className="flex items-center gap-1.5">
-            {[0, 1, 2, 3, 4].map((i) => {
+            {Array.from({ length: LEVEL_TARGET_COUNT }, (_, i) => i).map((i) => {
               const collected = (isMonster || isPlatinum) ? i < monsterEggs : i < eggsCollected;
               const isTarget  = IS_DEV && i === ((isMonster || isPlatinum) ? monsterEggs : eggsCollected);
               return (
@@ -1304,11 +1449,16 @@ export default function ArcadeAngleScreen() {
 
             {/* Level-specific terrain */}
             {level === 1 && <L1Scene />}
-            {level === 2 && <L2Scene />}
-            {level === 3 && <L3Scene div1={qAsAny.div1} div2={qAsAny.div2} />}
+            {level === 2 && (
+              <L2Scene
+                question={currentQ}
+                showMissingMarker={!hasStartedL2Interaction}
+                focusMissingAngle={dragging || isFiring !== null || spinAnim !== null}
+              />
+            )}
 
-            {/* Coordinate axes — whenever cannon is aimed */}
-            {isAiming && <CoordAxes />}
+            {/* Coordinate axes — L1 only */}
+            {isAiming && level === 1 && <CoordAxes />}
 
             {/* Known angle markers */}
             {currentQ.knownEggs.map((egg, i) => {
@@ -1316,25 +1466,19 @@ export default function ArcadeAngleScreen() {
               return <KnownMarker key={i} x={p.x} y={p.y} label={egg.label} />;
             })}
 
-            {/* Target crosshair — hide when projectile is about to hit or explosion is showing */}
+            {/* Angle type label while aiming (L1 only) */}
+            {isAiming && level === 1 && !isMonster && !isPlatinum && Math.abs(gazeAngle) > 0.5 && (
+              <AngleTypeLabel gazeAngle={gazeAngle} />
+            )}
+            {level === 2 && !isMonster && !isPlatinum && currentQ.setKind && (
+              <SetTypeLabel label={currentQ.setKind} />
+            )}
+
+            {/* Target crosshair — above banner, below beam */}
             {!(isFiring?.hit && shotT > 0.88) && !explosion && revealedAngle === null && (
               <g transform={`translate(${targetX}, ${targetY})`}>
                 <TargetSprite pulse={introPhase === "ready" && revealedAngle === null && !isFiring} />
               </g>
-            )}
-
-            {/* Live angle label — while aiming (or revealed after hit); hidden in monster round */}
-            {(dragging || revealedAngle !== null || spinAnim !== null) && !isFiring && !isMonster && introPhase === "ready" && (
-              <LiveAngleLabel
-                gazeAngle={gazeAngle}
-                revealed={revealedAngle !== null}
-                answerDeg={revealedAngle ?? currentQ.answer}
-              />
-            )}
-
-            {/* Angle type label while aiming (L1 only) */}
-            {isAiming && level === 1 && !isMonster && !isPlatinum && Math.abs(gazeAngle) > 0.5 && (
-              <AngleTypeLabel gazeAngle={gazeAngle} />
             )}
 
             {/* Projectile tracer */}
@@ -1347,13 +1491,28 @@ export default function ArcadeAngleScreen() {
 
             {/* Aim beam — whenever cannon is aimed */}
             {isAiming && (
-              <GazeBeamDrag gazeAngle={aimForBeam} level={level} />
+              <GazeBeamDrag
+                gazeAngle={aimForBeam}
+                level={level}
+                baseAngle={baseAngle}
+                arcRadiusOverride={activeArcRadius}
+              />
             )}
 
             {/* Cannon */}
             <g transform={`translate(${CX}, ${CY})`}>
               <CannonSprite aimAngle={revealGaze} dragging={dragging} />
             </g>
+
+            {/* Live angle label — rendered above the beam/cannon; hidden in monster round */}
+            {(dragging || revealedAngle !== null || spinAnim !== null) && !isFiring && !isMonster && introPhase === "ready" && (
+              <LiveAngleLabel
+                gazeAngle={gazeAngle}
+                revealed={revealedAngle !== null}
+                answerDeg={revealedAngle ?? currentQ.answer}
+                baseAngle={baseAngle}
+              />
+            )}
           </svg>
         </div>
 
@@ -1394,7 +1553,7 @@ export default function ArcadeAngleScreen() {
               </button>
             </div>
             <div className="flex items-center gap-1">
-              {([1, 2, 3] as const).map((lv) => {
+              {([1, 2] as const).map((lv) => {
                 const locked = !IS_DEV && lv > unlockedLevel && lv > level;
                 return (
                   <button key={lv} onClick={() => !locked && beginNewRun(lv)}
@@ -1414,8 +1573,8 @@ export default function ArcadeAngleScreen() {
           </div>
 
           {/* Stars */}
-          <div className="shrink-0 flex items-center justify-center gap-1 pb-1">
-            {[0, 1, 2, 3, 4].map((i) => {
+          <div className="shrink-0 grid grid-cols-5 gap-1 justify-center justify-items-center pb-1">
+            {Array.from({ length: LEVEL_TARGET_COUNT }, (_, i) => i).map((i) => {
               const collected = (isMonster || isPlatinum) ? i < monsterEggs : i < eggsCollected;
               const isTarget  = IS_DEV && i === ((isMonster || isPlatinum) ? monsterEggs : eggsCollected);
               return (
@@ -1586,7 +1745,7 @@ export default function ArcadeAngleScreen() {
           <div className="mt-5 text-lg tracking-wide" style={{ color: isPlatinum ? "#94a3b8" : "#d8b4fe" }}>
             {isPlatinum ? "Type blind — one shot only!" : "Drag to aim — no angle shown!"}
           </div>
-          <div className="mt-2 text-xl text-yellow-400 font-black">Destroy 5 targets 🎯</div>
+          <div className="mt-2 text-xl text-yellow-400 font-black">Destroy 10 targets 🎯</div>
         </div>
       )}
 
@@ -1616,8 +1775,8 @@ export default function ArcadeAngleScreen() {
               </>
             )}
             <div className="mt-8 flex flex-col items-center gap-3">
-              {level < 3 && (
-                <button onClick={() => beginNewRun((level + 1) as 1 | 2 | 3)}
+              {level < 2 && (
+                <button onClick={() => beginNewRun(2)}
                   className="arcade-button px-8 py-4 text-base md:text-lg">
                   Next Level
                 </button>
@@ -1638,7 +1797,7 @@ export default function ArcadeAngleScreen() {
               style={{ textShadow: "0 0 24px rgba(250,204,21,0.8)" }}>
               You Did It!
             </div>
-            <div className="mt-2 text-base md:text-lg text-purple-200 font-bold">All 3 Levels Cleared</div>
+            <div className="mt-2 text-base md:text-lg text-purple-200 font-bold">All 2 Levels Cleared</div>
             <div className="flex justify-center gap-2 mt-5">
               {[0,1,2,3,4].map((i) => <GoldenTarget key={i} />)}
             </div>

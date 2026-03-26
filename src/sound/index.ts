@@ -4,6 +4,8 @@
 let ctx: AudioContext | null = null;
 let footToggle = false;
 const MUTE_STORAGE_KEY = "maths-angle-explorer:muted";
+const SFX_GAIN = 1.9;
+const BG_GAIN = 0.5;
 
 function readStoredMute(): boolean | null {
   if (typeof window === "undefined") return null;
@@ -27,7 +29,25 @@ function ac(): AudioContext {
   return ctx;
 }
 
+function capGain(value: number) {
+  return Math.min(value, 0.9);
+}
+
 function tone(freq: number, start: number, dur: number, vol = 0.08, type: OscillatorType = "square") {
+  const c = ac();
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.connect(gain);
+  gain.connect(c.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  gain.gain.setValueAtTime(capGain(vol * SFX_GAIN), start);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+  osc.start(start);
+  osc.stop(start + dur + 0.01);
+}
+
+function musicTone(freq: number, start: number, dur: number, vol = 0.08, type: OscillatorType = "square") {
   if (muted) return;
   const c = ac();
   const osc = c.createOscillator();
@@ -36,7 +56,7 @@ function tone(freq: number, start: number, dur: number, vol = 0.08, type: Oscill
   gain.connect(c.destination);
   osc.type = type;
   osc.frequency.setValueAtTime(freq, start);
-  gain.gain.setValueAtTime(vol, start);
+  gain.gain.setValueAtTime(capGain(vol * BG_GAIN), start);
   gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
   osc.start(start);
   osc.stop(start + dur + 0.01);
@@ -45,6 +65,13 @@ function tone(freq: number, start: number, dur: number, vol = 0.08, type: Oscill
 export function toggleMute(): boolean {
   muted = !muted;
   if (!import.meta.env.DEV) persistMute(muted);
+  if (muted) {
+    if (bgTimer) clearTimeout(bgTimer);
+    bgTimer = null;
+    return muted;
+  }
+  ac();
+  if (musicOn && !bgTimer) tick();
   return muted;
 }
 
@@ -53,12 +80,10 @@ export function isMuted() {
 }
 
 export function ensureAudioReady() {
-  if (muted) return;
   ac();
 }
 
 function noiseBurst(startTime: number, filterFreq: number, vol: number, dur: number) {
-  if (muted) return;
   const c = ac();
   const bufLen = Math.ceil(c.sampleRate * dur);
   const buf = c.createBuffer(1, bufLen, c.sampleRate);
@@ -74,7 +99,7 @@ function noiseBurst(startTime: number, filterFreq: number, vol: number, dur: num
   filter.Q.value = 1.8;
 
   const gain = c.createGain();
-  gain.gain.setValueAtTime(vol, startTime);
+  gain.gain.setValueAtTime(capGain(vol * SFX_GAIN), startTime);
   gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
 
   src.connect(filter);
@@ -85,7 +110,6 @@ function noiseBurst(startTime: number, filterFreq: number, vol: number, dur: num
 }
 
 export function playStep() {
-  if (muted) return;
   const t = ac().currentTime;
   footToggle = !footToggle;
   const side = footToggle ? 1 : -1;
@@ -133,14 +157,12 @@ export function playButton() {
 
 /** Subtle tick as gaze sweeps — pitch maps 200–800 Hz across 0°–360°. */
 export function playAngleTick(angleDeg: number) {
-  if (muted) return;
   const freq = 200 + (angleDeg / 360) * 600;
-  tone(freq, ac().currentTime, 0.03, 0.045, "sine");
+  tone(freq, ac().currentTime, 0.03, 0.11, "sine");
 }
 
 /** Short typewriter-style click for each character in the prompt typewriter. */
 export function playTypewriterClick() {
-  if (muted) return;
   const c = ac();
   const t = c.currentTime;
   // Noise burst (mechanical key body)
@@ -287,8 +309,8 @@ function tick() {
   const { melody, bass, melodyVol = 0.05, bassVol = 0.04,
           melodyType = "square", bassType = "triangle" } = currentPattern;
 
-  if (melody[step]) tone(melody[step], t, beat * 0.7, melodyVol, melodyType);
-  if (bass[step]) tone(bass[step], t, beat * 0.9, bassVol, bassType);
+  if (melody[step]) musicTone(melody[step], t, beat * 0.7, melodyVol, melodyType);
+  if (bass[step]) musicTone(bass[step], t, beat * 0.9, bassVol, bassType);
 
   step = (step + 1) % melody.length;
   bgTimer = setTimeout(tick, beat * 1000);
@@ -441,7 +463,6 @@ export function playGoldenEgg() {
 
 /** Whoosh — target deploying from cannon to its position. */
 export function playTargetDeploy() {
-  if (muted) return;
   const c = ac();
   const t = c.currentTime;
   const osc = c.createOscillator();
@@ -460,7 +481,6 @@ export function playTargetDeploy() {
 
 /** Rocket launch — cannon fires a shot. */
 export function playCannonFire() {
-  if (muted) return;
   const c = ac();
   const now = c.currentTime;
   // ── Ignition crack ──
@@ -515,7 +535,6 @@ export function playCannonFire() {
 
 /** Explosion blast — projectile hits target. */
 export function playExplosion() {
-  if (muted) return;
   const c = ac();
   const now = c.currentTime;
   // ── Initial sharp crack ──
