@@ -635,6 +635,7 @@ export default function ArcadeAngleScreen() {
   // ── Desktop keyboard → keypad binding ──────────────────────────────────────
   const keypadValueRef        = useRef("");
   const handleKeypadChangeRef = useRef((_v: string) => {});
+  const doSubmitRef           = useRef(() => {});
   useEffect(() => {
     if (!window.matchMedia("(pointer: fine)").matches) return; // skip on touch-only
     function onKeyDown(e: KeyboardEvent) {
@@ -642,6 +643,7 @@ export default function ArcadeAngleScreen() {
       const tag = (document.activeElement as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const k = e.key;
+      if (k === "Enter") { if (canFireRef.current) doSubmitRef.current(); return; }
       if (!/^[0-9]$/.test(k) && k !== "Backspace" && k !== "." && k !== "-") return;
       e.preventDefault();
       const val = keypadValueRef.current;
@@ -1123,6 +1125,7 @@ export default function ArcadeAngleScreen() {
     : canFire;
   keypadValueRef.current        = keypadValue;
   handleKeypadChangeRef.current = handleKeypadChange;
+  doSubmitRef.current           = doSubmit;
 
   return (
     <div className="flex flex-col landscape:flex-row h-svh w-screen overflow-hidden font-arcade relative"
