@@ -783,19 +783,8 @@ export default function ArcadeAngleScreen() {
     const raw = pointerToAngle(CX, CY, svgX, svgY); // always [0, 360)
     let angle: number;
     if (level === 1) {
-      // Delta-based: accumulate the pointer's angular change so direction is continuous.
-      // Going CW decreases angle (can go negative); CCW increases (can go past 180).
-      const last = lastPointerAngleRef.current;
-      if (last === null) {
-        // First point of this drag — start from signed equivalent of pointer position
-        angle = raw > 180 ? raw - 360 : raw;
-      } else {
-        let delta = raw - last;
-        if (delta > 180) delta -= 360;   // wrapped CCW through 0
-        if (delta < -180) delta += 360;  // wrapped CW through 0
-        angle = gazeAngleRef.current + delta;
-      }
-      lastPointerAngleRef.current = raw;
+      // Direct mapping: convert [180,360) → (-180,0) so CW drag shows negative angles
+      angle = raw > 180 ? raw - 360 : raw;
     } else if (level === 2) {
       angle = Math.min(Math.max(raw, 0), 90);
     } else {
