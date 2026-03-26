@@ -464,6 +464,87 @@ function ColoredPrompt({ text, className = "" }: { text: string; className?: str
   );
 }
 
+/** On-screen numeric keypad — replaces the keyboard input. */
+function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, fireRef }: {
+  value: string;
+  onChange: (v: string) => void;
+  onFire: () => void;
+  canFire: boolean;
+  disabled: boolean;
+  fireRef?: React.RefObject<HTMLButtonElement | null>;
+}) {
+  function press(key: string) {
+    if (disabled) return;
+    if (key === "⌫") {
+      onChange(value.slice(0, -1));
+    } else if (key === "±") {
+      if (value.startsWith("-")) onChange(value.slice(1));
+      else if (value !== "" && value !== "0") onChange("-" + value);
+    } else if (key === ".") {
+      if (!value.includes(".")) onChange(value === "" ? "0." : value + ".");
+    } else {
+      onChange(value === "0" ? key : value + key);
+    }
+  }
+
+  const display = value === "" ? "0" : value;
+
+  const rows = [
+    ["7", "8", "9", "⌫"],
+    ["4", "5", "6", "±"],
+    ["1", "2", "3", "."],
+  ];
+
+  const base = "rounded flex items-center justify-center font-black select-none transition-transform active:scale-95 text-sm h-8";
+  const digit = `${base} bg-slate-800 text-slate-100 border border-slate-600/60`;
+  const op    = `${base} bg-slate-700/80 text-cyan-300 border border-slate-500/60`;
+
+  return (
+    <div className="flex flex-col gap-1 rounded-xl p-1.5 shrink-0 w-44 md:w-48"
+      style={{
+        background: "rgba(2,6,23,0.97)",
+        border: "2px solid rgba(56,189,248,0.45)",
+        boxShadow: "0 0 18px rgba(56,189,248,0.12), inset 0 0 12px rgba(0,0,0,0.4)",
+      }}>
+      {/* LCD Display */}
+      <div className="rounded-lg px-2 h-8 flex items-center justify-end overflow-hidden"
+        style={{
+          fontFamily: "'DSEG7Classic', 'Courier New', monospace",
+          fontWeight: 700,
+          fontSize: "1.05rem",
+          background: "rgba(0,8,4,0.95)",
+          border: "2px solid rgba(56,189,248,0.28)",
+          color: "#67e8f9",
+          textShadow: "0 0 10px rgba(103,232,249,0.85), 0 0 22px rgba(56,189,248,0.4)",
+          letterSpacing: "0.12em",
+        }}>
+        {display}°
+      </div>
+      {/* Digit rows */}
+      <div className="flex flex-col gap-0.5">
+        {rows.map((row, r) => (
+          <div key={r} className="grid grid-cols-4 gap-0.5">
+            {row.map((btn) => (
+              <button key={btn} onClick={() => press(btn)}
+                className={/[0-9]/.test(btn) ? digit : op}>
+                {btn}
+              </button>
+            ))}
+          </div>
+        ))}
+        {/* Zero + Fire */}
+        <div className="flex gap-0.5 mt-0.5">
+          <button onClick={() => press("0")} className={`${digit} flex-[2]`}>0</button>
+          <button ref={fireRef} onClick={onFire} disabled={!canFireProp}
+            className={`${base} flex-[2] arcade-button disabled:opacity-40 disabled:cursor-not-allowed`}>
+            🚀
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Golden target icon for win/gameover screens. */
 function GoldenTarget() {
   return (
@@ -690,9 +771,9 @@ export default function ArcadeAngleScreen() {
     }
     setGazeAngle(angle);
 
-    // Auto-fill answer box in normal (non-monster) rounds for L1/L2
-    if (gamePhaseRef.current !== "monster" && gamePhaseRef.current !== "platinum" && !currentQRef.current.promptLines) {
-      setAnswer(angle === Math.round(angle) ? String(angle) : angle.toFixed(1));
+    // Always auto-fill LCD from cannon angle while dragging
+    if (!currentQRef.current.promptLines) {
+      setAnswer(String(Math.round(angle)));
     }
   }, [level]);
 
@@ -907,9 +988,29 @@ export default function ArcadeAngleScreen() {
     }
   }
 
+  function handleKeypadChange(v: string) {
+    if (currentQ.promptLines) {
+      setSubAnswers((prev) => {
+        const next = [...prev] as [string, string, string];
+        next[subStep] = v;
+        return next;
+      });
+      return;
+    }
+    setAnswer(v);
+    if (!sceneBusy && gamePhase !== "platinum") {
+      const num = parseFloat(v);
+      if (!isNaN(num)) {
+        let clamped = num;
+        if (level === 2) clamped = Math.min(Math.max(num, 0), 90);
+        else if (level === 3) clamped = Math.min(Math.max(num, 0), 180);
+        setGazeAngle(clamped);
+      }
+    }
+  }
+
   // ── Submit / Fire ──────────────────────────────────────────────────────────
-  function submitAnswer(e: React.FormEvent) {
-    e.preventDefault();
+  function doSubmit() {
     if (sceneBusy) return;
 
     // Monster round single-step: typed value must be exact
@@ -925,7 +1026,7 @@ export default function ArcadeAngleScreen() {
     // Platinum round: cannon rotates to typed value then fires (blind shot)
     if (gamePhase === "platinum" && !currentQ.promptLines) {
       const typedAngle = parseFloat(answer.trim());
-      if (isNaN(typedAngle)) { showFlash("Type a number!", false); return; }
+      if (isNaN(typedAngle)) return;
       playButton();
       setSpinAnim({ from: gazeAngle, to: typedAngle, startT: performance.now() });
       return;
@@ -960,16 +1061,16 @@ export default function ArcadeAngleScreen() {
     // L1 / L2 single step
     const trimmed = answer.trim();
     if (trimmed === "") {
-      // Aim-based: validate gazeAngle proximity
       const correct = angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < ANGLE_HIT_TOL;
       fireCannon(correct, gazeAngle);
     } else {
       const guess = parseFloat(trimmed);
-      if (isNaN(guess)) { showFlash("Type a number!", false); return; }
+      if (isNaN(guess)) return;
       const correct = angleDiffDeg(guess, currentQ.answer) < TYPED_TOL;
       fireCannon(correct, correct ? currentQ.hiddenAngleDeg : gazeAngle);
     }
   }
+
 
   // ── Render helpers ─────────────────────────────────────────────────────────
   const phaseBg = LEVEL_BG[`${level}-${gamePhase}`] ?? { bg: "#080e1c", glow: "#1e3a5f", tint: "transparent" };
@@ -994,6 +1095,10 @@ export default function ArcadeAngleScreen() {
   const canFire = !sceneBusy && !currentQ.promptLines
     && answer.trim() !== "" && !isNaN(parsedAnswer);
   canFireRef.current = canFire;
+  const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
+  const canKeypadFire = currentQ.promptLines
+    ? !sceneBusy && !isNaN(parseFloat(subAnswers[subStep]))
+    : canFire;
 
   return (
     <div className="relative h-svh w-screen overflow-hidden font-arcade"
@@ -1102,7 +1207,7 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── SVG scene ── */}
-      <div className="absolute inset-x-0 top-[184px] bottom-[86px] md:top-[96px] md:bottom-[92px] z-10">
+      <div className="absolute inset-x-0 top-[184px] bottom-[190px] md:top-[96px] md:bottom-[190px] z-10">
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
           className="h-full w-full touch-none select-none"
           onPointerDown={startDrag}
@@ -1163,99 +1268,65 @@ export default function ArcadeAngleScreen() {
         </svg>
       </div>
 
-      {/* ── Bottom question panel (hidden until target has deployed) ── */}
-      {panelVisible && (
-        <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 md:px-5 md:pb-4 z-50">
-          <form onSubmit={submitAnswer} className="flex items-center gap-2 md:gap-3">
-            {currentQ.promptLines && currentQ.subAnswers ? (
-              /* Multi-step (Level 3) */
-              <div className="arcade-panel flex-1 flex flex-col gap-2 px-4 py-2.5">
+      {/* ── Bottom panel: prompt (left) + keypad (right, always visible) ── */}
+      <div className="absolute bottom-0 left-0 right-0 z-50 flex items-end gap-2 px-2 pb-2">
+
+        {/* Prompt / question text — left column */}
+        <div className="flex-1 min-w-0 self-stretch flex flex-col justify-end">
+          {panelVisible && (
+            currentQ.promptLines && currentQ.subAnswers ? (
+              /* L3 multi-step */
+              <div className="arcade-panel flex flex-col gap-1.5 px-3 py-2 text-xs md:text-sm">
                 {currentQ.promptLines.map((line, i) => {
                   const isDone    = i < subStep;
                   const isCurrent = i === subStep;
                   return (
-                    <div key={i} className={`flex items-center gap-2 transition-opacity duration-200 ${i > subStep ? "opacity-30" : ""}`}>
+                    <div key={i} className={`flex items-center gap-1.5 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
                       <ColoredPrompt text={line}
-                        className={`flex-1 text-sm leading-5 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
+                        className={`flex-1 leading-5 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
                       {IS_DEV && currentQ.subAnswers && (
                         <span className="shrink-0 rounded px-1 text-[10px] font-black"
                           style={{ background: "rgba(250,204,21,0.18)", color: "#fde047", border: "1px solid rgba(250,204,21,0.3)" }}>
                           {currentQ.subAnswers[i]}
                         </span>
                       )}
-                      <span className="text-slate-400 text-sm">=</span>
+                      <span className="text-slate-400 text-xs">=</span>
                       {isDone ? (
-                        <div className="w-20 flex items-center justify-end gap-1">
-                          <span className="text-green-400 text-sm font-bold">{subAnswers[i]}°</span>
-                        </div>
+                        <span className="text-green-400 text-xs font-bold w-10 text-right">{subAnswers[i]}°</span>
                       ) : isCurrent ? (
-                        <input autoFocus value={subAnswers[i]}
-                          onChange={(e) => setSubAnswers((prev) => {
-                            const next = [...prev] as [string, string, string];
-                            next[i] = e.target.value;
-                            return next;
-                          })}
-                          inputMode="decimal" placeholder="°"
-                          className="w-20 rounded-lg border-[3px] border-white/70 bg-slate-950 px-2 py-1 text-sm text-white outline-none placeholder:text-slate-500 text-right" />
+                        <span className="text-yellow-300 text-xs font-bold w-10 text-right">{subAnswers[i] || "?"}</span>
                       ) : (
-                        <div className="w-20 h-[34px] rounded-lg border-[2px] border-white/15 bg-slate-950/40" />
+                        <span className="w-10" />
                       )}
-                      <button type="submit" disabled={!isCurrent}
-                        className={`arcade-button shrink-0 h-8 w-8 flex items-center justify-center p-0 transition-opacity ${!isCurrent ? "opacity-30 cursor-not-allowed" : ""}`}>
-                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4">
-                          <path d="M4 13 L9 18 L20 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              /* Single row (L1 / L2) */
-              <div className="arcade-panel flex-1 flex items-center gap-2 px-4 py-2 min-h-[60px] text-sm md:text-base leading-6 text-white font-bold">
+              /* Single-step prompt */
+              <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold">
                 <ColoredPrompt text={displayPrompt} />
                 {IS_DEV && (
-                  <span className="ml-1 shrink-0 rounded px-1.5 py-0.5 text-xs font-black"
+                  <span className="ml-1 rounded px-1 py-0.5 text-xs font-black"
                     style={{ background: "rgba(250,204,21,0.18)", color: "#fde047", border: "1px solid rgba(250,204,21,0.35)" }}>
                     {currentQ.answer}
                   </span>
                 )}
               </div>
-            )}
-
-            {/* Input + FIRE button (single-step levels) */}
-            {!currentQ.promptLines && (
-              <>
-                <input value={answer} onChange={(e) => {
-                  const v = e.target.value;
-                  setAnswer(v);
-                  // Immediately rotate cannon to typed angle (not in platinum — that happens on fire)
-                  if (!sceneBusy && gamePhase !== "platinum") {
-                    const num = parseFloat(v);
-                    if (!isNaN(num)) {
-                      let clamped = num;
-                      if (level === 2) clamped = Math.min(Math.max(num, 0), 90);
-                      else if (level === 3) clamped = Math.min(Math.max(num, 0), 180);
-                      // L1: no clamp — allow any angle (0–360 CCW or 0 to –360 CW)
-                      setGazeAngle(clamped);
-                    }
-                  }
-                }}
-                  inputMode="decimal" placeholder="°"
-                  className="w-[72px] md:w-[90px] shrink-0 rounded-xl border-[3px] border-white/70 bg-slate-950 px-3 py-2.5 text-base md:text-lg text-white outline-none placeholder:text-slate-500 text-center" />
-                <button ref={fireButtonRef} type="submit" disabled={!canFire} title="Fire!"
-                  className="arcade-button shrink-0 rounded-full w-14 h-14 flex flex-col items-center justify-center p-0 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6">
-                    <path d="M12 2C12 2 7 6 7 13H9L7 22L12 19L17 22L15 13H17C17 6 12 2 12 2Z" />
-                    <path d="M9 13C9 13 7 14 6 16C7 16 8 15.5 9 15" fill="rgba(255,180,0,0.9)" />
-                    <path d="M15 13C15 13 17 14 18 16C17 16 16 15.5 15 15" fill="rgba(255,180,0,0.9)" />
-                  </svg>
-                </button>
-              </>
-            )}
-          </form>
+            )
+          )}
         </div>
-      )}
+
+        {/* Numeric keypad — always visible */}
+        <NumericKeypad
+          value={keypadValue}
+          onChange={handleKeypadChange}
+          onFire={doSubmit}
+          canFire={canKeypadFire}
+          disabled={sceneBusy}
+          fireRef={fireButtonRef}
+        />
+      </div>
 
       {/* ── Flash feedback ── */}
       {flash && (
