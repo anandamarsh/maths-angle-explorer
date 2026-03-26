@@ -537,7 +537,11 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
           <button onClick={() => press("0")} className={`${digit} flex-[2]`}>0</button>
           <button ref={fireRef} onClick={onFire} disabled={!canFireProp}
             className={`${base} flex-[2] arcade-button disabled:opacity-40 disabled:cursor-not-allowed`}>
-            🚀
+            <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+              <path d="M12 2C12 2 7 6 7 13H9L7 22L12 19L17 22L15 13H17C17 6 12 2 12 2Z" />
+              <path d="M9 13C9 13 7 14 6 16C7 16 8 15.5 9 15" fill="rgba(255,180,0,0.9)" />
+              <path d="M15 13C15 13 17 14 18 16C17 16 16 15.5 15 15" fill="rgba(255,180,0,0.9)" />
+            </svg>
           </button>
         </div>
       </div>
