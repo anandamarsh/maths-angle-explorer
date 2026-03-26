@@ -610,16 +610,19 @@ export default function ArcadeAngleScreen() {
   const fireButtonRef    = useRef<HTMLButtonElement>(null);
   const draggingRef      = useRef(false);
   const flashTimerRef    = useRef<number | null>(null);
-  const lastTickAngleRef = useRef(-999);
-  const gamePhaseRef     = useRef<"normal" | "monster" | "platinum">("normal");
+  const lastTickAngleRef    = useRef(-999);
+  const gazeAngleRef        = useRef(0);       // always in sync with gazeAngle state
+  const lastPointerAngleRef = useRef<number | null>(null); // raw [0,360) from last pointer event
+  const gamePhaseRef        = useRef<"normal" | "monster" | "platinum">("normal");
   const currentQRef      = useRef(currentQ);
   const earnEggRef       = useRef(() => {});
   const earnMonsterEggRef = useRef(() => {});
   const earnPlatinumEggRef = useRef(() => {});
   const loseEggRef       = useRef(() => {});
 
-  gamePhaseRef.current = gamePhase;
-  currentQRef.current  = currentQ;
+  gamePhaseRef.current  = gamePhase;
+  currentQRef.current   = currentQ;
+  gazeAngleRef.current  = gazeAngle;
 
   const sceneBusy    = introPhase !== "ready" || isFiring !== null || spinAnim !== null;
   const sceneBusyRef = useRef(false);
@@ -777,12 +780,27 @@ export default function ArcadeAngleScreen() {
   // ── Drag / aim handling ────────────────────────────────────────────────────
   const moveGaze = useCallback((svgX: number, svgY: number) => {
     if (sceneBusyRef.current) return;
-    let angle = pointerToAngle(CX, CY, svgX, svgY);
-    // L1: signed range (-180, 180] — dragging CW below 0 gives negative angles
-    // L2/L3: clamped to their valid range
-    if (level === 1) { if (angle > 180) angle = angle - 360; }
-    else if (level === 2) angle = Math.min(Math.max(angle, 0), 90);
-    else if (level === 3) angle = Math.min(Math.max(angle, 0), 180);
+    const raw = pointerToAngle(CX, CY, svgX, svgY); // always [0, 360)
+    let angle: number;
+    if (level === 1) {
+      // Delta-based: accumulate the pointer's angular change so direction is continuous.
+      // Going CW decreases angle (can go negative); CCW increases (can go past 180).
+      const last = lastPointerAngleRef.current;
+      if (last === null) {
+        // First point of this drag — start from signed equivalent of pointer position
+        angle = raw > 180 ? raw - 360 : raw;
+      } else {
+        let delta = raw - last;
+        if (delta > 180) delta -= 360;   // wrapped CCW through 0
+        if (delta < -180) delta += 360;  // wrapped CW through 0
+        angle = gazeAngleRef.current + delta;
+      }
+      lastPointerAngleRef.current = raw;
+    } else if (level === 2) {
+      angle = Math.min(Math.max(raw, 0), 90);
+    } else {
+      angle = Math.min(Math.max(raw, 0), 180);
+    }
 
     const SNAP_TARGETS = level === 1
       ? [-180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90, 120, 135, 150, 180]
@@ -811,6 +829,7 @@ export default function ArcadeAngleScreen() {
     function onUp() {
       if (!draggingRef.current) return;
       draggingRef.current = false;
+      lastPointerAngleRef.current = null;
       setDragging(false);
     }
     window.addEventListener("pointermove", onMove);
@@ -828,6 +847,7 @@ export default function ArcadeAngleScreen() {
     // In platinum L1 the cannon is dead — only typing + fire moves it
     if (gamePhase === "platinum" && level === 1) return;
     e.preventDefault();
+    lastPointerAngleRef.current = null; // reset so first point sets the base
     svgRef.current?.setPointerCapture(e.pointerId);
     draggingRef.current = true;
     setDragging(true);
