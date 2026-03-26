@@ -812,6 +812,7 @@ export default function ArcadeAngleScreen() {
       lastTickAngleRef.current = angle;
       playAngleTick(angle);
     }
+    gazeAngleRef.current = angle; // update synchronously so next pointer event has correct base
     setGazeAngle(angle);
 
     // Always auto-fill LCD from cannon angle while dragging
