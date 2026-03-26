@@ -269,8 +269,8 @@ function LiveAngleLabel({ gazeAngle, revealed, answerDeg }: {
   const arcAngle = revealed ? answerDeg : gazeAngle;
   if (Math.abs(arcAngle) < 1 && !revealed) return null;
   const text = revealed
-    ? `${Number.isInteger(answerDeg) ? answerDeg : answerDeg.toFixed(1)}°`
-    : `${gazeAngle >= 0 ? "" : "−"}${Math.abs(gazeAngle).toFixed(1)}°`;
+    ? `${Math.round(answerDeg)}°`
+    : `${Math.round(gazeAngle)}°`;
   // Place label at midpoint of the signed arc, at radius 88
   const midAngle = arcAngle / 2;
   const p = polarToXY(CX, CY, midAngle, 88);
