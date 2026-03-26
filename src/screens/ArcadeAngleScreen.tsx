@@ -23,6 +23,7 @@ import {
   playCannonFire,
   playExplosion,
   playTypewriterClick,
+  ensureAudioReady,
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 
@@ -81,6 +82,31 @@ function easeOutCubic(t: number): number {
 function angleDiffDeg(a: number, b: number): number {
   const d = Math.abs(a - b) % 360;
   return d > 180 ? 360 - d : d;
+}
+
+function shortestSignedAngleDelta(from: number, to: number): number {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function closestEquivalentAngle(raw: number, reference: number): number {
+  const candidates = [raw - 360, raw, raw + 360];
+  let best = candidates[0];
+  let bestDist = Math.abs(candidates[0] - reference);
+  for (const candidate of candidates.slice(1)) {
+    const dist = Math.abs(candidate - reference);
+    if (dist < bestDist) {
+      best = candidate;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function snapAngleValue(angle: number, targets: number[], threshold: number): number {
+  for (const target of targets) {
+    if (Math.abs(angle - target) < threshold) return target;
+  }
+  return angle;
 }
 
 function getAngleType(deg: number): { label: string; color: string } {
@@ -332,7 +358,7 @@ function GazeBeamDrag({ gazeAngle, level }: { gazeAngle: number; level: 1 | 2 | 
   // Arc: signed (handle negative angles for L1)
   const absAngle = Math.abs(gazeAngle);
   const a = ((gazeAngle % 360) + 360) % 360; // for comp/supp arcs on L2/L3
-  const arcR = 55;
+  const arcR = 68;
 
   // Build signed arc path for the main angle arc
   function signedArcPath(): string {
@@ -345,14 +371,16 @@ function GazeBeamDrag({ gazeAngle, level }: { gazeAngle: number; level: 1 | 2 | 
     return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${arcR} ${arcR} 0 ${largeArc} ${sweepFlag} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
   }
 
-  // Arrowhead at the end of the arc
+  // Arrowhead sits at the end of the arc and points along the tangent.
   function arcArrowhead(): { x: number; y: number; rot: number } | null {
-    if (absAngle < 1) return null;
-    const tipAngle = gazeAngle;
+    if (absAngle < 6) return null;
+    const travelSign = gazeAngle >= 0 ? 1 : -1;
+    const inset = Math.min(5, Math.max(2.5, absAngle * 0.03));
+    const tipAngle = gazeAngle - travelSign * Math.min(inset, absAngle / 4);
     const tip = polarToXY(CX, CY, tipAngle, arcR);
     // tangent direction at arc end: perpendicular to radius, in direction of arc travel
-    const tangentAngle = gazeAngle >= 0 ? tipAngle + 90 : tipAngle - 90;
-    return { x: tip.x, y: tip.y, rot: -tangentAngle }; // SVG rotate is CW, math CCW
+    const tangentAngle = travelSign > 0 ? tipAngle + 90 : tipAngle - 90;
+    return { x: tip.x, y: tip.y, rot: 90 - tangentAngle }; // arrow shape points up by default
   }
 
   const arcD = signedArcPath();
@@ -465,12 +493,13 @@ function ColoredPrompt({ text, className = "" }: { text: string; className?: str
 }
 
 /** On-screen numeric keypad — replaces the keyboard input. */
-function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, fireRef }: {
+function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef }: {
   value: string;
   onChange: (v: string) => void;
   onFire: () => void;
   canFire: boolean;
   disabled: boolean;
+  hideDisplay?: boolean;
   fireRef?: React.RefObject<HTMLButtonElement | null>;
 }) {
   function press(key: string) {
@@ -488,6 +517,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   }
 
   const display = value === "" ? "0" : value;
+  const shownDisplay = hideDisplay ? "---" : display;
 
   const rows = [
     ["7", "8", "9", "⌫"],
@@ -518,7 +548,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
           textShadow: "0 0 10px rgba(103,232,249,0.85), 0 0 22px rgba(56,189,248,0.4)",
           letterSpacing: "0.12em",
         }}>
-        {display}°
+        {shownDisplay}°
       </div>
       {/* Digit rows */}
       <div className="flex flex-col gap-0.5">
@@ -613,6 +643,7 @@ export default function ArcadeAngleScreen() {
   const lastTickAngleRef    = useRef(-999);
   const gazeAngleRef        = useRef(0);       // always in sync with gazeAngle state
   const lastPointerAngleRef = useRef<number | null>(null); // raw [0,360) from last pointer event
+  const dragAngleRef        = useRef(0);       // continuous unsnapped drag angle during active drag
   const gamePhaseRef        = useRef<"normal" | "monster" | "platinum">("normal");
   const currentQRef      = useRef(currentQ);
   const earnEggRef       = useRef(() => {});
@@ -634,6 +665,12 @@ export default function ArcadeAngleScreen() {
   }, []);
 
   const canFireRef = useRef(false);
+
+  function handleAudioToggle() {
+    const nextMuted = toggleMute();
+    if (!nextMuted) ensureAudioReady();
+    setSoundMuted(nextMuted);
+  }
 
   // ── Desktop keyboard → keypad binding ──────────────────────────────────────
   const keypadValueRef        = useRef("");
@@ -722,7 +759,7 @@ export default function ArcadeAngleScreen() {
   useEffect(() => {
     if (!isFiring) return;
     let cancelled = false;
-    const { hit } = isFiring;
+    const { hit, aimAngle } = isFiring;
     const t0 = performance.now();
     let animId = 0;
     function frame(now: number) {
@@ -738,7 +775,7 @@ export default function ArcadeAngleScreen() {
         const q = currentQRef.current;
         const qRadius = q.level === 1 ? L1_TARGET_RADIUS : EGG_RADIUS;
         const fhPt = polarToXY(CX, CY, q.hiddenAngleDeg, qRadius);
-        setRevealedAngle(q.hiddenAngleDeg);
+        setRevealedAngle(aimAngle);
         setExplosion({ x: fhPt.x, y: fhPt.y });
         window.setTimeout(() => {
           setExplosion(null);
@@ -770,7 +807,7 @@ export default function ArcadeAngleScreen() {
         setSpinAnim(null);
         const q = currentQRef.current;
         const correct = angleDiffDeg(current, q.hiddenAngleDeg) < TYPED_TOL;
-        fireCannon(correct, correct ? q.hiddenAngleDeg : current);
+        fireCannon(correct, current);
       }
     }
     animId = requestAnimationFrame(frame);
@@ -783,19 +820,30 @@ export default function ArcadeAngleScreen() {
     const raw = pointerToAngle(CX, CY, svgX, svgY); // always [0, 360)
     let angle: number;
     if (level === 1) {
-      // Direct mapping: convert [180,360) → (-180,0) so CW drag shows negative angles
-      angle = raw > 180 ? raw - 360 : raw;
+      const prevRaw = lastPointerAngleRef.current;
+      if (prevRaw === null) {
+        // First drag sample: choose the equivalent angle closest to the current barrel.
+        angle = closestEquivalentAngle(raw, dragAngleRef.current);
+      } else {
+        // Keep the drag continuous across 180°/0° so the sign reflects drag direction.
+        angle = dragAngleRef.current + shortestSignedAngleDelta(prevRaw, raw);
+      }
+      dragAngleRef.current = Math.min(Math.max(angle, -360), 360);
+      angle = dragAngleRef.current;
     } else if (level === 2) {
       angle = Math.min(Math.max(raw, 0), 90);
     } else {
       angle = Math.min(Math.max(raw, 0), 180);
     }
+    lastPointerAngleRef.current = raw;
 
     const SNAP_TARGETS = level === 1
       ? [-180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90, 120, 135, 150, 180]
       : level === 2 ? [45] : [90];
-    for (const t of SNAP_TARGETS) {
-      if (Math.abs(angle - t) < 3) { angle = t; playSnap(); break; }
+    const snapped = snapAngleValue(angle, SNAP_TARGETS, 3);
+    if (snapped !== angle) {
+      if (snapped !== gazeAngleRef.current) playSnap();
+      angle = snapped;
     }
     if (Math.abs(angle - lastTickAngleRef.current) >= TICK_INTERVAL) {
       lastTickAngleRef.current = angle;
@@ -804,8 +852,8 @@ export default function ArcadeAngleScreen() {
     gazeAngleRef.current = angle; // update synchronously so next pointer event has correct base
     setGazeAngle(angle);
 
-    // Always auto-fill LCD from cannon angle while dragging
-    if (!currentQRef.current.promptLines) {
+    // Normal rounds mirror drag into the keypad; special rounds do not.
+    if (!currentQRef.current.promptLines && gamePhaseRef.current === "normal") {
       setAnswer(String(Math.round(angle)));
     }
   }, [level]);
@@ -820,6 +868,7 @@ export default function ArcadeAngleScreen() {
       if (!draggingRef.current) return;
       draggingRef.current = false;
       lastPointerAngleRef.current = null;
+      dragAngleRef.current = gazeAngleRef.current;
       setDragging(false);
     }
     window.addEventListener("pointermove", onMove);
@@ -834,10 +883,11 @@ export default function ArcadeAngleScreen() {
 
   function startDrag(e: React.PointerEvent) {
     if (sceneBusy) return;
-    // In platinum L1 the cannon is dead — only typing + fire moves it
-    if (gamePhase === "platinum" && level === 1) return;
+    // In platinum the cannon is dead — only typing + fire moves it.
+    if (gamePhase === "platinum") return;
     e.preventDefault();
     lastPointerAngleRef.current = null; // reset so first point sets the base
+    dragAngleRef.current = gazeAngleRef.current;
     svgRef.current?.setPointerCapture(e.pointerId);
     draggingRef.current = true;
     setDragging(true);
@@ -1052,9 +1102,9 @@ export default function ArcadeAngleScreen() {
     if (isMonster && !currentQ.promptLines) {
       playButton();
       const typed = parseFloat(answer.trim());
-      const tol = !isNaN(typed) ? TYPED_TOL : ANGLE_HIT_TOL;
-      const correct = angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < tol;
-      fireCannon(correct, correct ? currentQ.hiddenAngleDeg : gazeAngle);
+      if (isNaN(typed)) return;
+      const correct = angleDiffDeg(typed, currentQ.answer) < TYPED_TOL;
+      fireCannon(correct, typed);
       return;
     }
 
@@ -1102,7 +1152,7 @@ export default function ArcadeAngleScreen() {
       const guess = parseFloat(trimmed);
       if (isNaN(guess)) return;
       const correct = angleDiffDeg(guess, currentQ.answer) < TYPED_TOL;
-      fireCannon(correct, correct ? currentQ.hiddenAngleDeg : gazeAngle);
+      fireCannon(correct, guess);
     }
   }
 
@@ -1120,6 +1170,7 @@ export default function ArcadeAngleScreen() {
   const targetX = CX + (fh.x - CX) * deployT;
   const targetY = CY + (fh.y - CY) * deployT;
   const displayPrompt = panelVisible ? currentQ.prompt.slice(0, Math.max(typeIdx, 0)) : "";
+  const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= currentQ.prompt.length);
 
   const parsedAnswer = parseFloat(answer.trim());
   // isAiming: cannon is actively pointed somewhere (dragging, firing, spinAnim, or valid number typed)
@@ -1219,7 +1270,7 @@ export default function ArcadeAngleScreen() {
                 stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          <button onClick={() => { const m = toggleMute(); setSoundMuted(m); }} title="Mute"
+          <button onClick={handleAudioToggle} title="Mute"
             className="arcade-button w-10 h-10 flex items-center justify-center p-2"
             style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", boxShadow: "0 5px 0 #1e293b", borderColor: "#94a3b8" } : {}}>
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -1277,7 +1328,7 @@ export default function ArcadeAngleScreen() {
               <LiveAngleLabel
                 gazeAngle={gazeAngle}
                 revealed={revealedAngle !== null}
-                answerDeg={currentQ.answer}
+                answerDeg={revealedAngle ?? currentQ.answer}
               />
             )}
 
@@ -1322,7 +1373,7 @@ export default function ArcadeAngleScreen() {
                     stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <button onClick={() => { const m = toggleMute(); setSoundMuted(m); }} title="Mute"
+              <button onClick={handleAudioToggle} title="Mute"
                 className="arcade-button w-8 h-8 flex items-center justify-center p-1.5"
                 style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", borderColor: "#94a3b8" } : {}}>
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -1391,29 +1442,36 @@ export default function ArcadeAngleScreen() {
             style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
             <div className="shrink-0">
               {panelVisible && (
-                currentQ.promptLines && currentQ.subAnswers ? (
-                  <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
-                    {currentQ.promptLines.map((line, i) => {
-                      const isDone = i < subStep;
-                      const isCurrent = i === subStep;
-                      return (
-                        <div key={i} className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
-                          <ColoredPrompt text={line} className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
-                          <span className="text-slate-400">=</span>
-                          {isDone ? (
-                            <span className="text-green-400 font-bold w-8 text-right">{subAnswers[i]}°</span>
-                          ) : isCurrent ? (
-                            <span className="text-yellow-300 font-bold w-8 text-right">{subAnswers[i] || "?"}</span>
-                          ) : <span className="w-8" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="arcade-panel px-2 py-1.5 text-xs leading-4 text-white font-bold">
-                    <ColoredPrompt text={displayPrompt} />
-                  </div>
-                )
+                <div className="flex flex-col gap-1">
+                  {currentQ.promptLines && currentQ.subAnswers ? (
+                    <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
+                      {currentQ.promptLines.map((line, i) => {
+                        const isDone = i < subStep;
+                        const isCurrent = i === subStep;
+                        return (
+                          <div key={i} className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
+                            <ColoredPrompt text={line} className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
+                            <span className="text-slate-400">=</span>
+                            {isDone ? (
+                              <span className="text-green-400 font-bold w-8 text-right">{subAnswers[i]}°</span>
+                            ) : isCurrent ? (
+                              <span className="text-yellow-300 font-bold w-8 text-right">{subAnswers[i] || "?"}</span>
+                            ) : <span className="w-8" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="arcade-panel px-2 py-1.5 text-xs leading-4 text-white font-bold">
+                      <ColoredPrompt text={displayPrompt} />
+                    </div>
+                  )}
+                  {showDevAnswer && (
+                    <div className="arcade-panel px-2 py-1 text-[10px] font-black text-yellow-300">
+                      Ans: {currentQ.answer}°
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <NumericKeypad
@@ -1434,46 +1492,41 @@ export default function ArcadeAngleScreen() {
         {/* Prompt / question text — left column */}
         <div className="flex-1 min-w-0 self-stretch flex flex-col justify-end">
           {panelVisible && (
-            currentQ.promptLines && currentQ.subAnswers ? (
-              /* L3 multi-step */
-              <div className="arcade-panel flex flex-col gap-1.5 px-3 py-2 text-xs md:text-sm">
-                {currentQ.promptLines.map((line, i) => {
-                  const isDone    = i < subStep;
-                  const isCurrent = i === subStep;
-                  return (
-                    <div key={i} className={`flex items-center gap-1.5 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
-                      <ColoredPrompt text={line}
-                        className={`flex-1 leading-5 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
-                      {IS_DEV && currentQ.subAnswers && (
-                        <span className="shrink-0 rounded px-1 text-[10px] font-black"
-                          style={{ background: "rgba(250,204,21,0.18)", color: "#fde047", border: "1px solid rgba(250,204,21,0.3)" }}>
-                          {currentQ.subAnswers[i]}
-                        </span>
-                      )}
-                      <span className="text-slate-400 text-xs">=</span>
-                      {isDone ? (
-                        <span className="text-green-400 text-xs font-bold w-10 text-right">{subAnswers[i]}°</span>
-                      ) : isCurrent ? (
-                        <span className="text-yellow-300 text-xs font-bold w-10 text-right">{subAnswers[i] || "?"}</span>
-                      ) : (
-                        <span className="w-10" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Single-step prompt */
-              <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold">
-                <ColoredPrompt text={displayPrompt} />
-                {IS_DEV && (
-                  <span className="ml-1 rounded px-1 py-0.5 text-xs font-black"
-                    style={{ background: "rgba(250,204,21,0.18)", color: "#fde047", border: "1px solid rgba(250,204,21,0.35)" }}>
-                    {currentQ.answer}
-                  </span>
-                )}
-              </div>
-            )
+            <div className="flex flex-col gap-1.5">
+              {currentQ.promptLines && currentQ.subAnswers ? (
+                /* L3 multi-step */
+                <div className="arcade-panel flex flex-col gap-1.5 px-3 py-2 text-xs md:text-sm">
+                  {currentQ.promptLines.map((line, i) => {
+                    const isDone    = i < subStep;
+                    const isCurrent = i === subStep;
+                    return (
+                      <div key={i} className={`flex items-center gap-1.5 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
+                        <ColoredPrompt text={line}
+                          className={`flex-1 leading-5 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
+                        <span className="text-slate-400 text-xs">=</span>
+                        {isDone ? (
+                          <span className="text-green-400 text-xs font-bold w-10 text-right">{subAnswers[i]}°</span>
+                        ) : isCurrent ? (
+                          <span className="text-yellow-300 text-xs font-bold w-10 text-right">{subAnswers[i] || "?"}</span>
+                        ) : (
+                          <span className="w-10" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Single-step prompt */
+                <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold">
+                  <ColoredPrompt text={displayPrompt} />
+                </div>
+              )}
+              {showDevAnswer && (
+                <div className="arcade-panel px-3 py-1.5 text-xs font-black text-yellow-300">
+                  Ans: {currentQ.answer}°
+                </div>
+              )}
+            </div>
           )}
         </div>
 

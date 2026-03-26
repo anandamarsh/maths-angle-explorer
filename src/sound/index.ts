@@ -3,8 +3,23 @@
 
 let ctx: AudioContext | null = null;
 let footToggle = false;
-/** In dev, start muted so local runs don’t blast audio by default. */
-let muted = import.meta.env.DEV;
+const MUTE_STORAGE_KEY = "maths-angle-explorer:muted";
+
+function readStoredMute(): boolean | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(MUTE_STORAGE_KEY);
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return null;
+}
+
+function persistMute(value: boolean) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(MUTE_STORAGE_KEY, String(value));
+}
+
+/** In dev, always start muted. In prod, default to on unless the user muted it. */
+let muted = import.meta.env.DEV ? true : (readStoredMute() ?? false);
 
 function ac(): AudioContext {
   if (!ctx) ctx = new AudioContext();
@@ -29,11 +44,17 @@ function tone(freq: number, start: number, dur: number, vol = 0.08, type: Oscill
 
 export function toggleMute(): boolean {
   muted = !muted;
+  if (!import.meta.env.DEV) persistMute(muted);
   return muted;
 }
 
 export function isMuted() {
   return muted;
+}
+
+export function ensureAudioReady() {
+  if (muted) return;
+  ac();
 }
 
 function noiseBurst(startTime: number, filterFreq: number, vol: number, dur: number) {
