@@ -799,18 +799,13 @@ export default function ArcadeAngleScreen() {
     setFlash({ text: "", ok: false, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
-    if (gamePhase === "platinum") {
-      // Platinum: advance to next question on miss (no retry), with pause
-      window.setTimeout(() => nextQuestion(level, "platinum"), 950);
-    } else {
-      // Normal/Monster: retry same question
-      setIsFiring(null);
-      setSpinAnim(null);
-      setExplosion(null);
-      setAnswer("");
-      setGazeAngle(level === 3 ? 90 : 0);
-      lastTickAngleRef.current = -999;
-    }
+    // All phases: retry same question — target stays, cannon resets
+    setIsFiring(null);
+    setSpinAnim(null);
+    setExplosion(null);
+    setAnswer("");
+    setGazeAngle(level === 3 ? 90 : 0);
+    lastTickAngleRef.current = -999;
   }
 
   earnEggRef.current         = earnEgg;
