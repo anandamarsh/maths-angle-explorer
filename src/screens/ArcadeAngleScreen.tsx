@@ -70,7 +70,8 @@ const DEPLOY_MS = 900;
 const SHOT_MS = 380;
 const SPIN_MS = 600;
 const L1_TARGET_RADIUS = 100;
-const ANGLE_HIT_TOL = 7.5;
+const ANGLE_HIT_TOL = 7.5;  // drag/snap tolerance
+const TYPED_TOL = 0.55;     // typed answer must be exact (allows ±0.5 for decimal rounding)
 const TICK_INTERVAL = 10;
 
 function easeOutCubic(t: number): number {
@@ -660,7 +661,7 @@ export default function ArcadeAngleScreen() {
       } else {
         setSpinAnim(null);
         const q = currentQRef.current;
-        const correct = angleDiffDeg(current, q.hiddenAngleDeg) < ANGLE_HIT_TOL;
+        const correct = angleDiffDeg(current, q.hiddenAngleDeg) < TYPED_TOL;
         fireCannon(correct, correct ? q.hiddenAngleDeg : current);
       }
     }
@@ -911,10 +912,12 @@ export default function ArcadeAngleScreen() {
     e.preventDefault();
     if (sceneBusy) return;
 
-    // Monster round single-step: fire at current aim (cannon already moved from typing/dragging)
+    // Monster round single-step: typed value must be exact
     if (isMonster && !currentQ.promptLines) {
       playButton();
-      const correct = angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < ANGLE_HIT_TOL;
+      const typed = parseFloat(answer.trim());
+      const tol = !isNaN(typed) ? TYPED_TOL : ANGLE_HIT_TOL;
+      const correct = angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < tol;
       fireCannon(correct, correct ? currentQ.hiddenAngleDeg : gazeAngle);
       return;
     }
@@ -963,7 +966,7 @@ export default function ArcadeAngleScreen() {
     } else {
       const guess = parseFloat(trimmed);
       if (isNaN(guess)) { showFlash("Type a number!", false); return; }
-      const correct = angleDiffDeg(guess, currentQ.answer) < ANGLE_HIT_TOL;
+      const correct = angleDiffDeg(guess, currentQ.answer) < TYPED_TOL;
       fireCannon(correct, correct ? currentQ.hiddenAngleDeg : gazeAngle);
     }
   }
