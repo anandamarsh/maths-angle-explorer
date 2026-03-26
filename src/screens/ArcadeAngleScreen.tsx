@@ -1091,15 +1091,15 @@ export default function ArcadeAngleScreen() {
     : canFire;
 
   return (
-    <div className="flex flex-col h-svh w-screen overflow-hidden font-arcade relative"
+    <div className="flex flex-col landscape:flex-row h-svh w-screen overflow-hidden font-arcade relative"
       style={{ background: `radial-gradient(ellipse at top, ${phaseBg.glow} 0%, ${phaseBg.bg} 72%)` }}>
       <div className="pointer-events-none absolute inset-0 arcade-grid opacity-20" />
       {(isMonster || isPlatinum) && (
         <div className="pointer-events-none absolute inset-0 z-[1]" style={{ background: phaseBg.tint }} />
       )}
 
-      {/* ── Top bar ── */}
-      <div className="relative shrink-0 z-20 flex items-center gap-2 px-2 py-1.5">
+      {/* ── Portrait: Top bar (hidden in landscape) ── */}
+      <div className="shrink-0 z-20 flex items-center gap-2 px-2 py-1.5 landscape:hidden">
 
         {/* Left buttons */}
         <div className="flex flex-row gap-1.5 shrink-0">
@@ -1196,70 +1196,195 @@ export default function ArcadeAngleScreen() {
         </div>
       </div>
 
-      {/* ── SVG scene ── */}
-      <div className="relative flex-1 min-h-0 z-10">
-        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
-          className="h-full w-full touch-none select-none"
-          onPointerDown={startDrag}
-          style={{ cursor: dragging ? "grabbing" : "crosshair" }}>
+      {/* ── Middle: SVG + landscape sidebar ── */}
+      <div className="flex-1 min-h-0 min-w-0 flex flex-row">
 
-          {/* Level-specific terrain */}
-          {level === 1 && <L1Scene />}
-          {level === 2 && <L2Scene />}
-          {level === 3 && <L3Scene div1={qAsAny.div1} div2={qAsAny.div2} />}
+        {/* SVG scene */}
+        <div className="relative flex-1 min-h-0 min-w-0 z-10">
+          <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
+            className="h-full w-full touch-none select-none"
+            onPointerDown={startDrag}
+            style={{ cursor: dragging ? "grabbing" : "crosshair" }}>
 
-          {/* Coordinate axes — whenever cannon is aimed */}
-          {isAiming && <CoordAxes />}
+            {/* Level-specific terrain */}
+            {level === 1 && <L1Scene />}
+            {level === 2 && <L2Scene />}
+            {level === 3 && <L3Scene div1={qAsAny.div1} div2={qAsAny.div2} />}
 
-          {/* Known angle markers */}
-          {currentQ.knownEggs.map((egg, i) => {
-            const p = polarToXY(CX, CY, egg.angleDeg, EGG_RADIUS);
-            return <KnownMarker key={i} x={p.x} y={p.y} label={egg.label} />;
-          })}
+            {/* Coordinate axes — whenever cannon is aimed */}
+            {isAiming && <CoordAxes />}
 
-          {/* Target crosshair — hide when projectile is about to hit or explosion is showing */}
-          {!(isFiring?.hit && shotT > 0.88) && !explosion && revealedAngle === null && (
-            <g transform={`translate(${targetX}, ${targetY})`}>
-              <TargetSprite pulse={introPhase === "ready" && revealedAngle === null && !isFiring} />
+            {/* Known angle markers */}
+            {currentQ.knownEggs.map((egg, i) => {
+              const p = polarToXY(CX, CY, egg.angleDeg, EGG_RADIUS);
+              return <KnownMarker key={i} x={p.x} y={p.y} label={egg.label} />;
+            })}
+
+            {/* Target crosshair — hide when projectile is about to hit or explosion is showing */}
+            {!(isFiring?.hit && shotT > 0.88) && !explosion && revealedAngle === null && (
+              <g transform={`translate(${targetX}, ${targetY})`}>
+                <TargetSprite pulse={introPhase === "ready" && revealedAngle === null && !isFiring} />
+              </g>
+            )}
+
+            {/* Live angle label — while aiming (or revealed after hit); hidden in monster round */}
+            {(dragging || revealedAngle !== null || spinAnim !== null) && !isFiring && !isMonster && introPhase === "ready" && (
+              <LiveAngleLabel
+                gazeAngle={gazeAngle}
+                revealed={revealedAngle !== null}
+                answerDeg={currentQ.answer}
+              />
+            )}
+
+            {/* Angle type label while aiming (L1 only) */}
+            {isAiming && level === 1 && !isMonster && !isPlatinum && Math.abs(gazeAngle) > 0.5 && (
+              <AngleTypeLabel gazeAngle={gazeAngle} />
+            )}
+
+            {/* Projectile tracer */}
+            {isFiring && (
+              <ProjectileTracer aimAngle={isFiring.aimAngle} t={shotT} hit={isFiring.hit} targetRadius={targetRadius} />
+            )}
+
+            {/* Explosion */}
+            {explosion && <ExplosionAt x={explosion.x} y={explosion.y} />}
+
+            {/* Aim beam — whenever cannon is aimed */}
+            {isAiming && (
+              <GazeBeamDrag gazeAngle={aimForBeam} level={level} />
+            )}
+
+            {/* Cannon */}
+            <g transform={`translate(${CX}, ${CY})`}>
+              <CannonSprite aimAngle={revealGaze} dragging={dragging} />
             </g>
+          </svg>
+        </div>
+
+        {/* ── Landscape sidebar: controls + keypad (hidden in portrait) ── */}
+        <div className="hidden landscape:flex flex-col shrink-0 w-48 z-20"
+          style={{ borderLeft: "1px solid rgba(56,189,248,0.12)", background: "rgba(2,6,23,0.5)" }}>
+
+          {/* Buttons + level select */}
+          <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5">
+            <div className="flex flex-row gap-1.5">
+              <button onClick={resetCurrentQuestion} title="Reset"
+                className="arcade-button w-8 h-8 flex items-center justify-center p-1.5">
+                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                  <path d="M1 4v6h6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M23 20v-6h-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"
+                    stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button onClick={() => { const m = toggleMute(); setSoundMuted(m); }} title="Mute"
+                className="arcade-button w-8 h-8 flex items-center justify-center p-1.5"
+                style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", borderColor: "#94a3b8" } : {}}>
+                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                  {soundMuted ? (
+                    <>
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="white"/>
+                      <line x1="23" y1="9" x2="17" y2="15" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                      <line x1="17" y1="9" x2="23" y2="15" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                    </>
+                  ) : (
+                    <>
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="white"/>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              {([1, 2, 3] as const).map((lv) => {
+                const locked = !IS_DEV && lv > unlockedLevel && lv > level;
+                return (
+                  <button key={lv} onClick={() => !locked && beginNewRun(lv)}
+                    disabled={locked}
+                    className="w-7 h-6 rounded text-xs font-black border-2 transition-colors"
+                    style={{
+                      background: locked ? "#0f172a" : level === lv ? (isMonster ? "#92400e" : "#0ea5e9") : lv < level ? "#78350f" : "#1e293b",
+                      borderColor: locked ? "#1e293b" : level === lv ? (isMonster ? "#fbbf24" : "#38bdf8") : lv < level ? "#fbbf24" : "#475569",
+                      color: locked ? "#334155" : level === lv ? (isMonster ? "#fde047" : "white") : lv < level ? "#fde047" : "#64748b",
+                      cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.5 : 1,
+                    }}>
+                    {locked ? "🔒" : lv}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stars */}
+          <div className="shrink-0 flex items-center justify-center gap-1 pb-1">
+            {[0, 1, 2, 3, 4].map((i) => {
+              const collected = (isMonster || isPlatinum) ? i < monsterEggs : i < eggsCollected;
+              const isTarget  = IS_DEV && i === ((isMonster || isPlatinum) ? monsterEggs : eggsCollected);
+              return (
+                <span key={i} onClick={IS_DEV ? () => devSetEggs(i) : undefined}
+                  style={{ display: "inline-flex", cursor: IS_DEV ? "pointer" : "default",
+                    outline: isTarget ? "2px dashed rgba(255,255,255,0.4)" : undefined,
+                    borderRadius: isTarget ? "50%" : undefined }}>
+                  <ProgressIcon collected={collected} gamePhase={gamePhase} />
+                </span>
+              );
+            })}
+          </div>
+
+          {(isMonster || isPlatinum) && (
+            <div className="shrink-0 text-xs font-black uppercase tracking-widest px-2 py-0.5 mx-2 mb-1 rounded-full text-center"
+              style={isPlatinum ? { background: "rgba(71,85,105,0.85)", color: "#e2e8f0", border: "1px solid #94a3b8" }
+                : { background: "rgba(161,122,6,0.85)", color: "#fef08a", border: "1px solid #fbbf24" }}>
+              {isPlatinum ? "🎯" : "⚡"} {monsterRoundName}
+            </div>
           )}
 
-          {/* Live angle label — while aiming (or revealed after hit); hidden in monster round */}
-          {(dragging || revealedAngle !== null || spinAnim !== null) && !isFiring && !isMonster && introPhase === "ready" && (
-            <LiveAngleLabel
-              gazeAngle={gazeAngle}
-              revealed={revealedAngle !== null}
-              answerDeg={currentQ.answer}
+          {/* Prompt + keypad fill remaining space */}
+          <div className="flex-1 min-h-0 flex flex-col justify-end gap-1.5 px-1"
+            style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+            <div className="shrink-0">
+              {panelVisible && (
+                currentQ.promptLines && currentQ.subAnswers ? (
+                  <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
+                    {currentQ.promptLines.map((line, i) => {
+                      const isDone = i < subStep;
+                      const isCurrent = i === subStep;
+                      return (
+                        <div key={i} className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
+                          <ColoredPrompt text={line} className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
+                          <span className="text-slate-400">=</span>
+                          {isDone ? (
+                            <span className="text-green-400 font-bold w-8 text-right">{subAnswers[i]}°</span>
+                          ) : isCurrent ? (
+                            <span className="text-yellow-300 font-bold w-8 text-right">{subAnswers[i] || "?"}</span>
+                          ) : <span className="w-8" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="arcade-panel px-2 py-1.5 text-xs leading-4 text-white font-bold">
+                    <ColoredPrompt text={displayPrompt} />
+                  </div>
+                )
+              )}
+            </div>
+            <NumericKeypad
+              value={keypadValue}
+              onChange={handleKeypadChange}
+              onFire={doSubmit}
+              canFire={canKeypadFire}
+              disabled={sceneBusy}
             />
-          )}
-
-          {/* Angle type label while aiming (L1 only) */}
-          {isAiming && level === 1 && !isMonster && !isPlatinum && Math.abs(gazeAngle) > 0.5 && (
-            <AngleTypeLabel gazeAngle={gazeAngle} />
-          )}
-
-          {/* Projectile tracer */}
-          {isFiring && (
-            <ProjectileTracer aimAngle={isFiring.aimAngle} t={shotT} hit={isFiring.hit} targetRadius={targetRadius} />
-          )}
-
-          {/* Explosion */}
-          {explosion && <ExplosionAt x={explosion.x} y={explosion.y} />}
-
-          {/* Aim beam — whenever cannon is aimed */}
-          {isAiming && (
-            <GazeBeamDrag gazeAngle={aimForBeam} level={level} />
-          )}
-
-          {/* Cannon */}
-          <g transform={`translate(${CX}, ${CY})`}>
-            <CannonSprite aimAngle={revealGaze} dragging={dragging} />
-          </g>
-        </svg>
+          </div>
+        </div>
       </div>
 
-      {/* ── Bottom panel: prompt (left) + keypad (right, always visible) ── */}
-      <div className="shrink-0 z-50 flex items-end gap-2 px-2 pb-2" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+      {/* ── Portrait: Bottom panel (hidden in landscape) ── */}
+      <div className="shrink-0 z-50 flex items-end gap-2 px-2 landscape:hidden"
+        style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
 
         {/* Prompt / question text — left column */}
         <div className="flex-1 min-w-0 self-stretch flex flex-col justify-end">
