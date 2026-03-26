@@ -43,7 +43,13 @@ function nextId(): string {
 // ─── Level 1 — The Gaze ───────────────────────────────────────────────────────
 // A single target floats at a target angle. Aim and fire.
 
-const L1_KEY_ANGLES = [-150, -135, -120, -90, -60, -45, -30, 30, 45, 60, 90, 120, 135, 150, 180];
+// All multiples of 15° from 15–345 (full circle, CCW positive, 0-360 convention)
+const L1_KEY_ANGLES = [
+  15, 30, 45, 60, 75, 90,          // Q1
+  105, 120, 135, 150, 165, 180,     // Q2 + straight
+  195, 210, 225, 240, 255, 270,     // Q3
+  285, 300, 315, 330, 345,          // Q4
+];
 
 export function makeL1Question(): AngleQuestion {
   const target = pick(L1_KEY_ANGLES);

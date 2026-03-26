@@ -679,7 +679,8 @@ export default function ArcadeAngleScreen() {
     if (level === 3) angle = Math.min(Math.max(angle, 0), 180);
 
     const SNAP_TARGETS = level === 1
-      ? [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360]
+      ? [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
+         195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360]
       : level === 2 ? [45] : [90];
     for (const t of SNAP_TARGETS) {
       if (Math.abs(angle - t) < 3) { angle = t; playSnap(); break; }
