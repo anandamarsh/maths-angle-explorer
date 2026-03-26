@@ -521,6 +521,7 @@ export default function ArcadeAngleScreen() {
   const [spinAnim, setSpinAnim] = useState<{ from: number; to: number; startT: number } | null>(null);
 
   const svgRef           = useRef<SVGSVGElement>(null);
+  const fireButtonRef    = useRef<HTMLButtonElement>(null);
   const draggingRef      = useRef(false);
   const flashTimerRef    = useRef<number | null>(null);
   const lastTickAngleRef = useRef(-999);
@@ -541,6 +542,22 @@ export default function ArcadeAngleScreen() {
   useEffect(() => {
     startMusic();
     setSoundMuted(isMuted());
+  }, []);
+
+  // ── Global Enter key fires the cannon ──────────────────────────────────────
+  const canFireRef = useRef(false);
+  useEffect(() => {
+    canFireRef.current = false; // will be set after canFire is computed below
+  });
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Enter") return;
+      // Input already focused → form submit handles it natively
+      if (document.activeElement?.tagName === "INPUT") return;
+      if (canFireRef.current) fireButtonRef.current?.click();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   // ── Target deploy intro animation ──────────────────────────────────────────
@@ -981,6 +998,7 @@ export default function ArcadeAngleScreen() {
   // Fire only enabled when typed value matches current aim (confirms the user has read the angle)
   const canFire = !sceneBusy && !currentQ.promptLines
     && answer.trim() !== "" && !isNaN(parsedAnswer);
+  canFireRef.current = canFire;
 
   return (
     <div className="relative h-svh w-screen overflow-hidden font-arcade"
@@ -1110,7 +1128,7 @@ export default function ArcadeAngleScreen() {
           })}
 
           {/* Target crosshair — hide when projectile is about to hit or explosion is showing */}
-          {!(isFiring?.hit && shotT > 0.88) && !explosion && (
+          {!(isFiring?.hit && shotT > 0.88) && !explosion && revealedAngle === null && (
             <g transform={`translate(${targetX}, ${targetY})`}>
               <TargetSprite pulse={introPhase === "ready" && revealedAngle === null && !isFiring} />
             </g>
@@ -1230,7 +1248,7 @@ export default function ArcadeAngleScreen() {
                 }}
                   inputMode="decimal" placeholder="°"
                   className="w-[72px] md:w-[90px] shrink-0 rounded-xl border-[3px] border-white/70 bg-slate-950 px-3 py-2.5 text-base md:text-lg text-white outline-none placeholder:text-slate-500 text-center" />
-                <button type="submit" disabled={!canFire} title="Fire!"
+                <button ref={fireButtonRef} type="submit" disabled={!canFire} title="Fire!"
                   className="arcade-button shrink-0 rounded-full w-14 h-14 flex flex-col items-center justify-center p-0 disabled:opacity-50 disabled:cursor-not-allowed">
                   <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6">
                     <path d="M12 2C12 2 7 6 7 13H9L7 22L12 19L17 22L15 13H17C17 6 12 2 12 2Z" />
