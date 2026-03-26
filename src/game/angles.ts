@@ -40,13 +40,6 @@ function nextId(): string {
   return `q${++_idCounter}_${Date.now()}`;
 }
 
-// Angle zones for level 1
-const ANGLE_ZONES: { min: number; max: number; name: string }[] = [
-  { min: 15,  max: 75,  name: "acute" },
-  { min: 100, max: 155, name: "obtuse" },
-  { min: 195, max: 330, name: "reflex" },
-];
-
 // ─── Level 1 — The Gaze ───────────────────────────────────────────────────────
 // A single target floats at a target angle. Aim and fire.
 

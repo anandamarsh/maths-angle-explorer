@@ -24,7 +24,7 @@ import {
   playExplosion,
   playTypewriterClick,
 } from "../sound";
-import { polarToXY, arcPath, pointerToAngle, midAngleCCW } from "../geometry";
+import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -106,7 +106,6 @@ function toSVGPoint(svg: SVGSVGElement, clientX: number, clientY: number) {
 /** Retro arcade cannon centred at origin. Barrel rotates with aimAngle. */
 function CannonSprite({ aimAngle, dragging }: { aimAngle: number; dragging: boolean }) {
   const barrelRot = -aimAngle; // math CCW → SVG CW
-  const rimColor = dragging ? "#4ade80" : "#16a34a";
   return (
     <g>
       {/* Shadow */}
@@ -257,44 +256,6 @@ function ProgressIcon({ collected, gamePhase }: {
       style={{ filter: glow, transition: "all 0.3s", opacity: collected ? 1 : 0.45 }}>
       <path d={d} fill={fill} stroke={stroke} strokeWidth={1.5} strokeLinejoin="round" />
     </svg>
-  );
-}
-
-/** Two faint guide rays: 0° reference + current aim. */
-function AngleGuideLines({ gazeAngle, level, totalContext }: {
-  gazeAngle: number;
-  level: 1 | 2 | 3;
-  totalContext: 90 | 180 | 360;
-}) {
-  const p0 = polarToXY(CX, CY, 0, BEAM_LEN);
-  const pg = polarToXY(CX, CY, gazeAngle, BEAM_LEN);
-  return (
-    <g style={{ pointerEvents: "none" }}>
-      <line x1={CX} y1={CY} x2={p0.x} y2={p0.y}
-        stroke="rgba(248,250,252,0.35)" strokeWidth={1.5} strokeLinecap="round" />
-      <line x1={CX} y1={CY} x2={pg.x} y2={pg.y}
-        stroke="rgba(248,250,252,0.45)" strokeWidth={1.5} strokeLinecap="round" />
-      {totalContext === 90 && (
-        <line x1={CX} y1={CY} x2={polarToXY(CX, CY, 90, BEAM_LEN).x} y2={polarToXY(CX, CY, 90, BEAM_LEN).y}
-          stroke="rgba(34,197,94,0.22)" strokeWidth={1.2} strokeDasharray="5 4" strokeLinecap="round" />
-      )}
-      {totalContext === 180 && level === 3 && (
-        <line x1={CX} y1={CY} x2={polarToXY(CX, CY, 180, BEAM_LEN).x} y2={polarToXY(CX, CY, 180, BEAM_LEN).y}
-          stroke="rgba(248,250,252,0.2)" strokeWidth={1.2} strokeDasharray="6 5" strokeLinecap="round" />
-      )}
-    </g>
-  );
-}
-
-/** Dashed ghost arc from 0° to hidden angle — shows where the unknown lives. */
-function GhostArcToHidden({ hiddenAngleDeg }: { hiddenAngleDeg: number }) {
-  const span = ((hiddenAngleDeg % 360) + 360) % 360;
-  if (span < 0.5) return null;
-  const d = arcPath(CX, CY, 48, 0, hiddenAngleDeg);
-  if (!d) return null;
-  return (
-    <path d={d} fill="none" stroke="rgba(251,191,36,0.35)" strokeWidth={1.5}
-      strokeDasharray="4 4" strokeLinecap="round" />
   );
 }
 
