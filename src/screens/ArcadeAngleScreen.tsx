@@ -630,21 +630,7 @@ export default function ArcadeAngleScreen() {
     setSoundMuted(isMuted());
   }, []);
 
-  // ── Global Enter key fires the cannon ──────────────────────────────────────
   const canFireRef = useRef(false);
-  useEffect(() => {
-    canFireRef.current = false; // will be set after canFire is computed below
-  });
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Enter") return;
-      // Input already focused → form submit handles it natively
-      if (document.activeElement?.tagName === "INPUT") return;
-      if (canFireRef.current) fireButtonRef.current?.click();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   // ── Target deploy intro animation ──────────────────────────────────────────
   useEffect(() => {
@@ -1105,7 +1091,7 @@ export default function ArcadeAngleScreen() {
     : canFire;
 
   return (
-    <div className="relative h-svh w-screen overflow-hidden font-arcade"
+    <div className="flex flex-col h-svh w-screen overflow-hidden font-arcade relative"
       style={{ background: `radial-gradient(ellipse at top, ${phaseBg.glow} 0%, ${phaseBg.bg} 72%)` }}>
       <div className="pointer-events-none absolute inset-0 arcade-grid opacity-20" />
       {(isMonster || isPlatinum) && (
@@ -1113,12 +1099,12 @@ export default function ArcadeAngleScreen() {
       )}
 
       {/* ── Top bar ── */}
-      <div className="absolute left-0 right-0 top-0 z-20 flex items-start px-3 pt-2 md:px-5 md:pt-2">
+      <div className="relative shrink-0 z-20 flex items-center gap-2 px-2 py-1.5">
 
         {/* Left buttons */}
-        <div className="flex flex-col md:flex-row gap-2 mt-[76px] md:mt-0 md:ml-[64px] shrink-0">
+        <div className="flex flex-row gap-1.5 shrink-0">
           <button onClick={resetCurrentQuestion} title="Reset"
-            className="arcade-button w-16 h-16 flex items-center justify-center p-3.5">
+            className="arcade-button w-10 h-10 flex items-center justify-center p-2">
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               <path d="M1 4v6h6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M23 20v-6h-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1127,7 +1113,7 @@ export default function ArcadeAngleScreen() {
             </svg>
           </button>
           <button onClick={() => { const m = toggleMute(); setSoundMuted(m); }} title="Mute"
-            className="arcade-button w-16 h-16 flex items-center justify-center p-3.5"
+            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
             style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", boxShadow: "0 5px 0 #1e293b", borderColor: "#94a3b8" } : {}}>
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               {soundMuted ? (
@@ -1148,7 +1134,7 @@ export default function ArcadeAngleScreen() {
         </div>
 
         {/* Centre HUD */}
-        <div className="flex-1 flex flex-col items-center gap-1.5 pt-1">
+        <div className="flex-1 flex flex-col items-center gap-1">
           {/* Level select */}
           <div className="flex items-center gap-1.5">
             {([1, 2, 3] as const).map((lv) => {
@@ -1211,7 +1197,7 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── SVG scene ── */}
-      <div className="absolute inset-x-0 top-[184px] bottom-[190px] md:top-[96px] md:bottom-[190px] z-10">
+      <div className="relative flex-1 min-h-0 z-10">
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`}
           className="h-full w-full touch-none select-none"
           onPointerDown={startDrag}
@@ -1273,7 +1259,7 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── Bottom panel: prompt (left) + keypad (right, always visible) ── */}
-      <div className="absolute bottom-0 left-0 right-0 z-50 flex items-end gap-2 px-2 pb-2">
+      <div className="shrink-0 z-50 flex items-end gap-2 px-2 pb-2" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
 
         {/* Prompt / question text — left column */}
         <div className="flex-1 min-w-0 self-stretch flex flex-col justify-end">
@@ -1335,7 +1321,7 @@ export default function ArcadeAngleScreen() {
       {/* ── Flash feedback ── */}
       {flash && (
         flash.icon ? (
-          <div className="pointer-events-none absolute z-50 mt-[76px] md:mt-0"
+          <div className="pointer-events-none absolute z-50"
             style={{ top: "8px", left: "12px" }}>
             {flash.ok ? (
               <svg viewBox="0 0 120 120" width="64" height="64"
