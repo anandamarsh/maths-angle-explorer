@@ -84,13 +84,13 @@ function angleDiffDeg(a: number, b: number): number {
 }
 
 function getAngleType(deg: number): { label: string; color: string } {
-  const a = Math.abs(deg) % 360;
-  if (a < 0.5)                    return { label: "ZERO",          color: "#64748b" };
-  if (Math.abs(a - 90) < 2)       return { label: "RIGHT ANGLE",   color: "#22c55e" };
-  if (Math.abs(a - 180) < 2)      return { label: "STRAIGHT",      color: "#a78bfa" };
-  if (a > 180)                    return { label: "REFLEX",         color: "#f97316" };
-  if (a < 90)                     return { label: "ACUTE",          color: "#38bdf8" };
-  return                                 { label: "OBTUSE",         color: "#c084fc" };
+  const a = ((deg % 360) + 360) % 360; // normalise to [0, 360) so -90 → 270 (REFLEX)
+  if (a < 0.5 || a > 359.5)      return { label: "ZERO",          color: "#64748b" };
+  if (Math.abs(a - 90) < 2)      return { label: "RIGHT ANGLE",   color: "#22c55e" };
+  if (Math.abs(a - 180) < 2)     return { label: "STRAIGHT",      color: "#a78bfa" };
+  if (a > 180)                   return { label: "REFLEX",         color: "#f97316" };
+  if (a < 90)                    return { label: "ACUTE",          color: "#38bdf8" };
+  return                                { label: "OBTUSE",         color: "#c084fc" };
 }
 
 function toSVGPoint(svg: SVGSVGElement, clientX: number, clientY: number) {
@@ -778,13 +778,14 @@ export default function ArcadeAngleScreen() {
   const moveGaze = useCallback((svgX: number, svgY: number) => {
     if (sceneBusyRef.current) return;
     let angle = pointerToAngle(CX, CY, svgX, svgY);
-    // L1: free rotation 0–360 (CCW positive, full circle)
+    // L1: signed range (-180, 180] — dragging CW below 0 gives negative angles
     // L2/L3: clamped to their valid range
-    if (level === 2) angle = Math.min(Math.max(angle, 0), 90);
-    if (level === 3) angle = Math.min(Math.max(angle, 0), 180);
+    if (level === 1) { if (angle > 180) angle = angle - 360; }
+    else if (level === 2) angle = Math.min(Math.max(angle, 0), 90);
+    else if (level === 3) angle = Math.min(Math.max(angle, 0), 180);
 
     const SNAP_TARGETS = level === 1
-      ? [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360]
+      ? [-180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90, 120, 135, 150, 180]
       : level === 2 ? [45] : [90];
     for (const t of SNAP_TARGETS) {
       if (Math.abs(angle - t) < 3) { angle = t; playSnap(); break; }
