@@ -701,6 +701,8 @@ export default function ArcadeAngleScreen() {
 
   function startDrag(e: React.PointerEvent) {
     if (sceneBusy) return;
+    // In platinum L1 the cannon is dead — only typing + fire moves it
+    if (gamePhase === "platinum" && level === 1) return;
     e.preventDefault();
     svgRef.current?.setPointerCapture(e.pointerId);
     draggingRef.current = true;
@@ -743,22 +745,22 @@ export default function ArcadeAngleScreen() {
     const newEggs = eggsCollected + 1;
     if (newEggs === 5) {
       setEggsCollected(5);
-      startMonsterRound();
+      window.setTimeout(() => startMonsterRound(), 950);
       return;
     }
     setEggsCollected(newEggs);
     shuffleMusic();
     setFlash({ text: "", ok: true, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
-    nextQuestion(level, "normal");
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    window.setTimeout(() => nextQuestion(level, "normal"), 950);
   }
 
   function earnMonsterEgg() {
     const newGolden = monsterEggs + 1;
     if (newGolden === 5) {
       setMonsterEggs(5);
-      startPlatinumRound();
+      window.setTimeout(() => startPlatinumRound(), 950);
       return;
     }
     setMonsterEggs(newGolden);
@@ -766,8 +768,8 @@ export default function ArcadeAngleScreen() {
     switchToMonsterMusic();
     setFlash({ text: "", ok: true, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
-    nextQuestion(level, "monster");
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    window.setTimeout(() => nextQuestion(level, "monster"), 950);
   }
 
   function loseEgg() {
@@ -781,8 +783,8 @@ export default function ArcadeAngleScreen() {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
     if (gamePhase === "platinum") {
-      // Platinum: advance to next question on miss (no retry)
-      nextQuestion(level, "platinum");
+      // Platinum: advance to next question on miss (no retry), with pause
+      window.setTimeout(() => nextQuestion(level, "platinum"), 950);
     } else {
       // Normal/Monster: retry same question
       setIsFiring(null);
@@ -841,8 +843,8 @@ export default function ArcadeAngleScreen() {
     playGoldenEgg();
     setFlash({ text: "", ok: true, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
-    nextQuestion(level, "platinum");
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    window.setTimeout(() => nextQuestion(level, "platinum"), 950);
   }
 
   function beginNewRun(targetLevel?: 1 | 2 | 3) {
