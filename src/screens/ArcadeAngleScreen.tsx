@@ -632,6 +632,38 @@ export default function ArcadeAngleScreen() {
 
   const canFireRef = useRef(false);
 
+  // ── Desktop keyboard → keypad binding ──────────────────────────────────────
+  const keypadValueRef        = useRef("");
+  const handleKeypadChangeRef = useRef((_v: string) => {});
+  useEffect(() => {
+    if (!window.matchMedia("(pointer: fine)").matches) return; // skip on touch-only
+    function onKeyDown(e: KeyboardEvent) {
+      if (sceneBusyRef.current) return;
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const k = e.key;
+      if (!/^[0-9]$/.test(k) && k !== "Backspace" && k !== "." && k !== "-") return;
+      e.preventDefault();
+      const val = keypadValueRef.current;
+      let next: string;
+      if (k === "Backspace") {
+        next = val.slice(0, -1);
+      } else if (k === "-") {
+        if (val.startsWith("-")) next = val.slice(1);
+        else if (val !== "" && val !== "0") next = "-" + val;
+        else return;
+      } else if (k === ".") {
+        if (val.includes(".")) return;
+        next = val === "" ? "0." : val + ".";
+      } else {
+        next = val === "0" ? k : val + k;
+      }
+      handleKeypadChangeRef.current(next);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // ── Target deploy intro animation ──────────────────────────────────────────
   useEffect(() => {
     setIntroPhase("origin");
@@ -1089,6 +1121,8 @@ export default function ArcadeAngleScreen() {
   const canKeypadFire = currentQ.promptLines
     ? !sceneBusy && !isNaN(parseFloat(subAnswers[subStep]))
     : canFire;
+  keypadValueRef.current        = keypadValue;
+  handleKeypadChangeRef.current = handleKeypadChange;
 
   return (
     <div className="flex flex-col landscape:flex-row h-svh w-screen overflow-hidden font-arcade relative"
