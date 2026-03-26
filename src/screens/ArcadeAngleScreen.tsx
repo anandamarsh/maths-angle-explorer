@@ -282,9 +282,10 @@ function ExplosionAt({ x, y }: { x: number; y: number }) {
 }
 
 /** HUD progress star icon — replaces egg for shooter theme. */
-function ProgressIcon({ collected, gamePhase }: {
+function ProgressIcon({ collected, gamePhase, preview = false }: {
   collected: boolean;
   gamePhase: "normal" | "monster" | "platinum";
+  preview?: boolean;
 }) {
   const outerR = 10, innerR = 4.2, pts = 5, cx = 11, cy = 11;
   let d = "";
@@ -294,15 +295,18 @@ function ProgressIcon({ collected, gamePhase }: {
     d += (i === 0 ? "M" : "L") + ` ${(cx + Math.cos(a) * r).toFixed(2)} ${(cy + Math.sin(a) * r).toFixed(2)} `;
   }
   d += "Z";
-  const fill   = !collected ? "transparent"
+  const fill   = preview ? "#94a3b8"
+    : !collected ? "transparent"
     : gamePhase === "platinum" ? "#e2e8f0"
     : gamePhase === "monster"  ? "#fde047"
     : "#e0f2fe";
-  const stroke = !collected ? "rgba(255,255,255,0.25)"
+  const stroke = preview ? "#64748b"
+    : !collected ? "rgba(255,255,255,0.25)"
     : gamePhase === "platinum" ? "#94a3b8"
     : gamePhase === "monster"  ? "#f59e0b"
     : "#7dd3fc";
-  const glow = !collected ? "none"
+  const glow = preview ? "none"
+    : !collected ? "none"
     : gamePhase === "platinum"
       ? "drop-shadow(0 0 5px rgba(226,232,240,0.9)) drop-shadow(0 0 10px rgba(148,163,184,0.5))"
     : gamePhase === "monster"
@@ -310,7 +314,7 @@ function ProgressIcon({ collected, gamePhase }: {
     : "drop-shadow(0 0 5px rgba(125,211,252,0.85))";
   return (
     <svg viewBox="0 0 22 22" width="22" height="22"
-      style={{ filter: glow, transition: "all 0.3s", opacity: collected ? 1 : 0.45 }}>
+      style={{ filter: glow, transition: "all 0.3s", opacity: collected || preview ? 1 : 0.45 }}>
       <path d={d} fill={fill} stroke={stroke} strokeWidth={1.5} strokeLinejoin="round" />
     </svg>
   );
@@ -1394,10 +1398,8 @@ export default function ArcadeAngleScreen() {
               return (
                 <span key={i}
                   onClick={IS_DEV ? () => devSetEggs(i) : undefined}
-                  style={{ display: "inline-flex", cursor: IS_DEV ? "pointer" : "default",
-                    outline: isTarget ? "2px dashed rgba(255,255,255,0.4)" : undefined,
-                    borderRadius: isTarget ? "50%" : undefined }}>
-                  <ProgressIcon collected={collected} gamePhase={gamePhase} />
+                  style={{ display: "inline-flex", cursor: IS_DEV ? "pointer" : "default" }}>
+                  <ProgressIcon collected={collected} gamePhase={gamePhase} preview={isTarget && !collected} />
                 </span>
               );
             })}
@@ -1579,10 +1581,8 @@ export default function ArcadeAngleScreen() {
               const isTarget  = IS_DEV && i === ((isMonster || isPlatinum) ? monsterEggs : eggsCollected);
               return (
                 <span key={i} onClick={IS_DEV ? () => devSetEggs(i) : undefined}
-                  style={{ display: "inline-flex", cursor: IS_DEV ? "pointer" : "default",
-                    outline: isTarget ? "2px dashed rgba(255,255,255,0.4)" : undefined,
-                    borderRadius: isTarget ? "50%" : undefined }}>
-                  <ProgressIcon collected={collected} gamePhase={gamePhase} />
+                  style={{ display: "inline-flex", cursor: IS_DEV ? "pointer" : "default" }}>
+                  <ProgressIcon collected={collected} gamePhase={gamePhase} preview={isTarget && !collected} />
                 </span>
               );
             })}
