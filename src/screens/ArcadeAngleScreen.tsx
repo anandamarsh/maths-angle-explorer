@@ -1478,7 +1478,7 @@ export default function ArcadeAngleScreen() {
       {flash && (
         flash.icon ? (
           <div className="pointer-events-none absolute z-50"
-            style={{ top: "8px", left: "12px" }}>
+            style={{ bottom: "12px", left: "12px" }}>
             {flash.ok ? (
               <svg viewBox="0 0 120 120" width="64" height="64"
                 style={{ animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
