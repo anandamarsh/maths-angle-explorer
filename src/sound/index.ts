@@ -4,8 +4,8 @@
 let ctx: AudioContext | null = null;
 let footToggle = false;
 const MUTE_STORAGE_KEY = "maths-angle-explorer:muted";
-const SFX_GAIN = 1.9;
-const BG_GAIN = 0.5;
+const SFX_GAIN = 2.2;
+const BG_GAIN = 0.25;
 
 function readStoredMute(): boolean | null {
   if (typeof window === "undefined") return null;
@@ -30,7 +30,7 @@ function ac(): AudioContext {
 }
 
 function capGain(value: number) {
-  return Math.min(value, 0.9);
+  return Math.min(value, 1);
 }
 
 function tone(freq: number, start: number, dur: number, vol = 0.08, type: OscillatorType = "square") {

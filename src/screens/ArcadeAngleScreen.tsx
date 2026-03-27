@@ -650,8 +650,8 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
           fontFamily: "'DSEG7Classic', 'Courier New', monospace",
           fontWeight: 700,
           fontSize: "2.1rem",
-          background: "rgba(0,8,4,0.95)",
-          border: "2px solid rgba(56,189,248,0.28)",
+          background: minimized ? "rgba(0,8,4,0)" : "rgba(0,8,4,0.95)",
+          border: minimized ? "2px solid rgba(56,189,248,0)" : "2px solid rgba(56,189,248,0.28)",
           color: "#67e8f9",
           textShadow: "0 0 10px rgba(103,232,249,0.85), 0 0 22px rgba(56,189,248,0.4)",
           letterSpacing: "0.12em",
@@ -814,6 +814,7 @@ export default function ArcadeAngleScreen() {
       const isDecimal = k === "." || k === "Decimal";
       if (!isDigit && !isBackspace && !isMinus && !isDecimal) return;
       e.preventDefault();
+      playKeyClick();
       const val = keypadValueRef.current;
       let next: string;
       if (isBackspace) {
