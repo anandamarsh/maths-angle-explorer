@@ -10,6 +10,7 @@ import {
   toggleMute,
   isMuted,
   playButton,
+  playFlashDrop,
   playCorrect,
   playWrong,
   playSnap,
@@ -1072,6 +1073,13 @@ export default function ArcadeAngleScreen() {
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 1600);
   }
 
+  function showIconFlash(ok: boolean) {
+    playFlashDrop(ok);
+    setFlash({ text: "", ok, icon: true });
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+  }
+
   function nextQuestion(targetLevel = level) {
     const q = makeQuestion(targetLevel);
     submitLockRef.current = false;
@@ -1102,9 +1110,7 @@ export default function ArcadeAngleScreen() {
     }
     setEggsCollected(newEggs);
     shuffleMusic();
-    setFlash({ text: "", ok: true, icon: true });
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    showIconFlash(true);
     window.setTimeout(() => nextQuestion(level), 950);
   }
 
@@ -1118,9 +1124,7 @@ export default function ArcadeAngleScreen() {
     setMonsterEggs(newGolden);
     playGoldenEgg();
     switchToMonsterMusic();
-    setFlash({ text: "", ok: true, icon: true });
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    showIconFlash(true);
     window.setTimeout(() => nextQuestion(level), 950);
   }
 
@@ -1132,9 +1136,7 @@ export default function ArcadeAngleScreen() {
     } else {
       setEggsCollected((e) => Math.max(0, e - 1));
     }
-    setFlash({ text: "", ok: false, icon: true });
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1100);
+    showIconFlash(false);
     // All phases: retry same question — leave cannon angle and answer intact
     setIsFiring(null);
     setSpinAnim(null);
@@ -1188,9 +1190,7 @@ export default function ArcadeAngleScreen() {
     }
     setMonsterEggs(newPlat);
     playGoldenEgg();
-    setFlash({ text: "", ok: true, icon: true });
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    showIconFlash(true);
     window.setTimeout(() => nextQuestion(level), 950);
   }
 
@@ -1576,6 +1576,44 @@ export default function ArcadeAngleScreen() {
               />
             )}
           </svg>
+
+          {flash?.icon && (
+            <div className="pointer-events-none absolute z-50"
+              style={{ left: "16px", top: "16px" }}>
+              {flash.ok ? (
+                <div style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "9999px",
+                  overflow: "hidden",
+                  animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
+                  filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
+                }}>
+                  <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
+                    <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
+                    <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
+                      strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              ) : (
+                <div style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "9999px",
+                  overflow: "hidden",
+                  animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
+                  filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
+                }}>
+                  <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
+                    <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
+                    <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Landscape sidebar: controls + keypad (hidden in portrait) ── */}
@@ -1766,43 +1804,7 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Flash feedback ── */}
       {flash && (
-        flash.icon ? (
-          <div className="pointer-events-none absolute z-50"
-            style={{ bottom: "12px", left: "12px" }}>
-            {flash.ok ? (
-              <div style={{
-                width: "64px",
-                height: "64px",
-                borderRadius: "9999px",
-                overflow: "hidden",
-                animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
-              }}>
-                <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                  <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
-                  <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
-                  <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
-                    strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            ) : (
-              <div style={{
-                width: "64px",
-                height: "64px",
-                borderRadius: "9999px",
-                overflow: "hidden",
-                animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
-              }}>
-                <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                  <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
-                  <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
-                  <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
-                </svg>
-              </div>
-            )}
-          </div>
-        ) : (
+        flash.icon ? null : (
           <div className={`pointer-events-none absolute left-1/2 top-[30%] z-40 -translate-x-1/2 rounded-xl border-2 px-8 py-4 text-2xl font-black uppercase tracking-widest animate-bounce-in ${flash.ok ? "border-emerald-400 bg-emerald-950/90 text-emerald-300" : "border-pink-400 bg-pink-950/90 text-pink-300"}`}>
             {flash.text}
           </div>
@@ -1918,16 +1920,23 @@ export default function ArcadeAngleScreen() {
       )}
 
       {/* ── Share drawer ── */}
-      <div className="fixed inset-x-0 bottom-0 z-[90]"
+      <div className="fixed bottom-0 left-0 z-[90]"
         style={{
           transform: showShareDrawer ? "translateY(0)" : "translateY(100%)",
           transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
           background: "rgba(2,6,23,0.97)",
           borderTop: "3px solid rgba(56,189,248,0.4)",
+          borderRight: "3px solid rgba(56,189,248,0.4)",
+          borderTopRightRadius: "16px",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+          width: "fit-content",
+          maxWidth: "calc(100vw - 24px)",
         }}>
-        <div className="flex items-center justify-end px-4 py-2"
+        <div className="flex items-center justify-between gap-4 px-4 py-2"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="text-sm font-black uppercase tracking-widest text-cyan-300">
+            Spread the word...
+          </div>
           <button onClick={() => setShowShareDrawer(false)}
             style={{ color: "#94a3b8", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
         </div>

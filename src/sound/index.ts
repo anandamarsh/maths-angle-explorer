@@ -157,6 +157,14 @@ export function playButton() {
   tone(783.99, t + 0.04, 0.05, 0.045, "square");
 }
 
+export function playFlashDrop(ok: boolean) {
+  const t = ac().currentTime;
+  tone(ok ? 740 : 440, t, 0.08, 0.1, "triangle");
+  tone(ok ? 587.33 : 349.23, t + 0.08, 0.12, 0.12, "triangle");
+  tone(ok ? 392 : 220, t + 0.2, 0.22, 0.14, "sine");
+  noiseBurst(t + 0.02, ok ? 900 : 700, 0.09, 0.28);
+}
+
 /** Subtle tick as gaze sweeps — pitch maps 200–800 Hz across 0°–360°. */
 export function playAngleTick(angleDeg: number) {
   const freq = 200 + (angleDeg / 360) * 600;

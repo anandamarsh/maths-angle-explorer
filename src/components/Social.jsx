@@ -18,7 +18,7 @@ const SHARE_TITLE      = 'Check out this maths game on Interactive Maths!';
 export function SocialShare() {
   const url = window.location.href;
   return (
-    <div style={{ display: 'flex', gap: '1rem', padding: '1.25rem', justifyContent: 'center' }}>
+    <div style={{ display: 'flex', gap: '1rem', padding: '1rem 1.25rem 1.25rem', justifyContent: 'flex-start' }}>
       <TwitterShareButton url={url} title={SHARE_TITLE}>
         <XIcon size={48} round />
       </TwitterShareButton>
