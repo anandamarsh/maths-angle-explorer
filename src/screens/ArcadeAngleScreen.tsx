@@ -597,7 +597,7 @@ function ColoredPrompt({ text, className = "" }: { text: string; className?: str
 }
 
 /** On-screen numeric keypad — replaces the keyboard input. */
-function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef, roundKey }: {
+function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef, roundKey, fullWidth = false }: {
   value: string;
   onChange: (v: string) => void;
   onFire: () => void;
@@ -606,6 +606,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   hideDisplay?: boolean;
   fireRef?: React.RefObject<HTMLButtonElement | null>;
   roundKey?: number;
+  fullWidth?: boolean;
 }) {
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {
@@ -642,7 +643,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   const op    = `${base} bg-slate-700/80 text-cyan-300 border border-slate-500/60`;
 
   return (
-    <div className="flex flex-col gap-1 rounded-xl p-1.5 shrink-0 min-w-0 w-36 sm:w-40 md:w-44 lg:w-48"
+    <div className={`flex flex-col gap-1 rounded-xl p-1.5 shrink-0 min-w-0 ${fullWidth ? "w-full" : "w-36 sm:w-40 md:w-44 lg:w-48"}`}
       style={{
         background: "rgba(2,6,23,0.97)",
         border: "4px solid rgba(255,255,255,0.7)",
@@ -1699,13 +1700,14 @@ export default function ArcadeAngleScreen() {
               canFire={canKeypadFire}
               disabled={sceneBusy}
               roundKey={calcRoundKey}
+              fullWidth
             />
           </div>
         </div>
       </div>
 
       {/* ── Portrait: Bottom panel (hidden in landscape) ── */}
-      <div className="shrink-0 z-50 flex items-end gap-2 px-2 landscape:hidden"
+      <div className="shrink-0 z-50 flex flex-col gap-2 px-2 landscape:hidden"
         style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
 
         {/* Prompt / question text — left column */}
@@ -1758,6 +1760,7 @@ export default function ArcadeAngleScreen() {
           disabled={sceneBusy}
           fireRef={fireButtonRef}
           roundKey={calcRoundKey}
+          fullWidth
         />
       </div>
 
@@ -1915,6 +1918,12 @@ export default function ArcadeAngleScreen() {
             fill="none" stroke="#facc15" strokeWidth="7" strokeLinejoin="round"/>
         </svg>
       </button>
+
+      {/* ── Backdrop — closes whichever drawer is open ── */}
+      {(showShareDrawer || showCommentsDrawer) && (
+        <div className="fixed inset-0 z-[85]"
+          onClick={() => { setShowShareDrawer(false); setShowCommentsDrawer(false); }} />
+      )}
 
       {/* ── Share drawer ── */}
       <div className="fixed inset-x-0 bottom-0 z-[90]"
