@@ -1779,9 +1779,8 @@ export default function ArcadeAngleScreen() {
               filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
             }}>
               <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
-                <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
-                <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
+                <circle cx="60" cy="60" r="54" fill="#14532d" />
+                <path d="M30 62 L50 82 L90 38" fill="none" stroke="#ffffff" strokeWidth="13"
                   strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
@@ -1795,9 +1794,8 @@ export default function ArcadeAngleScreen() {
               filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
             }}>
               <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
-                <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
-                <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
+                <circle cx="60" cy="60" r="54" fill="#7f1d1d" />
+                <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#ffffff" strokeWidth="13" strokeLinecap="round" />
               </svg>
             </div>
           )}
