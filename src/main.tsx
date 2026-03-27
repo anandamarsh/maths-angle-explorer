@@ -5,7 +5,7 @@ import App from './App'
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/maths-angle-explorer/sw.js').catch(() => {})
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
   })
 }
 

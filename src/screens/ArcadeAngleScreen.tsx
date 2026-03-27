@@ -1408,10 +1408,10 @@ export default function ArcadeAngleScreen() {
       )}
 
       {/* ── Portrait: Top bar (hidden in landscape) ── */}
-      <div className="shrink-0 z-20 flex items-center gap-2 px-2 py-1.5 landscape:hidden">
+      <div className="shrink-0 z-20 flex items-start gap-2 px-2 py-1.5 landscape:hidden">
 
         {/* Centre HUD (flex-1 so it fills space, buttons sit on the right) */}
-        <div className="flex-1 flex flex-col items-center gap-1">
+        <div className="flex-1 flex flex-col items-center gap-1" style={{ marginLeft: "calc(0.5rem + 4px)", marginTop: "4px" }}>
           <div className="grid grid-cols-5 gap-1.5 justify-items-center">
             {([1, 2] as const).map((lv) => {
               const locked = !IS_DEV && lv > unlockedLevel && lv > level;
@@ -1468,7 +1468,7 @@ export default function ArcadeAngleScreen() {
         </div>
 
         {/* Right buttons */}
-        <div className="flex flex-row gap-1.5 shrink-0">
+        <div className="flex flex-row gap-1.5 shrink-0" style={{ marginTop: "6px" }}>
           <button onClick={resetCurrentQuestion} title="Reset"
             className="arcade-button w-10 h-10 flex items-center justify-center p-2">
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -1892,7 +1892,7 @@ export default function ArcadeAngleScreen() {
       )}
 
       {/* ── Share + Comments buttons — bottom-left ── */}
-      <div className="absolute z-[60] flex flex-row gap-1.5" style={{ bottom: "12px", left: "12px" }}>
+      <div className="absolute z-[60] flex flex-row gap-1.5" style={{ bottom: "1rem", left: "1rem" }}>
         <button onClick={() => { setShowShareDrawer(s => !s); setShowCommentsDrawer(false); }} title="Share"
           className="arcade-button w-10 h-10 flex items-center justify-center p-2"
           style={showShareDrawer ? { background: "linear-gradient(180deg,#0369a1,#075985)", borderColor: "#38bdf8" } : {}}>

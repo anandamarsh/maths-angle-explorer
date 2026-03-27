@@ -1,13 +1,11 @@
 const CACHE = 'angle-explorer-v2';
+const APP_SHELL = ['/', '/index.html'];
 
 // On install: cache the app shell immediately
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE).then((cache) =>
-      cache.addAll([
-        '/maths-angle-explorer/',
-        '/maths-angle-explorer/index.html',
-      ])
+      cache.addAll(APP_SHELL)
     ).then(() => self.skipWaiting())
   );
 });
@@ -31,8 +29,8 @@ self.addEventListener('fetch', (e) => {
   const isNavigation =
     e.request.mode === 'navigate' ||
     e.request.destination === 'document' ||
-    url.pathname === '/maths-angle-explorer/' ||
-    url.pathname === '/maths-angle-explorer/index.html';
+    url.pathname === '/' ||
+    url.pathname === '/index.html';
 
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
@@ -44,7 +42,7 @@ self.addEventListener('fetch', (e) => {
         } catch {
           const cached = await cache.match(e.request);
           if (cached) return cached;
-          return caches.match('/maths-angle-explorer/index.html');
+          return caches.match('/index.html');
         }
       }
 
