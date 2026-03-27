@@ -791,13 +791,13 @@ export default function ArcadeAngleScreen() {
   sceneBusyRef.current = sceneBusy;
 
   useEffect(() => {
-    setPlatinumActorsVisible(gamePhase !== "platinum");
+    setPlatinumActorsVisible(gamePhase !== "platinum" || level === 1);
     setPlatinumRevealPending(false);
     if (platinumRevealTimerRef.current) {
       clearTimeout(platinumRevealTimerRef.current);
       platinumRevealTimerRef.current = null;
     }
-  }, [currentQ.id, gamePhase, introKey]);
+  }, [currentQ.id, gamePhase, introKey, level]);
 
   useEffect(() => {
     startMusic();
@@ -1244,6 +1244,8 @@ export default function ArcadeAngleScreen() {
     const target = i + 1;
     if (gamePhase === "monster") {
       if (target === LEVEL_TARGET_COUNT) earnMonsterEgg(); else setMonsterEggs(target);
+    } else if (gamePhase === "platinum") {
+      if (target === LEVEL_TARGET_COUNT) earnPlatinumEgg(); else setMonsterEggs(target);
     } else {
       if (target === LEVEL_TARGET_COUNT) { setEggsCollected(LEVEL_TARGET_COUNT); startMonsterRound(); }
       else { setEggsCollected(target); nextQuestion(); }
@@ -1360,7 +1362,7 @@ export default function ArcadeAngleScreen() {
   const phaseBg = LEVEL_BG[`${level}-${gamePhase}`] ?? { bg: "#080e1c", glow: "#1e3a5f", tint: "transparent" };
   const isMonster = gamePhase === "monster";
   const isPlatinum = gamePhase === "platinum";
-  const showSceneActors = !isPlatinum || platinumActorsVisible || spinAnim !== null || isFiring !== null || explosion !== null || revealedAngle !== null;
+  const showSceneActors = !isPlatinum || level === 1 || platinumActorsVisible || spinAnim !== null || isFiring !== null || explosion !== null || revealedAngle !== null;
 
   const revealGaze = revealedAngle ?? gazeAngle;
   const aimForBeam = isFiring ? isFiring.aimAngle : revealGaze;
