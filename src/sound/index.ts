@@ -3,7 +3,9 @@
 
 let ctx: AudioContext | null = null;
 let footToggle = false;
-const MUTE_STORAGE_KEY = "maths-angle-explorer:muted";
+const MUTE_STORAGE_KEY = import.meta.env.DEV
+  ? "maths-angle-explorer:muted:dev"
+  : "maths-angle-explorer:muted:prod";
 const SFX_GAIN = 2.2;
 const BG_GAIN = 0.25;
 
