@@ -71,6 +71,7 @@ const DEPLOY_MS = 900;
 const SHOT_MS = 380;
 const SPIN_MS = 600;
 const HIT_RESOLVE_MS = 1000;
+const PLATINUM_REVEAL_MS = 500;
 const L1_TARGET_RADIUS = 100;
 const MIN_AIM_RADIUS = 40;
 const LEVEL_TARGET_COUNT = 10;
@@ -754,11 +755,14 @@ export default function ArcadeAngleScreen() {
 
   // Spin animation (monster round: cannon rotates to typed angle before firing)
   const [spinAnim, setSpinAnim] = useState<{ from: number; to: number; startT: number } | null>(null);
+  const [platinumActorsVisible, setPlatinumActorsVisible] = useState(true);
+  const [platinumRevealPending, setPlatinumRevealPending] = useState(false);
 
   const svgRef           = useRef<SVGSVGElement>(null);
   const fireButtonRef    = useRef<HTMLButtonElement>(null);
   const draggingRef      = useRef(false);
   const flashTimerRef    = useRef<number | null>(null);
+  const platinumRevealTimerRef = useRef<number | null>(null);
   const lastTickAngleRef    = useRef(-999);
   const gazeAngleRef        = useRef(0);       // always in sync with gazeAngle state
   const lastPointerAngleRef = useRef<number | null>(null); // raw [0,360) from last pointer event
@@ -775,9 +779,18 @@ export default function ArcadeAngleScreen() {
   currentQRef.current   = currentQ;
   gazeAngleRef.current  = gazeAngle;
 
-  const sceneBusy    = introPhase !== "ready" || isFiring !== null || spinAnim !== null;
+  const sceneBusy    = introPhase !== "ready" || isFiring !== null || spinAnim !== null || platinumRevealPending;
   const sceneBusyRef = useRef(false);
   sceneBusyRef.current = sceneBusy;
+
+  useEffect(() => {
+    setPlatinumActorsVisible(gamePhase !== "platinum");
+    setPlatinumRevealPending(false);
+    if (platinumRevealTimerRef.current) {
+      clearTimeout(platinumRevealTimerRef.current);
+      platinumRevealTimerRef.current = null;
+    }
+  }, [currentQ.id, gamePhase, introKey]);
 
   useEffect(() => {
     startMusic();
@@ -1065,6 +1078,7 @@ export default function ArcadeAngleScreen() {
     setIsFiring(null);
     setExplosion(null);
     setSpinAnim(null);
+    setPlatinumRevealPending(false);
     lastTickAngleRef.current = -999;
   }
 
@@ -1197,6 +1211,7 @@ export default function ArcadeAngleScreen() {
     setIsFiring(null);
     setExplosion(null);
     setSpinAnim(null);
+    setPlatinumRevealPending(false);
     lastTickAngleRef.current = -999;
     setCalcRoundKey((k) => k + 1);
   }
@@ -1214,6 +1229,7 @@ export default function ArcadeAngleScreen() {
     setIsFiring(null);
     setExplosion(null);
     setSpinAnim(null);
+    setPlatinumRevealPending(false);
     setIntroKey((k) => k + 1); // re-triggers intro animation for same question
   }
 
@@ -1278,7 +1294,13 @@ export default function ArcadeAngleScreen() {
         ? Math.min(Math.max((currentQ.startAngleDeg ?? 0) + typedAngle, currentQ.startAngleDeg ?? 0), currentQ.totalContext)
         : typedAngle;
       submitLockRef.current = true;
-      setSpinAnim({ from: gazeAngle, to: spinTarget, startT: performance.now() });
+      setPlatinumActorsVisible(true);
+      setPlatinumRevealPending(true);
+      platinumRevealTimerRef.current = window.setTimeout(() => {
+        setPlatinumRevealPending(false);
+        setSpinAnim({ from: gazeAngleRef.current, to: spinTarget, startT: performance.now() });
+        platinumRevealTimerRef.current = null;
+      }, PLATINUM_REVEAL_MS);
       return;
     }
 
@@ -1332,6 +1354,7 @@ export default function ArcadeAngleScreen() {
   const phaseBg = LEVEL_BG[`${level}-${gamePhase}`] ?? { bg: "#080e1c", glow: "#1e3a5f", tint: "transparent" };
   const isMonster = gamePhase === "monster";
   const isPlatinum = gamePhase === "platinum";
+  const showSceneActors = !isPlatinum || platinumActorsVisible || spinAnim !== null || isFiring !== null || explosion !== null || revealedAngle !== null;
 
   const revealGaze = revealedAngle ?? gazeAngle;
   const aimForBeam = isFiring ? isFiring.aimAngle : revealGaze;
@@ -1339,8 +1362,11 @@ export default function ArcadeAngleScreen() {
   const fh = polarToXY(CX, CY, currentQ.hiddenAngleDeg, targetRadius);
   const targetX = CX + (fh.x - CX) * deployT;
   const targetY = CY + (fh.y - CY) * deployT;
-  const displayPrompt = panelVisible ? currentQ.prompt.slice(0, Math.max(typeIdx, 0)) : "";
-  const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= currentQ.prompt.length);
+  const promptText = isPlatinum && !showSceneActors && level === 2
+    ? "Find the missing angle."
+    : currentQ.prompt;
+  const displayPrompt = panelVisible ? promptText.slice(0, Math.max(typeIdx, 0)) : "";
+  const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
   const activeArcRadius = level === 2 ? getMissingSectorRadius(currentQ) ?? 52 : 52;
   const hasStartedL2Interaction = level === 2
@@ -1348,8 +1374,10 @@ export default function ArcadeAngleScreen() {
 
   const parsedAnswer = parseFloat(answer.trim());
   // isAiming: cannon is actively pointed somewhere (dragging, firing, spinAnim, or valid number typed)
-  const isAiming = dragging || isFiring !== null || spinAnim !== null
-    || (answer.trim() !== "" && !isNaN(parsedAnswer));
+  const isAiming = showSceneActors && (
+    dragging || isFiring !== null || spinAnim !== null
+      || (!isPlatinum && answer.trim() !== "" && !isNaN(parsedAnswer))
+  );
 
   // Fire only enabled when typed value matches current aim (confirms the user has read the angle)
   const canFire = !sceneBusy && !currentQ.promptLines
@@ -1502,7 +1530,7 @@ export default function ArcadeAngleScreen() {
             )}
 
             {/* Target crosshair — above banner, below beam */}
-            {!(isFiring?.hit && shotT > 0.88) && !explosion && revealedAngle === null && (
+            {showSceneActors && !(isFiring?.hit && shotT > 0.88) && !explosion && revealedAngle === null && (
               <g transform={`translate(${targetX}, ${targetY})`}>
                 <TargetSprite pulse={introPhase === "ready" && revealedAngle === null && !isFiring} />
               </g>
@@ -1527,9 +1555,11 @@ export default function ArcadeAngleScreen() {
             )}
 
             {/* Cannon */}
-            <g transform={`translate(${CX}, ${CY})`}>
-              <CannonSprite aimAngle={revealGaze} dragging={dragging} />
-            </g>
+            {showSceneActors && (
+              <g transform={`translate(${CX}, ${CY})`}>
+                <CannonSprite aimAngle={revealGaze} dragging={dragging} />
+              </g>
+            )}
 
             {/* Live angle label — rendered above the beam/cannon; hidden in monster round */}
             {(dragging || revealedAngle !== null || spinAnim !== null) && !isFiring && !isMonster && introPhase === "ready" && (
