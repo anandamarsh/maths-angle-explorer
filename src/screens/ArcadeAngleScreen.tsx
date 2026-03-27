@@ -336,7 +336,9 @@ function LiveAngleLabel({ gazeAngle, revealed, answerDeg, baseAngle = 0 }: {
     : `${Math.round(gazeAngle - baseAngle)}°`;
   // Keep the live sweep label away from the beam in L2.
   const midAngle = baseAngle + arcAngle / 2;
-  const labelRadius = baseAngle === 0 ? 88 : 116;
+  const labelRadius = baseAngle === 0
+    ? (Math.abs(arcAngle) <= 45 ? 104 : 88)
+    : 116;
   const p = polarToXY(CX, CY, midAngle, labelRadius);
   return (
     <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
