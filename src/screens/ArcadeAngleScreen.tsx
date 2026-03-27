@@ -721,6 +721,7 @@ export default function ArcadeAngleScreen() {
   const [level, setLevel]               = useState<1 | 2>(1);
   const [unlockedLevel, setUnlockedLevel] = useState<1 | 2>(1);
   const [screen, setScreen]             = useState<"playing" | "won" | "gameover">("playing");
+  const [showSocialDrawer, setShowSocialDrawer] = useState(false);
   const [currentQ, setCurrentQ]         = useState<AngleQuestion>(() => makeQuestion(1));
   const [eggsCollected, setEggsCollected] = useState(0);
   const [monsterEggs, setMonsterEggs]   = useState(0);
@@ -1810,8 +1811,8 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Won screen ── */}
       {screen === "won" && (
-        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/75 p-6 overflow-y-auto">
-          <div className="arcade-panel p-10 text-center w-full max-w-lg">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6">
+          <div className="arcade-panel p-10 text-center">
             {(isMonster || isPlatinum) ? (
               <>
                 <div className="text-4xl font-black uppercase tracking-[0.18em] md:text-5xl"
@@ -1841,14 +1842,13 @@ export default function ArcadeAngleScreen() {
                 </button>
               )}
             </div>
-            <Social />
           </div>
         </div>
       )}
 
       {/* ── Game over (all 3 levels complete) ── */}
       {screen === "gameover" && (
-        <div className="absolute inset-0 z-[80] flex items-start justify-center overflow-y-auto"
+        <div className="absolute inset-0 z-[80] flex items-center justify-center"
           style={{ background: "radial-gradient(ellipse at center, rgba(88,28,135,0.97) 0%, rgba(5,2,18,0.99) 80%)" }}>
           <div className="arcade-panel p-8 md:p-12 text-center mx-6 max-w-lg w-full"
             style={{ boxShadow: "0 0 40px rgba(251,191,36,0.35), 0 0 80px rgba(109,40,217,0.3)" }}>
@@ -1866,10 +1866,62 @@ export default function ArcadeAngleScreen() {
               style={{ boxShadow: "0 0 16px rgba(251,191,36,0.4), 0 6px 0 #78350f", borderColor: "#fbbf24" }}>
               Play Again
             </button>
-            <Social />
           </div>
         </div>
       )}
+
+      {/* ── Social drawer toggle button — bottom-left, overlaps flash icons ── */}
+      <button
+        className="pointer-events-auto absolute z-[60]"
+        style={{ bottom: "12px", left: "12px" }}
+        onClick={() => setShowSocialDrawer(s => !s)}
+        aria-label="Share & Comments"
+      >
+        <svg viewBox="0 0 120 120" width="64" height="64"
+          style={{ filter: "drop-shadow(0 0 8px rgba(56,189,248,0.7))" }}>
+          <circle cx="60" cy="60" r="54" fill="rgba(2,6,23,0.88)" />
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#38bdf8" strokeWidth="5" />
+          {showSocialDrawer ? (
+            /* Down chevron when open */
+            <path d="M36 46 L60 70 L84 46" fill="none" stroke="#38bdf8" strokeWidth="10"
+              strokeLinecap="round" strokeLinejoin="round" />
+          ) : (
+            /* Share icon when closed */
+            <>
+              <circle cx="84" cy="36" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
+              <circle cx="36" cy="60" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
+              <circle cx="84" cy="84" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
+              <line x1="74" y1="41" x2="46" y2="55" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round"/>
+              <line x1="74" y1="79" x2="46" y2="65" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round"/>
+            </>
+          )}
+        </svg>
+      </button>
+
+      {/* ── Social slide-up drawer ── */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-[90] overflow-y-auto"
+        style={{
+          maxHeight: "75vh",
+          transform: showSocialDrawer ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
+          background: "rgba(2,6,23,0.97)",
+          borderTop: "3px solid rgba(56,189,248,0.5)",
+          borderRadius: "16px 16px 0 0",
+          boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+        }}
+      >
+        {/* Drag handle + close */}
+        <div className="sticky top-0 flex items-center justify-between px-4 py-3"
+          style={{ background: "rgba(2,6,23,0.97)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="w-10 h-1 rounded-full mx-auto" style={{ background: "rgba(255,255,255,0.25)" }} />
+          <button onClick={() => setShowSocialDrawer(false)}
+            className="absolute right-4 text-slate-400 hover:text-white text-xl font-bold">✕</button>
+        </div>
+        <div className="px-4 pb-8">
+          <Social />
+        </div>
+      </div>
     </div>
   );
 }
