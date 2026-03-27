@@ -812,6 +812,37 @@ export default function ArcadeAngleScreen() {
     setSoundMuted(nextMuted);
   }
 
+  async function handleShare() {
+    playButton();
+    setShowCommentsDrawer(false);
+
+    const nav = navigator as Navigator & {
+      share?: (data: ShareData) => Promise<void>;
+      canShare?: (data?: ShareData) => boolean;
+      standalone?: boolean;
+    };
+    const shareData: ShareData = {
+      title: document.title || "Interactive Maths",
+      text: "Check out this maths game on Interactive Maths!",
+      url: window.location.href,
+    };
+    const looksMobileOrPwa =
+      window.matchMedia?.("(display-mode: standalone)").matches
+      || !!nav.standalone
+      || navigator.maxTouchPoints > 0;
+
+    if (looksMobileOrPwa && typeof nav.share === "function" && (!nav.canShare || nav.canShare(shareData))) {
+      try {
+        await nav.share(shareData);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+
+    setShowShareDrawer((s) => !s);
+  }
+
   // ── Desktop keyboard → keypad binding ──────────────────────────────────────
   const keypadValueRef        = useRef("");
   const handleKeypadChangeRef = useRef((_v: string) => {});
@@ -1893,7 +1924,7 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Share + Comments buttons — bottom-left ── */}
       <div className="absolute z-[60] flex flex-row gap-1.5" style={{ bottom: "1rem", left: "1rem" }}>
-        <button onClick={() => { setShowShareDrawer(s => !s); setShowCommentsDrawer(false); }} title="Share"
+        <button onClick={handleShare} title="Share"
           className="arcade-button w-10 h-10 flex items-center justify-center p-2"
           style={showShareDrawer ? { background: "linear-gradient(180deg,#0369a1,#075985)", borderColor: "#38bdf8" } : {}}>
           <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -1921,17 +1952,18 @@ export default function ArcadeAngleScreen() {
       )}
 
       {/* ── Share drawer ── */}
-      <div className="fixed bottom-0 left-0 z-[90]"
+      <div className="fixed z-[90]"
         style={{
-          transform: showShareDrawer ? "translateY(0)" : "translateY(100%)",
+          left: "1rem",
+          bottom: "1rem",
+          transform: showShareDrawer ? "translateY(0)" : "translateY(calc(100% + 1rem))",
           transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
           background: "rgba(2,6,23,0.97)",
-          borderTop: "3px solid rgba(56,189,248,0.4)",
-          borderRight: "3px solid rgba(56,189,248,0.4)",
-          borderTopRightRadius: "16px",
+          border: "3px solid rgba(56,189,248,0.4)",
+          borderRadius: "16px",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
           width: "fit-content",
-          maxWidth: "calc(100vw - 24px)",
+          maxWidth: "calc(100vw - 2rem)",
         }}>
         <div className="flex items-center justify-between gap-4 px-4 py-2"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
