@@ -161,30 +161,38 @@ export function playAngleTick(angleDeg: number) {
   tone(freq, ac().currentTime, 0.03, 0.11, "sine");
 }
 
-/** Loud clicky keypad key press — mechanical snap + high transient. */
+/** Loud clicky keypad key press — same approach as typewriter click, max volume. */
 export function playKeyClick() {
-  if (muted) return;
   const c = ac();
   const t = c.currentTime;
-  // Sharp noise burst — mechanical key body
+  // Noise burst — sharp mechanical click body (same as playTypewriterClick but louder)
   const bufLen = Math.ceil(c.sampleRate * 0.022);
   const buf = c.createBuffer(1, bufLen, c.sampleRate);
   const data = buf.getChannelData(0);
-  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.18));
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.2));
   const src = c.createBufferSource();
   src.buffer = buf;
-  const hp = c.createBiquadFilter();
-  hp.type = "highpass";
-  hp.frequency.value = 2400;
-  hp.Q.value = 0.8;
+  const flt = c.createBiquadFilter();
+  flt.type = "bandpass";
+  flt.frequency.value = 3200;
+  flt.Q.value = 1.2;
   const gain = c.createGain();
   gain.gain.setValueAtTime(0.9, t);
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.022);
-  src.connect(hp); hp.connect(gain); gain.connect(c.destination);
+  src.connect(flt); flt.connect(gain); gain.connect(c.destination);
   src.start(t); src.stop(t + 0.025);
-  // Snap transient tone
-  tone(1800, t, 0.018, 0.55, "square");
-  tone(900,  t + 0.008, 0.012, 0.3, "square");
+  // Extra snap transient on top
+  const snapBuf = c.createBuffer(1, Math.ceil(c.sampleRate * 0.008), c.sampleRate);
+  const sd = snapBuf.getChannelData(0);
+  for (let i = 0; i < sd.length; i++) sd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sd.length * 0.3));
+  const snapSrc = c.createBufferSource();
+  snapSrc.buffer = snapBuf;
+  const snapHp = c.createBiquadFilter();
+  snapHp.type = "highpass"; snapHp.frequency.value = 5000;
+  const snapG = c.createGain();
+  snapG.gain.setValueAtTime(0.9, t);
+  snapSrc.connect(snapHp); snapHp.connect(snapG); snapG.connect(c.destination);
+  snapSrc.start(t); snapSrc.stop(t + 0.01);
 }
 
 /** Short typewriter-style click for each character in the prompt typewriter. */
