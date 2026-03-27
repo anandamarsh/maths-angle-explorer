@@ -13,22 +13,22 @@ import {
 const DISQUS_SHORTNAME = 'interactive-maths';
 const GAME_ID          = 'maths-angle-explorer';
 const SHARE_TITLE      = 'Check out this maths game on Interactive Maths!';
+const SHARE_URL        = 'https://interactive-maths.vercel.app/';
 
 /** Just the four share buttons — no heading. */
 export function SocialShare() {
-  const url = window.location.href;
   return (
     <div style={{ display: 'flex', gap: '1rem', padding: '1rem 1.25rem 1.25rem', justifyContent: 'flex-start' }}>
-      <TwitterShareButton url={url} title={SHARE_TITLE}>
+      <TwitterShareButton url={SHARE_URL} title={SHARE_TITLE}>
         <XIcon size={48} round />
       </TwitterShareButton>
-      <FacebookShareButton url={url}>
+      <FacebookShareButton url={SHARE_URL}>
         <FacebookIcon size={48} round />
       </FacebookShareButton>
-      <WhatsappShareButton url={url} title={SHARE_TITLE}>
+      <WhatsappShareButton url={SHARE_URL} title={SHARE_TITLE}>
         <WhatsappIcon size={48} round />
       </WhatsappShareButton>
-      <LinkedinShareButton url={url} title={SHARE_TITLE}>
+      <LinkedinShareButton url={SHARE_URL} title={SHARE_TITLE}>
         <LinkedinIcon size={48} round />
       </LinkedinShareButton>
     </div>

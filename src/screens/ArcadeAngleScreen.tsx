@@ -79,6 +79,7 @@ const PLATINUM_REVEAL_MS = 500;
 const L1_TARGET_RADIUS = 100;
 const MIN_AIM_RADIUS = 40;
 const LEVEL_TARGET_COUNT = 10;
+const SHELL_SHARE_URL = "https://interactive-maths.vercel.app/";
 const ANGLE_HIT_TOL = 7.5;  // drag/snap tolerance
 const TYPED_TOL = 0.55;     // typed answer must be exact (allows ±0.5 for decimal rounding)
 const TICK_INTERVAL = 10;
@@ -822,7 +823,7 @@ export default function ArcadeAngleScreen() {
     const shareData: ShareData = {
       title: document.title || "Interactive Maths",
       text: "Check out this maths game on Interactive Maths!",
-      url: window.location.href,
+      url: SHELL_SHARE_URL,
     };
     const looksMobileOrPwa =
       window.matchMedia?.("(display-mode: standalone)").matches
