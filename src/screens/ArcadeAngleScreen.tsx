@@ -1380,7 +1380,7 @@ export default function ArcadeAngleScreen() {
               return (
                 <button key={lv} onClick={() => !locked && beginNewRun(lv)}
                   disabled={locked}
-                  className="w-9 h-8 rounded text-xs font-black border-2 transition-colors"
+                  className="w-9 h-9 rounded text-sm font-black border-2 transition-colors"
                   style={{
                     background: locked ? "#0f172a" : level === lv ? (isMonster ? "#92400e" : "#0ea5e9") : lv < level ? "#78350f" : "#1e293b",
                     borderColor: locked ? "#1e293b" : level === lv ? (isMonster ? "#fbbf24" : "#38bdf8") : lv < level ? "#fbbf24" : "#475569",
@@ -1549,7 +1549,7 @@ export default function ArcadeAngleScreen() {
           <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5">
             <div className="flex flex-row gap-1.5">
               <button onClick={resetCurrentQuestion} title="Reset"
-                className="arcade-button w-8 h-8 flex items-center justify-center p-1.5">
+                className="arcade-button w-10 h-10 flex items-center justify-center p-2">
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   <path d="M1 4v6h6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M23 20v-6h-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1558,7 +1558,7 @@ export default function ArcadeAngleScreen() {
                 </svg>
               </button>
               <button onClick={handleAudioToggle} title="Mute"
-                className="arcade-button w-8 h-8 flex items-center justify-center p-1.5"
+                className="arcade-button w-10 h-10 flex items-center justify-center p-2"
                 style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", borderColor: "#94a3b8" } : {}}>
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   {soundMuted ? (
@@ -1581,9 +1581,9 @@ export default function ArcadeAngleScreen() {
               {([1, 2] as const).map((lv) => {
                 const locked = !IS_DEV && lv > unlockedLevel && lv > level;
                 return (
-                  <button key={lv} onClick={() => !locked && beginNewRun(lv)}
+                <button key={lv} onClick={() => !locked && beginNewRun(lv)}
                     disabled={locked}
-                    className="w-7 h-6 rounded text-xs font-black border-2 transition-colors"
+                    className="w-9 h-9 rounded text-sm font-black border-2 transition-colors"
                     style={{
                       background: locked ? "#0f172a" : level === lv ? (isMonster ? "#92400e" : "#0ea5e9") : lv < level ? "#78350f" : "#1e293b",
                       borderColor: locked ? "#1e293b" : level === lv ? (isMonster ? "#fbbf24" : "#38bdf8") : lv < level ? "#fbbf24" : "#475569",
