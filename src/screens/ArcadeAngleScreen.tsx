@@ -26,6 +26,8 @@ import {
   ensureAudioReady,
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
+// @ts-expect-error — JS component
+import Social from "../components/Social";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1808,8 +1810,8 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Won screen ── */}
       {screen === "won" && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6">
-          <div className="arcade-panel p-10 text-center">
+        <div className="absolute inset-0 z-30 flex items-start justify-center bg-black/75 p-6 overflow-y-auto">
+          <div className="arcade-panel p-10 text-center w-full max-w-lg">
             {(isMonster || isPlatinum) ? (
               <>
                 <div className="text-4xl font-black uppercase tracking-[0.18em] md:text-5xl"
@@ -1839,13 +1841,14 @@ export default function ArcadeAngleScreen() {
                 </button>
               )}
             </div>
+            <Social />
           </div>
         </div>
       )}
 
       {/* ── Game over (all 3 levels complete) ── */}
       {screen === "gameover" && (
-        <div className="absolute inset-0 z-[80] flex items-center justify-center"
+        <div className="absolute inset-0 z-[80] flex items-start justify-center overflow-y-auto"
           style={{ background: "radial-gradient(ellipse at center, rgba(88,28,135,0.97) 0%, rgba(5,2,18,0.99) 80%)" }}>
           <div className="arcade-panel p-8 md:p-12 text-center mx-6 max-w-lg w-full"
             style={{ boxShadow: "0 0 40px rgba(251,191,36,0.35), 0 0 80px rgba(109,40,217,0.3)" }}>
@@ -1863,6 +1866,7 @@ export default function ArcadeAngleScreen() {
               style={{ boxShadow: "0 0 16px rgba(251,191,36,0.4), 0 6px 0 #78350f", borderColor: "#fbbf24" }}>
               Play Again
             </button>
+            <Social />
           </div>
         </div>
       )}
