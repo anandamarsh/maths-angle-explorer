@@ -1494,25 +1494,6 @@ export default function ArcadeAngleScreen() {
               )}
             </svg>
           </button>
-          <button onClick={() => { setShowShareDrawer(s => !s); setShowCommentsDrawer(false); }} title="Share"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-            style={showShareDrawer ? { background: "linear-gradient(180deg,#0369a1,#075985)", borderColor: "#38bdf8" } : {}}>
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <circle cx="18" cy="5"  r="3" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="6"  cy="12" r="3" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="18" cy="19" r="3" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
-          <button onClick={() => { setShowCommentsDrawer(s => !s); setShowShareDrawer(false); }} title="Comments"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-            style={showCommentsDrawer ? { background: "linear-gradient(180deg,#854d0e,#713f12)", borderColor: "#facc15" } : {}}>
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -1630,25 +1611,6 @@ export default function ArcadeAngleScreen() {
                       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
                     </>
                   )}
-                </svg>
-              </button>
-              <button onClick={() => { setShowShareDrawer(s => !s); setShowCommentsDrawer(false); }} title="Share"
-                className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-                style={showShareDrawer ? { background: "linear-gradient(180deg,#0369a1,#075985)", borderColor: "#38bdf8" } : {}}>
-                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                  <circle cx="18" cy="5"  r="3" fill="none" stroke="white" strokeWidth="2"/>
-                  <circle cx="6"  cy="12" r="3" fill="none" stroke="white" strokeWidth="2"/>
-                  <circle cx="18" cy="19" r="3" fill="none" stroke="white" strokeWidth="2"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                  <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </button>
-              <button onClick={() => { setShowCommentsDrawer(s => !s); setShowShareDrawer(false); }} title="Comments"
-                className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-                style={showCommentsDrawer ? { background: "linear-gradient(180deg,#854d0e,#713f12)", borderColor: "#facc15" } : {}}>
-                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                    fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
             </div>
@@ -1926,7 +1888,30 @@ export default function ArcadeAngleScreen() {
         </div>
       )}
 
-{/* ── Backdrop — closes whichever drawer is open ── */}
+      {/* ── Share + Comments buttons — bottom-left ── */}
+      <div className="absolute z-[60] flex flex-row gap-1.5" style={{ bottom: "12px", left: "12px" }}>
+        <button onClick={() => { setShowShareDrawer(s => !s); setShowCommentsDrawer(false); }} title="Share"
+          className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+          style={showShareDrawer ? { background: "linear-gradient(180deg,#0369a1,#075985)", borderColor: "#38bdf8" } : {}}>
+          <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+            <circle cx="18" cy="5"  r="3" fill="none" stroke="white" strokeWidth="2"/>
+            <circle cx="6"  cy="12" r="3" fill="none" stroke="white" strokeWidth="2"/>
+            <circle cx="18" cy="19" r="3" fill="none" stroke="white" strokeWidth="2"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
+        <button onClick={() => { setShowCommentsDrawer(s => !s); setShowShareDrawer(false); }} title="Comments"
+          className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+          style={showCommentsDrawer ? { background: "linear-gradient(180deg,#854d0e,#713f12)", borderColor: "#facc15" } : {}}>
+          <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+              fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* ── Backdrop — closes whichever drawer is open ── */}
       {(showShareDrawer || showCommentsDrawer) && (
         <div className="fixed inset-0 z-[85]"
           onClick={() => { setShowShareDrawer(false); setShowCommentsDrawer(false); }} />
