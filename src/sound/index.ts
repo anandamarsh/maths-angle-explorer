@@ -161,6 +161,32 @@ export function playAngleTick(angleDeg: number) {
   tone(freq, ac().currentTime, 0.03, 0.11, "sine");
 }
 
+/** Loud clicky keypad key press — mechanical snap + high transient. */
+export function playKeyClick() {
+  if (muted) return;
+  const c = ac();
+  const t = c.currentTime;
+  // Sharp noise burst — mechanical key body
+  const bufLen = Math.ceil(c.sampleRate * 0.022);
+  const buf = c.createBuffer(1, bufLen, c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.18));
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const hp = c.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 2400;
+  hp.Q.value = 0.8;
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.9, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.022);
+  src.connect(hp); hp.connect(gain); gain.connect(c.destination);
+  src.start(t); src.stop(t + 0.025);
+  // Snap transient tone
+  tone(1800, t, 0.018, 0.55, "square");
+  tone(900,  t + 0.008, 0.012, 0.3, "square");
+}
+
 /** Short typewriter-style click for each character in the prompt typewriter. */
 export function playTypewriterClick() {
   const c = ac();

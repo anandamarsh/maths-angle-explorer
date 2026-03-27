@@ -22,6 +22,7 @@ import {
   playCannonFire,
   playExplosion,
   playTypewriterClick,
+  playKeyClick,
   ensureAudioReady,
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
@@ -604,11 +605,12 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {
     setMinimized(false);
-    const timer = window.setTimeout(() => setMinimized(true), 1800);
+    const timer = window.setTimeout(() => setMinimized(true), 2000);
     return () => clearTimeout(timer);
   }, [roundKey]);
   function press(key: string) {
     if (disabled) return;
+    playKeyClick();
     if (key === "⌫") {
       onChange(value.slice(0, -1));
     } else if (key === "±") {
@@ -638,16 +640,16 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
     <div className="flex flex-col gap-1 rounded-xl p-1.5 shrink-0 w-44 md:w-48"
       style={{
         background: "rgba(2,6,23,0.97)",
-        border: "2px solid rgba(56,189,248,0.45)",
+        border: "4px solid rgba(255,255,255,0.7)",
         boxShadow: "0 0 18px rgba(56,189,248,0.12), inset 0 0 12px rgba(0,0,0,0.4)",
       }}>
       {/* LCD Display */}
-      <div className="rounded-lg px-2 h-8 flex items-center justify-end overflow-hidden cursor-pointer"
+      <div className="rounded-lg px-2 h-12 flex items-center justify-end overflow-hidden cursor-pointer"
         onClick={() => setMinimized((m) => !m)}
         style={{
           fontFamily: "'DSEG7Classic', 'Courier New', monospace",
           fontWeight: 700,
-          fontSize: "1.05rem",
+          fontSize: "2.1rem",
           background: "rgba(0,8,4,0.95)",
           border: "2px solid rgba(56,189,248,0.28)",
           color: "#67e8f9",
@@ -662,6 +664,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
           overflow: "hidden",
           maxHeight: minimized ? "0px" : "300px",
           opacity: minimized ? 0 : 1,
+          pointerEvents: minimized ? "none" : "auto",
           transition: "max-height 0.4s ease-in-out, opacity 0.3s ease-in-out",
         }}>
         {rows.map((row, r) => (
@@ -1640,7 +1643,7 @@ export default function ArcadeAngleScreen() {
                       })}
                     </div>
                   ) : (
-                    <div className="arcade-panel px-2 py-1.5 text-xs leading-4 text-white font-bold">
+                    <div className="arcade-panel px-2 py-1.5 text-sm leading-5 text-white font-bold">
                       <ColoredPrompt text={displayPrompt} />
                     </div>
                   )}
@@ -1696,7 +1699,7 @@ export default function ArcadeAngleScreen() {
                 </div>
               ) : (
                 /* Single-step prompt */
-                <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold">
+                <div className="arcade-panel px-3 py-2 text-xl leading-6 text-white font-bold">
                   <ColoredPrompt text={displayPrompt} />
                 </div>
               )}
