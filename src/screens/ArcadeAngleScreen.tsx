@@ -27,7 +27,7 @@ import {
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 // @ts-expect-error — JS component
-import Social from "../components/Social";
+import { SocialShare, SocialComments } from "../components/Social";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -642,7 +642,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   const op    = `${base} bg-slate-700/80 text-cyan-300 border border-slate-500/60`;
 
   return (
-    <div className="flex flex-col gap-1 rounded-xl p-1.5 shrink-0 w-44 md:w-48"
+    <div className="flex flex-col gap-1 rounded-xl p-1.5 shrink-0 min-w-0 w-36 sm:w-40 md:w-44 lg:w-48"
       style={{
         background: "rgba(2,6,23,0.97)",
         border: "4px solid rgba(255,255,255,0.7)",
@@ -721,7 +721,8 @@ export default function ArcadeAngleScreen() {
   const [level, setLevel]               = useState<1 | 2>(1);
   const [unlockedLevel, setUnlockedLevel] = useState<1 | 2>(1);
   const [screen, setScreen]             = useState<"playing" | "won" | "gameover">("playing");
-  const [showSocialDrawer, setShowSocialDrawer] = useState(false);
+  const [showShareDrawer,    setShowShareDrawer]    = useState(false);
+  const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
   const [currentQ, setCurrentQ]         = useState<AngleQuestion>(() => makeQuestion(1));
   const [eggsCollected, setEggsCollected] = useState(0);
   const [monsterEggs, setMonsterEggs]   = useState(0);
@@ -1766,22 +1767,36 @@ export default function ArcadeAngleScreen() {
           <div className="pointer-events-none absolute z-50"
             style={{ bottom: "12px", left: "12px" }}>
             {flash.ok ? (
-              <svg viewBox="0 0 120 120" width="64" height="64"
-                style={{ animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                  filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)" }}>
-                <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
-                <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
-                <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <div style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "9999px",
+                overflow: "hidden",
+                animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
+                filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
+              }}>
+                <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
+                  <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
+                  <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
+                  <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
+                    strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             ) : (
-              <svg viewBox="0 0 120 120" width="64" height="64"
-                style={{ animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
-                  filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)" }}>
-                <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
-                <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
-                <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
-              </svg>
+              <div style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "9999px",
+                overflow: "hidden",
+                animation: "icon-pop-corner 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
+                filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
+              }}>
+                <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
+                  <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
+                  <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
+                  <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
+                </svg>
+              </div>
             )}
           </div>
         ) : (
@@ -1870,57 +1885,70 @@ export default function ArcadeAngleScreen() {
         </div>
       )}
 
-      {/* ── Social drawer toggle button — bottom-left, overlaps flash icons ── */}
-      <button
-        className="pointer-events-auto absolute z-[60]"
+      {/* ── Share button — bottom-left ── */}
+      <button className="pointer-events-auto absolute z-[60]"
         style={{ bottom: "12px", left: "12px" }}
-        onClick={() => setShowSocialDrawer(s => !s)}
-        aria-label="Share & Comments"
-      >
+        onClick={() => { setShowShareDrawer(s => !s); setShowCommentsDrawer(false); }}
+        aria-label="Share">
         <svg viewBox="0 0 120 120" width="64" height="64"
-          style={{ filter: "drop-shadow(0 0 8px rgba(56,189,248,0.7))" }}>
+          style={{ filter: `drop-shadow(0 0 8px rgba(56,189,248,${showShareDrawer ? 1 : 0.5}))` }}>
           <circle cx="60" cy="60" r="54" fill="rgba(2,6,23,0.88)" />
           <circle cx="60" cy="60" r="54" fill="none" stroke="#38bdf8" strokeWidth="5" />
-          {showSocialDrawer ? (
-            /* Down chevron when open */
-            <path d="M36 46 L60 70 L84 46" fill="none" stroke="#38bdf8" strokeWidth="10"
-              strokeLinecap="round" strokeLinejoin="round" />
-          ) : (
-            /* Share icon when closed */
-            <>
-              <circle cx="84" cy="36" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
-              <circle cx="36" cy="60" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
-              <circle cx="84" cy="84" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
-              <line x1="74" y1="41" x2="46" y2="55" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round"/>
-              <line x1="74" y1="79" x2="46" y2="65" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round"/>
-            </>
-          )}
+          <circle cx="84" cy="36" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
+          <circle cx="36" cy="60" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
+          <circle cx="84" cy="84" r="10" fill="none" stroke="#38bdf8" strokeWidth="7"/>
+          <line x1="74" y1="41" x2="46" y2="55" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round"/>
+          <line x1="74" y1="79" x2="46" y2="65" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round"/>
         </svg>
       </button>
 
-      {/* ── Social slide-up drawer ── */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-[90] overflow-y-auto"
+      {/* ── Comments button — next to share ── */}
+      <button className="pointer-events-auto absolute z-[60]"
+        style={{ bottom: "12px", left: "88px" }}
+        onClick={() => { setShowCommentsDrawer(s => !s); setShowShareDrawer(false); }}
+        aria-label="Comments">
+        <svg viewBox="0 0 120 120" width="64" height="64"
+          style={{ filter: `drop-shadow(0 0 8px rgba(250,204,21,${showCommentsDrawer ? 1 : 0.5}))` }}>
+          <circle cx="60" cy="60" r="54" fill="rgba(2,6,23,0.88)" />
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#facc15" strokeWidth="5" />
+          <path d="M28 40 Q28 28 40 28 L80 28 Q92 28 92 40 L92 68 Q92 80 80 80 L50 80 L36 94 L36 80 Q28 80 28 68 Z"
+            fill="none" stroke="#facc15" strokeWidth="7" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* ── Share drawer ── */}
+      <div className="fixed inset-x-0 bottom-0 z-[90]"
         style={{
-          maxHeight: "75vh",
-          transform: showSocialDrawer ? "translateY(0)" : "translateY(100%)",
+          transform: showShareDrawer ? "translateY(0)" : "translateY(100%)",
           transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
           background: "rgba(2,6,23,0.97)",
-          borderTop: "3px solid rgba(56,189,248,0.5)",
-          borderRadius: "16px 16px 0 0",
+          borderTop: "3px solid rgba(56,189,248,0.4)",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
-        }}
-      >
-        {/* Drag handle + close */}
-        <div className="sticky top-0 flex items-center justify-between px-4 py-3"
+        }}>
+        <div className="flex items-center justify-end px-4 py-2"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <button onClick={() => setShowShareDrawer(false)}
+            style={{ color: "#94a3b8", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
+        </div>
+        <SocialShare />
+      </div>
+
+      {/* ── Comments drawer ── */}
+      <div className="fixed inset-x-0 bottom-0 z-[90] overflow-y-auto"
+        style={{
+          maxHeight: "75vh",
+          transform: showCommentsDrawer ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
+          background: "rgba(2,6,23,0.97)",
+          borderTop: "3px solid rgba(250,204,21,0.4)",
+          boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
+        }}>
+        <div className="sticky top-0 flex items-center justify-end px-4 py-2"
           style={{ background: "rgba(2,6,23,0.97)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="w-10 h-1 rounded-full mx-auto" style={{ background: "rgba(255,255,255,0.25)" }} />
-          <button onClick={() => setShowSocialDrawer(false)}
-            className="absolute right-4 text-slate-400 hover:text-white text-xl font-bold">✕</button>
+          <button onClick={() => setShowCommentsDrawer(false)}
+            style={{ color: "#94a3b8", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
         </div>
-        <div className="px-4 pb-8">
-          <Social />
-        </div>
+        <SocialComments />
       </div>
     </div>
   );
