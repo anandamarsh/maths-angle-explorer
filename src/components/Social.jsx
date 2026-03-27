@@ -1,4 +1,4 @@
-import { DiscussionEmbed } from 'disqus-react';
+import { useEffect, useRef } from 'react';
 import {
   TwitterShareButton,
   FacebookShareButton,
@@ -10,10 +10,24 @@ import {
   LinkedinIcon,
 } from 'react-share';
 
-const DISQUS_SHORTNAME = 'interactive-maths';
-const GAME_ID          = 'maths-angle-explorer';
 const SHARE_TITLE      = 'Check out this maths game on Interactive Maths!';
 const SHARE_URL        = 'https://interactive-maths.vercel.app/';
+const CUSDIS_HOST      = 'https://cusdis.com';
+const CUSDIS_APP_ID    = 'b7cf3bec-b283-485f-9db9-8e7f3cfac3c2';
+const COMMENTS_PAGE_ID = 'interactive-maths';
+const COMMENTS_TITLE   = 'Interactive Maths';
+
+function ensureCusdisLoaded() {
+  const existing = document.querySelector('script[data-cusdis-script="true"]');
+  if (existing) return;
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.defer = true;
+  script.src = `${CUSDIS_HOST}/js/cusdis.es.js`;
+  script.dataset.cusdisScript = 'true';
+  document.body.appendChild(script);
+}
 
 /** Just the four share buttons — no heading. */
 export function SocialShare() {
@@ -35,14 +49,24 @@ export function SocialShare() {
   );
 }
 
-/** Just the Disqus thread — no share buttons. */
+/** Just the Cusdis thread — no share buttons. */
 export function SocialComments() {
-  const url = window.location.href;
+  const hostRef = useRef(null);
+
+  useEffect(() => {
+    ensureCusdisLoaded();
+  }, []);
+
   return (
     <div style={{ padding: '0 1rem 2rem' }}>
-      <DiscussionEmbed
-        shortname={DISQUS_SHORTNAME}
-        config={{ url, identifier: GAME_ID, title: GAME_ID, language: 'en' }}
+      <div
+        id="cusdis_thread"
+        ref={hostRef}
+        data-host={CUSDIS_HOST}
+        data-app-id={CUSDIS_APP_ID}
+        data-page-id={COMMENTS_PAGE_ID}
+        data-page-url={SHARE_URL}
+        data-page-title={COMMENTS_TITLE}
       />
     </div>
   );
