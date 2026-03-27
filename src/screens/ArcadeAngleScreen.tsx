@@ -609,8 +609,8 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
     return () => clearTimeout(timer);
   }, [roundKey]);
   function press(key: string) {
-    if (disabled) return;
     playKeyClick();
+    if (disabled) return;
     if (key === "⌫") {
       onChange(value.slice(0, -1));
     } else if (key === "±") {
