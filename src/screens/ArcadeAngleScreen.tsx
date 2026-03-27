@@ -613,8 +613,6 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   const [minimized, setMinimized] = useState(false);
   useEffect(() => {
     setMinimized(false);
-    const timer = window.setTimeout(() => setMinimized(true), 2000);
-    return () => clearTimeout(timer);
   }, [roundKey]);
   function press(key: string) {
     playKeyClick();
