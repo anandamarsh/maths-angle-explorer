@@ -591,7 +591,7 @@ function ColoredPrompt({ text, className = "" }: { text: string; className?: str
 }
 
 /** On-screen numeric keypad — replaces the keyboard input. */
-function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef }: {
+function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef, roundKey }: {
   value: string;
   onChange: (v: string) => void;
   onFire: () => void;
@@ -599,7 +599,14 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   disabled: boolean;
   hideDisplay?: boolean;
   fireRef?: React.RefObject<HTMLButtonElement | null>;
+  roundKey?: number;
 }) {
+  const [minimized, setMinimized] = useState(false);
+  useEffect(() => {
+    setMinimized(false);
+    const timer = window.setTimeout(() => setMinimized(true), 1800);
+    return () => clearTimeout(timer);
+  }, [roundKey]);
   function press(key: string) {
     if (disabled) return;
     if (key === "⌫") {
@@ -635,7 +642,8 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
         boxShadow: "0 0 18px rgba(56,189,248,0.12), inset 0 0 12px rgba(0,0,0,0.4)",
       }}>
       {/* LCD Display */}
-      <div className="rounded-lg px-2 h-8 flex items-center justify-end overflow-hidden"
+      <div className="rounded-lg px-2 h-8 flex items-center justify-end overflow-hidden cursor-pointer"
+        onClick={() => setMinimized((m) => !m)}
         style={{
           fontFamily: "'DSEG7Classic', 'Courier New', monospace",
           fontWeight: 700,
@@ -649,7 +657,13 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
         {shownDisplay}°
       </div>
       {/* Digit rows */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5"
+        style={{
+          overflow: "hidden",
+          maxHeight: minimized ? "0px" : "300px",
+          opacity: minimized ? 0 : 1,
+          transition: "max-height 0.4s ease-in-out, opacity 0.3s ease-in-out",
+        }}>
         {rows.map((row, r) => (
           <div key={r} className="grid grid-cols-4 gap-0.5">
             {row.map((btn) => (
@@ -710,6 +724,8 @@ export default function ArcadeAngleScreen() {
   const [answer, setAnswer]         = useState("");
   const [subAnswers, setSubAnswers] = useState<[string, string, string]>(["", "", ""]);
   const [subStep, setSubStep]       = useState(0);
+
+  const [calcRoundKey, setCalcRoundKey] = useState(0);
 
   const [soundMuted, setSoundMuted]           = useState(() => isMuted());
   const [flash, setFlash]                     = useState<{ text: string; ok: boolean; icon?: boolean } | null>(null);
@@ -1115,6 +1131,7 @@ export default function ArcadeAngleScreen() {
     switchToMonsterMusic();
     nextQuestion(level);
     window.setTimeout(() => setShowMonsterAnnounce(false), 2800);
+    setCalcRoundKey((k) => k + 1);
   }
 
   function startPlatinumRound() {
@@ -1127,6 +1144,7 @@ export default function ArcadeAngleScreen() {
     switchToMonsterMusic();
     nextQuestion(level);
     window.setTimeout(() => setShowMonsterAnnounce(false), 2800);
+    setCalcRoundKey((k) => k + 1);
   }
 
   function earnPlatinumEgg() {
@@ -1174,6 +1192,7 @@ export default function ArcadeAngleScreen() {
     setExplosion(null);
     setSpinAnim(null);
     lastTickAngleRef.current = -999;
+    setCalcRoundKey((k) => k + 1);
   }
 
   function resetCurrentQuestion() {
@@ -1639,6 +1658,7 @@ export default function ArcadeAngleScreen() {
               onFire={doSubmit}
               canFire={canKeypadFire}
               disabled={sceneBusy}
+              roundKey={calcRoundKey}
             />
           </div>
         </div>
@@ -1697,6 +1717,7 @@ export default function ArcadeAngleScreen() {
           canFire={canKeypadFire}
           disabled={sceneBusy}
           fireRef={fireButtonRef}
+          roundKey={calcRoundKey}
         />
       </div>
 
