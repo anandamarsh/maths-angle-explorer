@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   makeQuestion,
   type AngleQuestion,
@@ -1577,43 +1578,6 @@ export default function ArcadeAngleScreen() {
             )}
           </svg>
 
-          {flash?.icon && (
-            <div className="pointer-events-none absolute z-50"
-              style={{ left: "16px", top: "16px" }}>
-              {flash.ok ? (
-                <div style={{
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "9999px",
-                  overflow: "hidden",
-                  animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
-                  filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
-                }}>
-                  <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                    <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
-                    <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
-                    <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
-                      strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              ) : (
-                <div style={{
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "9999px",
-                  overflow: "hidden",
-                  animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
-                  filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
-                }}>
-                  <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                    <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
-                    <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
-                    <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
-                  </svg>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* ── Landscape sidebar: controls + keypad (hidden in portrait) ── */}
@@ -1803,6 +1767,43 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── Flash feedback ── */}
+      {flash?.icon && typeof document !== "undefined" && createPortal(
+        <div className="pointer-events-none fixed z-[9999]" style={{ left: "16px", top: "16px" }}>
+          {flash.ok ? (
+            <div style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "9999px",
+              overflow: "hidden",
+              animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
+              filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
+            }}>
+              <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
+                <circle cx="60" cy="60" r="54" fill="#052e16" opacity="0.88" />
+                <circle cx="60" cy="60" r="54" fill="none" stroke="#4ade80" strokeWidth="5" />
+                <path d="M30 62 L50 82 L90 38" fill="none" stroke="#4ade80" strokeWidth="13"
+                  strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          ) : (
+            <div style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "9999px",
+              overflow: "hidden",
+              animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
+              filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
+            }}>
+              <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
+                <circle cx="60" cy="60" r="54" fill="#2d0a0a" opacity="0.88" />
+                <circle cx="60" cy="60" r="54" fill="none" stroke="#f87171" strokeWidth="5" />
+                <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#f87171" strokeWidth="13" strokeLinecap="round" />
+              </svg>
+            </div>
+          )}
+        </div>,
+        document.body,
+      )}
       {flash && (
         flash.icon ? null : (
           <div className={`pointer-events-none absolute left-1/2 top-[30%] z-40 -translate-x-1/2 rounded-xl border-2 px-8 py-4 text-2xl font-black uppercase tracking-widest animate-bounce-in ${flash.ok ? "border-emerald-400 bg-emerald-950/90 text-emerald-300" : "border-pink-400 bg-pink-950/90 text-pink-300"}`}>
