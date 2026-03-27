@@ -19,7 +19,7 @@ const COMMENTS_TITLE   = 'Interactive Maths';
 
 function ensureCusdisLoaded() {
   const existing = document.querySelector('script[data-cusdis-script="true"]');
-  if (existing) return;
+  if (existing) return existing;
 
   const script = document.createElement('script');
   script.async = true;
@@ -27,6 +27,7 @@ function ensureCusdisLoaded() {
   script.src = `${CUSDIS_HOST}/js/cusdis.es.js`;
   script.dataset.cusdisScript = 'true';
   document.body.appendChild(script);
+  return script;
 }
 
 /** Just the four share buttons — no heading. */
@@ -54,11 +55,36 @@ export function SocialComments() {
   const hostRef = useRef(null);
 
   useEffect(() => {
-    ensureCusdisLoaded();
+    const script = ensureCusdisLoaded();
+
+    const stretchIframe = () => {
+      const iframe = hostRef.current?.querySelector('iframe');
+      if (iframe) {
+        iframe.style.height = '100%';
+        iframe.style.minHeight = '100%';
+      }
+    };
+
+    const renderCusdis = () => {
+      const api = window.CUSDIS;
+      if (api?.renderTo && hostRef.current) {
+        api.renderTo(hostRef.current);
+        requestAnimationFrame(stretchIframe);
+        setTimeout(stretchIframe, 150);
+      }
+    };
+
+    if (window.CUSDIS) {
+      renderCusdis();
+      return;
+    }
+
+    script?.addEventListener('load', renderCusdis, { once: true });
+    return () => script?.removeEventListener('load', renderCusdis);
   }, []);
 
   return (
-    <div style={{ padding: '0 1rem 2rem' }}>
+    <div style={{ padding: '1rem 1rem 1.25rem', height: '100%', boxSizing: 'border-box' }}>
       <div
         id="cusdis_thread"
         ref={hostRef}
@@ -67,6 +93,8 @@ export function SocialComments() {
         data-page-id={COMMENTS_PAGE_ID}
         data-page-url={SHARE_URL}
         data-page-title={COMMENTS_TITLE}
+        data-theme="dark"
+        style={{ height: '100%', minHeight: '100%' }}
       />
     </div>
   );

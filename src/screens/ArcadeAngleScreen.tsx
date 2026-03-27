@@ -725,6 +725,10 @@ export default function ArcadeAngleScreen() {
   const [screen, setScreen]             = useState<"playing" | "won" | "gameover">("playing");
   const [showShareDrawer,    setShowShareDrawer]    = useState(false);
   const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
+  const [isMobileLandscape, setIsMobileLandscape]   = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 1024 && window.innerWidth > window.innerHeight;
+  });
   const [currentQ, setCurrentQ]         = useState<AngleQuestion>(() => makeQuestion(1));
   const [eggsCollected, setEggsCollected] = useState(0);
   const [monsterEggs, setMonsterEggs]   = useState(0);
@@ -801,6 +805,16 @@ export default function ArcadeAngleScreen() {
   useEffect(() => {
     startMusic();
     setSoundMuted(isMuted());
+  }, []);
+
+  useEffect(() => {
+    const syncViewportMode = () => {
+      setIsMobileLandscape(window.innerWidth < 1024 && window.innerWidth > window.innerHeight);
+    };
+
+    syncViewportMode();
+    window.addEventListener("resize", syncViewportMode);
+    return () => window.removeEventListener("resize", syncViewportMode);
   }, []);
 
   const canFireRef = useRef(false);
@@ -1978,19 +1992,29 @@ export default function ArcadeAngleScreen() {
       {/* ── Comments drawer ── */}
       <div className="fixed inset-x-0 bottom-0 z-[90] overflow-y-auto"
         style={{
-          maxHeight: "75vh",
+          height: isMobileLandscape ? "100dvh" : "50vh",
+          maxHeight: isMobileLandscape ? "100dvh" : "50vh",
+          display: "flex",
+          flexDirection: "column",
           transform: showCommentsDrawer ? "translateY(0)" : "translateY(100%)",
           transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
-          background: "rgba(2,6,23,0.97)",
+          background: "#171717",
           borderTop: "3px solid rgba(250,204,21,0.4)",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
         }}>
-        <div className="sticky top-0 flex items-center justify-end px-4 py-2"
-          style={{ background: "rgba(2,6,23,0.97)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="sticky top-0 flex items-center justify-between gap-4 px-4 py-3"
+          style={{ background: "#171717", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <div className="text-base font-black uppercase tracking-widest text-yellow-300">
+              Comments
+            </div>
+          </div>
           <button onClick={() => setShowCommentsDrawer(false)}
             style={{ color: "#94a3b8", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
         </div>
-        <SocialComments />
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <SocialComments />
+        </div>
       </div>
     </div>
   );
