@@ -118,6 +118,17 @@ function snapAngleValue(angle: number, targets: number[], threshold: number): nu
   return angle;
 }
 
+function getInstructionPrompt(level: 1 | 2, gamePhase: "normal" | "monster" | "platinum") {
+  if (gamePhase === "platinum") {
+    return level === 1
+      ? "Type the exact angle, then press Fire."
+      : "Find the missing angle, type the exact answer, then press Fire.";
+  }
+  return level === 1
+    ? "Drag the cannon to aim, then press Fire."
+    : "Find the missing angle. Drag the cannon to aim, then press Fire.";
+}
+
 function getAngleType(deg: number): { label: string; color: string } {
   const a = ((deg % 360) + 360) % 360; // normalise to [0, 360) so -90 → 270 (REFLEX)
   if (a < 0.5 || a > 359.5)      return { label: "ZERO",          color: "#64748b" };
@@ -155,6 +166,17 @@ function rotatePoint(x: number, y: number, deg: number) {
   };
 }
 
+function pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  const cx = x1 + t * dx;
+  const cy = y1 + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
 function isPointOnCannon(svgX: number, svgY: number, aimAngle: number) {
   const localX = svgX - CX;
   const localY = svgY - CY;
@@ -171,6 +193,11 @@ function isPointOnCannon(svgX: number, svgY: number, aimAngle: number) {
     pointInRect(barrelLocal.x, barrelLocal.y, 42, -11, 16, 22);
 
   return onBase || onBarrel;
+}
+
+function isPointOnAimRay(svgX: number, svgY: number, aimAngle: number) {
+  const rayEnd = polarToXY(CX, CY, aimAngle, BEAM_LEN);
+  return pointToSegmentDistance(svgX, svgY, CX, CY, rayEnd.x, rayEnd.y) <= 18;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -622,11 +649,14 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
       onChange(value.slice(0, -1));
     } else if (key === "±") {
       if (value.startsWith("-")) onChange(value.slice(1));
-      else if (value !== "" && value !== "0") onChange("-" + value);
+      else if (value === "" || value === "0") onChange("-0");
+      else onChange("-" + value);
     } else if (key === ".") {
       if (!value.includes(".")) onChange(value === "" ? "0." : value + ".");
     } else {
-      onChange(value === "0" ? key : value + key);
+      if (value === "0") onChange(key);
+      else if (value === "-0") onChange(`-${key}`);
+      else onChange(value + key);
     }
   }
 
@@ -887,13 +917,15 @@ export default function ArcadeAngleScreen() {
         next = val.slice(0, -1);
       } else if (isMinus) {
         if (val.startsWith("-")) next = val.slice(1);
-        else if (val !== "" && val !== "0") next = "-" + val;
-        else return;
+        else if (val === "" || val === "0") next = "-0";
+        else next = "-" + val;
       } else if (isDecimal) {
         if (val.includes(".")) return;
         next = val === "" ? "0." : val + ".";
       } else {
-        next = val === "0" ? k : val + k;
+        if (val === "0") next = k;
+        else if (val === "-0") next = `-${k}`;
+        else next = val + k;
       }
       keypadValueRef.current = next;
       handleKeypadChangeRef.current(next);
@@ -1044,7 +1076,7 @@ export default function ArcadeAngleScreen() {
     const SNAP_TARGETS = level === 1
       ? [-180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90, 120, 135, 150, 180]
       : [q.hiddenAngleDeg];
-    const snapped = snapAngleValue(angle, SNAP_TARGETS, 3);
+    const snapped = snapAngleValue(angle, SNAP_TARGETS, 5);
     if (snapped !== angle) {
       if (snapped !== gazeAngleRef.current) playSnap();
       angle = snapped;
@@ -1101,7 +1133,8 @@ export default function ArcadeAngleScreen() {
     if (gamePhase === "platinum") return;
     if (!svgRef.current) return;
     const { x, y } = toSVGPoint(svgRef.current, e.clientX, e.clientY);
-    if (!isPointOnCannon(x, y, revealGaze)) return;
+    const canDragFromRay = isAiming && isPointOnAimRay(x, y, aimForBeam);
+    if (!isPointOnCannon(x, y, revealGaze) && !canDragFromRay) return;
     e.preventDefault();
     lastTickAngleRef.current = -999;
     lastPointerAngleRef.current = null; // reset so first point sets the base
@@ -1307,6 +1340,10 @@ export default function ArcadeAngleScreen() {
     }
     setAnswer(v);
     if (!sceneBusy && gamePhase !== "platinum") {
+      if (v === "" || v === "-" || v === "." || v === "-.") {
+        setGazeAngle(currentQ.startAngleDeg ?? 0);
+        return;
+      }
       const num = parseFloat(v);
       if (!isNaN(num)) {
         let clamped = num;
@@ -1415,8 +1452,8 @@ export default function ArcadeAngleScreen() {
   const targetX = CX + (fh.x - CX) * deployT;
   const targetY = CY + (fh.y - CY) * deployT;
   const promptText = isPlatinum && !showSceneActors && level === 2
-    ? "Find the missing angle."
-    : currentQ.prompt;
+    ? "Find the missing angle, type the exact number, then shoot the target."
+    : getInstructionPrompt(level, gamePhase);
   const displayPrompt = panelVisible ? promptText.slice(0, Math.max(typeIdx, 0)) : "";
   const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
@@ -1874,7 +1911,9 @@ export default function ArcadeAngleScreen() {
             {monsterRoundName}
           </div>
           <div className="mt-5 text-lg tracking-wide" style={{ color: isPlatinum ? "#94a3b8" : "#d8b4fe" }}>
-            {isPlatinum ? "Type blind — one shot only!" : "Drag to aim — no angle shown!"}
+            {isPlatinum
+              ? "Type the exact angle, then press Fire."
+              : "Drag the cannon to aim, then press Fire."}
           </div>
           <div className="mt-2 text-xl text-yellow-400 font-black">Destroy 10 targets 🎯</div>
         </div>

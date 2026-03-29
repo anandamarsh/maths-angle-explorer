@@ -63,7 +63,7 @@ const L1_KEY_ANGLES = [
 
 export function makeL1Question(): AngleQuestion {
   const target = pick(L1_KEY_ANGLES);
-  const prompt = "Target spotted. Rotate and shoot.";
+  const prompt = "Drag the cannon to aim, then press Fire.";
 
   return {
     id: nextId(),
@@ -145,7 +145,7 @@ export function makeL2Question(): AngleQuestion {
   });
 
   const dividerAngles = Array.from(new Set([0, ...sectorArcs.map((s) => s.toAngle)])).filter((a) => a < 360);
-  const prompt = "Rotate the cannon to shoot the target.";
+  const prompt = "Find the missing angle. Drag the cannon to aim, then press Fire.";
 
   return {
     id: nextId(),
