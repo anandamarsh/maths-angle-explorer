@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "lsof -ti :4002 | xargs kill -9 2>/dev/null; vite",
+    "prebuild": "node scripts/stamp-manifest.mjs stamp",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/stamp-manifest.mjs restore",
     "lint": "eslint .",
     "preview": "vite preview"
   },

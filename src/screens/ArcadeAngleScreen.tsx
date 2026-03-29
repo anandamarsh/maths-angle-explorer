@@ -1458,6 +1458,7 @@ export default function ArcadeAngleScreen() {
   const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
   const activeArcRadius = level === 2 ? getMissingSectorRadius(currentQ) ?? 52 : 52;
+  const arcSweep = (revealedAngle ?? aimForBeam) - baseAngle;
   const hasStartedL2Interaction = level === 2
     && (dragging || answer.trim() !== "" || Math.abs(gazeAngle - baseAngle) > 0.5 || isFiring !== null || spinAnim !== null);
 
@@ -1650,10 +1651,10 @@ export default function ArcadeAngleScreen() {
               </g>
             )}
 
-            {/* Live angle label — rendered above the beam/cannon; hidden in monster round */}
-            {(dragging || revealedAngle !== null || spinAnim !== null) && !isFiring && !isMonster && introPhase === "ready" && (
+            {/* Show angle measure whenever the visible arc has a non-zero sweep */}
+            {isAiming && introPhase === "ready" && Math.abs(arcSweep) >= 0.5 && (
               <LiveAngleLabel
-                gazeAngle={gazeAngle}
+                gazeAngle={aimForBeam}
                 revealed={revealedAngle !== null}
                 answerDeg={revealedAngle ?? currentQ.answer}
                 baseAngle={baseAngle}
