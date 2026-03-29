@@ -1661,45 +1661,40 @@ export default function ArcadeAngleScreen() {
             )}
           </svg>
 
-          {/* ── Landscape: prompt bar at bottom of SVG area (hidden in portrait) ── */}
-          <div className="hidden landscape:block shrink-0 z-20 py-2"
-            style={{ background: "rgba(2,6,23,0.7)", borderTop: "1px solid rgba(56,189,248,0.12)",
-              minHeight: "3rem", paddingLeft: "7rem", paddingRight: "0.75rem" }}>
-            {currentQ.promptLines && currentQ.subAnswers ? (
-              <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
-                {panelVisible && currentQ.promptLines.map((line, i) => {
-                  const isDone = i < subStep;
-                  const isCurrent = i === subStep;
-                  return (
-                    <div key={i} className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
-                      <ColoredPrompt text={line} className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
-                      <span className="text-slate-400">=</span>
-                      {isDone ? (
-                        <span className="text-green-400 font-bold w-8 text-right">{subAnswers[i]}°</span>
-                      ) : isCurrent ? (
-                        <span className="text-yellow-300 font-bold w-8 text-right">{subAnswers[i] || "?"}</span>
-                      ) : <span className="w-8" />}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold relative">
-                {/* invisible placeholder keeps height constant when displayPrompt is empty */}
-                <span className="opacity-0 pointer-events-none select-none" aria-hidden="true">&nbsp;</span>
-                {displayPrompt && (
-                  <span className="absolute inset-0 px-3 py-2">
-                    <ColoredPrompt text={displayPrompt} />
-                  </span>
-                )}
-              </div>
-            )}
-            {showDevAnswer && (
-              <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
-                Ans: {currentQ.answer}°
-              </div>
-            )}
-          </div>
+          {isMobileLandscape && (
+            <div className="shrink-0 z-20 py-2"
+              style={{ background: "rgba(2,6,23,0.7)", borderTop: "1px solid rgba(56,189,248,0.12)",
+                minHeight: "3rem", paddingLeft: "7rem", paddingRight: "0.75rem" }}>
+              {currentQ.promptLines && currentQ.subAnswers ? (
+                <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
+                  {panelVisible && currentQ.promptLines.map((line, i) => {
+                    const isDone = i < subStep;
+                    const isCurrent = i === subStep;
+                    return (
+                      <div key={i} className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
+                        <ColoredPrompt text={line} className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
+                        <span className="text-slate-400">=</span>
+                        {isDone ? (
+                          <span className="text-green-400 font-bold w-8 text-right">{subAnswers[i]}°</span>
+                        ) : isCurrent ? (
+                          <span className="text-yellow-300 font-bold w-8 text-right">{subAnswers[i] || "?"}</span>
+                        ) : <span className="w-8" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold">
+                  <ColoredPrompt text={displayPrompt} />
+                </div>
+              )}
+              {showDevAnswer && (
+                <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
+                  Ans: {currentQ.answer}°
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 
@@ -1773,11 +1768,45 @@ export default function ArcadeAngleScreen() {
             })}
           </div>
 
-          {(isMonster || isPlatinum) && (
-            <div className="shrink-0 text-xs font-black uppercase tracking-widest px-2 py-0.5 mx-2 mb-1 rounded-full text-center"
-              style={isPlatinum ? { background: "rgba(71,85,105,0.85)", color: "#e2e8f0", border: "1px solid #94a3b8" }
-                : { background: "rgba(161,122,6,0.85)", color: "#fef08a", border: "1px solid #fbbf24" }}>
-              {isPlatinum ? "🎯" : "⚡"} {monsterRoundName}
+          {!isMobileLandscape && (
+            <div className="flex-1 min-h-0 flex flex-col justify-center px-1 py-4">
+            <div className="flex flex-col gap-3">
+              {currentQ.promptLines && currentQ.subAnswers ? (
+                <div className="arcade-panel flex flex-col gap-1 px-2 py-2 text-[10px]">
+                  {panelVisible && currentQ.promptLines.map((line, i) => {
+                    const isDone = i < subStep;
+                    const isCurrent = i === subStep;
+                    return (
+                      <div key={i} className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}>
+                        <ColoredPrompt text={line} className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`} />
+                        <span className="text-slate-400">=</span>
+                        {isDone ? (
+                          <span className="text-green-400 font-bold w-8 text-right">{subAnswers[i]}°</span>
+                        ) : isCurrent ? (
+                          <span className="text-yellow-300 font-bold w-8 text-right">{subAnswers[i] || "?"}</span>
+                        ) : <span className="w-8" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="arcade-panel px-3 py-3 text-sm leading-6 text-white font-bold text-left">
+                  <ColoredPrompt text={displayPrompt} />
+                </div>
+              )}
+              {showDevAnswer && (
+                <div className="arcade-panel px-2 py-1 text-[10px] font-black text-yellow-300">
+                  Ans: {currentQ.answer}°
+                </div>
+              )}
+              {(isMonster || isPlatinum) && (
+                <div className="text-xs font-black uppercase tracking-widest px-2 py-1 rounded-full text-center"
+                  style={isPlatinum ? { background: "rgba(71,85,105,0.85)", color: "#e2e8f0", border: "1px solid #94a3b8" }
+                    : { background: "rgba(161,122,6,0.85)", color: "#fef08a", border: "1px solid #fbbf24" }}>
+                  {isPlatinum ? "🎯" : "⚡"} {monsterRoundName}
+                </div>
+              )}
+            </div>
             </div>
           )}
 
