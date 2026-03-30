@@ -1102,6 +1102,9 @@ export default function ArcadeAngleScreen() {
     let frameId = 0;
     let startedAt = 0;
     const delayMs = 2000;
+    const holdMs = 1000;
+    const travelMs = 1400;
+    const cycleMs = holdMs + travelMs + holdMs + travelMs;
     const revealTimer = window.setTimeout(() => setTutorialHintVisible(true), delayMs);
     const hintFrom = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
     const targetDelta = shortestSignedAngleDelta(hintFrom, currentQ.hiddenAngleDeg);
@@ -1113,7 +1116,24 @@ export default function ArcadeAngleScreen() {
       if (!startedAt) startedAt = now;
       const elapsed = now - startedAt;
       const activeElapsed = Math.max(0, elapsed - delayMs);
-      const wave = elapsed < delayMs ? 0 : (1 - Math.cos(activeElapsed / 520)) / 2;
+      let wave = 0;
+
+      if (elapsed >= delayMs) {
+        const cyclePos = activeElapsed % cycleMs;
+
+        if (cyclePos < holdMs) {
+          wave = 0;
+        } else if (cyclePos < holdMs + travelMs) {
+          const t = (cyclePos - holdMs) / travelMs;
+          wave = (1 - Math.cos(Math.PI * t)) / 2;
+        } else if (cyclePos < holdMs + travelMs + holdMs) {
+          wave = 1;
+        } else {
+          const t = (cyclePos - holdMs - travelMs - holdMs) / travelMs;
+          wave = (1 + Math.cos(Math.PI * t)) / 2;
+        }
+      }
+
       setTutorialAngle(hintFrom + hintDelta * wave);
       frameId = requestAnimationFrame(animate);
     };
@@ -2338,34 +2358,34 @@ export default function ArcadeAngleScreen() {
       {flash?.icon && typeof document !== "undefined" && createPortal(
         <div className="pointer-events-none fixed z-[9999]" style={{ left: "16px", top: "16px" }}>
           {flash.ok ? (
-            <div style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "9999px",
-              overflow: "hidden",
-              animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
-              filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
-            }}>
-              <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                <circle cx="60" cy="60" r="54" fill="#14532d" />
-                <path d="M30 62 L50 82 L90 38" fill="none" stroke="#ffffff" strokeWidth="13"
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+            <svg
+              viewBox="0 0 120 120"
+              width="64"
+              height="64"
+              style={{
+                display: "block",
+                animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
+                filter: "drop-shadow(0 0 12px #4ade80) drop-shadow(0 0 24px #16a34a)",
+              }}
+            >
+              <circle cx="60" cy="60" r="54" fill="#14532d" />
+              <path d="M30 62 L50 82 L90 38" fill="none" stroke="#ffffff" strokeWidth="13"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           ) : (
-            <div style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "9999px",
-              overflow: "hidden",
-              animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
-              filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
-            }}>
-              <svg viewBox="0 0 120 120" width="64" height="64" style={{ display: "block" }}>
-                <circle cx="60" cy="60" r="54" fill="#7f1d1d" />
-                <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#ffffff" strokeWidth="13" strokeLinecap="round" />
-              </svg>
-            </div>
+            <svg
+              viewBox="0 0 120 120"
+              width="64"
+              height="64"
+              style={{
+                display: "block",
+                animation: "icon-drop-left 1.15s cubic-bezier(0.22,0.72,0.2,1) forwards",
+                filter: "drop-shadow(0 0 12px #f87171) drop-shadow(0 0 24px #b91c1c)",
+              }}
+            >
+              <circle cx="60" cy="60" r="54" fill="#7f1d1d" />
+              <path d="M38 38 L82 82 M82 38 L38 82" fill="none" stroke="#ffffff" strokeWidth="13" strokeLinecap="round" />
+            </svg>
           )}
         </div>,
         document.body,
