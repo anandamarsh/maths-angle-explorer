@@ -1160,7 +1160,7 @@ export default function ArcadeAngleScreen() {
       const url = URL.createObjectURL(blob);
 
       const img = new Image();
-      const pngUrl = await new Promise<string>((resolve, reject) => {
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
         img.onload = () => {
           const scale = 2;
           const canvas = document.createElement("canvas");
@@ -1174,7 +1174,13 @@ export default function ArcadeAngleScreen() {
           ctx.setTransform(scale, 0, 0, scale, 0, 0);
           ctx.drawImage(img, 0, 0, W, H);
           URL.revokeObjectURL(url);
-          resolve(canvas.toDataURL("image/png"));
+          canvas.toBlob((blobOut) => {
+            if (!blobOut) {
+              reject(new Error("Unable to encode PNG"));
+              return;
+            }
+            resolve(blobOut);
+          }, "image/png");
         };
         img.onerror = () => {
           URL.revokeObjectURL(url);
@@ -1184,12 +1190,38 @@ export default function ArcadeAngleScreen() {
       });
 
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const fileName = `angle-explorer-scene-${stamp}.png`;
+      const nav = navigator as Navigator & {
+        share?: (data: ShareData) => Promise<void>;
+        canShare?: (data?: ShareData) => boolean;
+      };
+      const file = new File([pngBlob], fileName, { type: "image/png" });
+      const shareData: ShareData = {
+        files: [file],
+        title: "Angle Explorer scene",
+        text: "Save or share this Angle Explorer scene.",
+      };
+
+      if (typeof nav.share === "function" && (!nav.canShare || nav.canShare(shareData))) {
+        try {
+          await nav.share(shareData);
+          showFlash("Image ready to share", true);
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+        }
+      }
+
+      const pngUrl = URL.createObjectURL(pngBlob);
       const link = document.createElement("a");
       link.href = pngUrl;
-      link.download = `angle-explorer-scene-${stamp}.png`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();
+      URL.revokeObjectURL(pngUrl);
       showFlash("Scene captured", true);
     } catch {
       showFlash("Capture failed", false);
