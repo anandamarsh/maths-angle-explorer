@@ -14,6 +14,12 @@
     { "src": "icon-192.png",         "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png",         "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
+  "screenshots": [
+    "screenshots/angle-explorer-scene-2026-03-30T06-02-40-492Z.png",
+    "screenshots/angle-explorer-scene-2026-03-30T06-04-01-876Z.png",
+    "screenshots/angle-explorer-scene-2026-03-30T06-04-39-546Z.png",
+    "screenshots/angle-explorer-scene-2026-03-30T06-05-23-181Z.png"
+  ],
   "tags": ["angles", "geometry", "complementary", "supplementary", "vertical"],
   "subjects": ["maths"],
   "skills": [

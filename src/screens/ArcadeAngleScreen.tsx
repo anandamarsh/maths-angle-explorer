@@ -1129,6 +1129,66 @@ export default function ArcadeAngleScreen() {
     setShowShareDrawer((s) => !s);
   }
 
+  async function handleCaptureScene() {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    try {
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+      clone.setAttribute("width", String(W));
+      clone.setAttribute("height", String(H));
+
+      const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      bg.setAttribute("x", "0");
+      bg.setAttribute("y", "0");
+      bg.setAttribute("width", String(W));
+      bg.setAttribute("height", String(H));
+      bg.setAttribute("fill", phaseBg.bg);
+      clone.insertBefore(bg, clone.firstChild);
+
+      const svgText = new XMLSerializer().serializeToString(clone);
+      const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const img = new Image();
+      const pngUrl = await new Promise<string>((resolve, reject) => {
+        img.onload = () => {
+          const scale = 2;
+          const canvas = document.createElement("canvas");
+          canvas.width = W * scale;
+          canvas.height = H * scale;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas context unavailable"));
+            return;
+          }
+          ctx.setTransform(scale, 0, 0, scale, 0, 0);
+          ctx.drawImage(img, 0, 0, W, H);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("Unable to render scene snapshot"));
+        };
+        img.src = url;
+      });
+
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const link = document.createElement("a");
+      link.href = pngUrl;
+      link.download = `angle-explorer-scene-${stamp}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showFlash("Scene captured", true);
+    } catch {
+      showFlash("Capture failed", false);
+    }
+  }
+
   // ── Desktop keyboard → keypad binding ──────────────────────────────────────
   const keypadValueRef        = useRef("");
   const handleKeypadChangeRef = useRef((_v: string) => {});
@@ -2345,6 +2405,15 @@ export default function ArcadeAngleScreen() {
           <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
               fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        <button onClick={handleCaptureScene} title="Capture scene"
+          className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+          style={{ background: "linear-gradient(180deg,#0f766e,#115e59)", borderColor: "#5eead4" }}>
+          <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+            <path d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+              stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="12.5" r="3.25" stroke="white" strokeWidth="2" />
           </svg>
         </button>
       </div>
