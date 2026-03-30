@@ -41,8 +41,8 @@
   "levels": {
     "1": {
       "prompts": {
-        "normal": "Rotate the canon head to aim, then hit Fire.",
-        "platinum": "Enter the angle to aim, then hit Fire."
+        "normal": "Rotate the canon head to aim, then fire.",
+        "platinum": "Enter the angle to aim, then fire."
       },
       "angleTypes": {
         "ZERO": "ZERO",
@@ -96,7 +96,7 @@
       ],
       "badgeIcon": "⚡",
       "announceIcon": "💥",
-      "instruction": "Enter the angle to aim, then hit Fire.",
+      "instruction": "Enter the angle to aim, then fire.",
       "announceMessage": "Now enter the angle with the keypad.",
       "destroyTargets": "Destroy {count} targets 🎯",
       "victorySubtitle": "💥 Barrage Survived! 💥"
