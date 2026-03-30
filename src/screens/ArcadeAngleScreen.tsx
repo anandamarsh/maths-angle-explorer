@@ -2476,8 +2476,7 @@ export default function ArcadeAngleScreen() {
       {isCompactViewport ? (
         <div className="absolute z-[60] flex flex-col items-start gap-1.5" style={{ bottom: "1rem", left: "1rem" }}>
           <button onClick={handleCaptureScene} title="Capture scene"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-            style={{ background: "linear-gradient(180deg,#0f766e,#115e59)", borderColor: "#5eead4" }}>
+            className="arcade-button w-10 h-10 flex items-center justify-center p-2">
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               <path d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -2528,8 +2527,7 @@ export default function ArcadeAngleScreen() {
             </svg>
           </button>
           <button onClick={handleCaptureScene} title="Capture scene"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-            style={{ background: "linear-gradient(180deg,#0f766e,#115e59)", borderColor: "#5eead4" }}>
+            className="arcade-button w-10 h-10 flex items-center justify-center p-2">
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               <path d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
                 stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
