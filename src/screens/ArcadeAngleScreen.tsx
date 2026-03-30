@@ -278,38 +278,9 @@ function CannonDragHint({
   startAngle: number;
   hintAngle: number;
 }) {
-  const delta = shortestSignedAngleDelta(startAngle, hintAngle);
-  const absAngle = Math.abs(delta);
-  const arcR = 86;
-  const start = polarToXY(CX, CY, startAngle, arcR);
-  const end = polarToXY(CX, CY, hintAngle, arcR);
-  const largeArc = absAngle > 180 ? 1 : 0;
-  const sweepFlag = delta >= 0 ? 0 : 1;
-  const arcD = absAngle < 1
-    ? ""
-    : `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${arcR} ${arcR} 0 ${largeArc} ${sweepFlag} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
-  const tipInset = Math.min(14, Math.max(8, absAngle * 0.18));
-  const tipAngle = hintAngle - (delta >= 0 ? 1 : -1) * Math.min(tipInset, absAngle / 2 || 0);
-  const tip = polarToXY(CX, CY, tipAngle, arcR);
-  const tangentAngle = delta >= 0 ? tipAngle + 90 : tipAngle - 90;
+  void startAngle;
   return (
     <g style={{ pointerEvents: "none" }}>
-      {arcD && (
-        <path
-          d={arcD}
-          fill="none"
-          stroke="#67e8f9"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeDasharray="6 5"
-          style={{ animation: "cannon-drag-arrow 1.6s ease-in-out infinite" }}
-        />
-      )}
-      {arcD && (
-        <g transform={`translate(${tip.x}, ${tip.y}) rotate(${90 - tangentAngle})`} style={{ animation: "cannon-drag-arrow 1.6s ease-in-out infinite" }}>
-          <path d="M 0 -7 L 6 4 L 0 2 L -6 4 Z" fill="#67e8f9" />
-        </g>
-      )}
       <g transform={`translate(${CX}, ${CY})`}>
         <CannonSprite aimAngle={hintAngle} dragging={false} variant="ghost" showFingerHint />
       </g>
@@ -593,11 +564,12 @@ function CoordAxes() {
 }
 
 /** Bright aim beam + sector arc — shown while actively aiming or firing. */
-function GazeBeamDrag({ gazeAngle, level: _level, baseAngle = 0, arcRadiusOverride }: {
+function GazeBeamDrag({ gazeAngle, level: _level, baseAngle = 0, arcRadiusOverride, dottedRay = false }: {
   gazeAngle: number;
   level: 1 | 2 | 3;
   baseAngle?: number;
   arcRadiusOverride?: number;
+  dottedRay?: boolean;
 }) {
   const ep = polarToXY(CX, CY, gazeAngle, BEAM_LEN);
   const beamColor = "#38bdf8";
@@ -638,7 +610,16 @@ function GazeBeamDrag({ gazeAngle, level: _level, baseAngle = 0, arcRadiusOverri
 
   return (
     <g style={{ pointerEvents: "none" }}>
-      {arcD && <path d={arcD} stroke={beamColor} strokeWidth={2.2} fill="none" strokeLinecap="round" />}
+      {arcD && (
+        <path
+          d={arcD}
+          stroke={beamColor}
+          strokeWidth={2.2}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={dottedRay ? "7 6" : undefined}
+        />
+      )}
       {compArcD && <path d={compArcD} stroke="#22c55e" strokeWidth={2} fill="none" strokeLinecap="round" strokeDasharray="5 4" opacity={0.75} />}
       {suppArcD && <path d={suppArcD} stroke="#a78bfa" strokeWidth={2} fill="none" strokeLinecap="round" strokeDasharray="5 4" opacity={0.75} />}
       {/* Aim ray */}
@@ -646,6 +627,7 @@ function GazeBeamDrag({ gazeAngle, level: _level, baseAngle = 0, arcRadiusOverri
         stroke={beamColor} strokeWidth={7} strokeLinecap="round" opacity={0.18} />
       <line x1={CX} y1={CY} x2={ep.x} y2={ep.y}
         stroke={beamColor} strokeWidth={2.8} strokeLinecap="round"
+        strokeDasharray={dottedRay ? "7 6" : undefined}
         style={{ filter: `drop-shadow(0 0 5px ${beamColor})` }} />
       <circle cx={ep.x} cy={ep.y} r={7} fill={beamColor} fillOpacity={0.2} stroke={beamColor} strokeWidth={2} />
       <circle cx={ep.x} cy={ep.y} r={3.2} fill={beamColor} />
@@ -1101,8 +1083,8 @@ export default function ArcadeAngleScreen() {
 
     let frameId = 0;
     let startedAt = 0;
-    const delayMs = 2000;
-    const holdMs = 1000;
+    const delayMs = 1000;
+    const holdMs = 500;
     const travelMs = 1400;
     const cycleMs = holdMs + travelMs + holdMs + travelMs;
     const revealTimer = window.setTimeout(() => setTutorialHintVisible(true), delayMs);
@@ -2097,6 +2079,7 @@ export default function ArcadeAngleScreen() {
                 gazeAngle={tutorialAngle}
                 level={level}
                 baseAngle={0}
+                dottedRay
               />
             )}
 
