@@ -4,6 +4,8 @@
 // Level 1 — free 360° aiming
 // Level 2 — missing-angle sets that total 90°, 180°, or 360°
 
+import { texts } from "../texts";
+
 export interface KnownEgg {
   angleDeg: number; // angle from dino's right (maths convention, CCW)
   label: string;    // shown next to the egg in the scene
@@ -63,7 +65,7 @@ const L1_KEY_ANGLES = [
 
 export function makeL1Question(): AngleQuestion {
   const target = pick(L1_KEY_ANGLES);
-  const prompt = "Drag the cannon to aim, then press Fire.";
+  const prompt = texts.levels["1"].prompts.normal;
 
   return {
     id: nextId(),
@@ -145,7 +147,7 @@ export function makeL2Question(): AngleQuestion {
   });
 
   const dividerAngles = Array.from(new Set([0, ...sectorArcs.map((s) => s.toAngle)])).filter((a) => a < 360);
-  const prompt = "Find the missing angle. Drag the cannon to aim, then press Fire.";
+  const prompt = texts.levels["2"].prompts.normal;
 
   return {
     id: nextId(),

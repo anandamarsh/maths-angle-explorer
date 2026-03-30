@@ -9,13 +9,14 @@ import {
   WhatsappIcon,
   LinkedinIcon,
 } from 'react-share';
+import { texts } from '../texts';
 
-const SHARE_TITLE      = 'Check out this maths game on Interactive Maths!';
-const SHARE_URL        = 'https://interactive-maths.vercel.app/';
+const SHARE_TITLE      = texts.generic.social.shareTitle;
+const SHARE_URL        = texts.generic.shellShareUrl;
 const CUSDIS_HOST      = 'https://cusdis.com';
 const CUSDIS_APP_ID    = 'b7cf3bec-b283-485f-9db9-8e7f3cfac3c2';
-const COMMENTS_PAGE_ID = 'interactive-maths';
-const COMMENTS_TITLE   = 'Interactive Maths';
+const COMMENTS_PAGE_ID = texts.generic.social.commentsPageId;
+const COMMENTS_TITLE   = texts.generic.social.commentsTitle;
 
 function ensureCusdisLoaded() {
   const existing = document.querySelector('script[data-cusdis-script="true"]');

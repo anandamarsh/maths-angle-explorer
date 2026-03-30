@@ -28,6 +28,7 @@ import {
   ensureAudioReady,
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
+import { formatText, texts } from "../texts";
 // @ts-expect-error — JS component
 import { SocialShare, SocialComments } from "../components/Social";
 
@@ -35,23 +36,8 @@ import { SocialShare, SocialComments } from "../components/Social";
 
 const IS_DEV = import.meta.env.DEV;
 
-const MONSTER_ROUND_NAMES = [
-  "BARRAGE MODE",
-  "TITAN FUSILLADE",
-  "SHOCK AND AWE",
-  "ARTILLERY STORM",
-  "BLACKOUT ROUND",
-  "THUNDER VOLLEY",
-];
-
-const PLATINUM_ROUND_NAMES = [
-  "PLATINUM STRIKE",
-  "SILVER BULLET",
-  "PRECISION SHOT",
-  "DEAD EYE",
-  "SNIPER ELITE",
-  "ONE SHOT ONE KILL",
-];
+const MONSTER_ROUND_NAMES = texts.rounds.monster.names;
+const PLATINUM_ROUND_NAMES = texts.rounds.platinum.names;
 
 const LEVEL_BG: Record<string, { bg: string; glow: string; tint: string }> = {
   "1-normal":   { bg: "#080e1c", glow: "#1e3a5f", tint: "transparent" },
@@ -76,13 +62,16 @@ const SHOT_MS = 380;
 const SPIN_MS = 600;
 const HIT_RESOLVE_MS = 1000;
 const PLATINUM_REVEAL_MS = 500;
+const ROUND_ANNOUNCE_MS = 4200;
 const L1_TARGET_RADIUS = 100;
 const MIN_AIM_RADIUS = 40;
-const LEVEL_TARGET_COUNT = 10;
-const SHELL_SHARE_URL = "https://interactive-maths.vercel.app/";
+const LEVEL_TARGET_COUNT = texts.rounds.targetCount;
+const SHELL_SHARE_URL = texts.generic.shellShareUrl;
 const ANGLE_HIT_TOL = 7.5;  // drag/snap tolerance
 const TYPED_TOL = 0.55;     // typed answer must be exact (allows ±0.5 for decimal rounding)
 const TICK_INTERVAL = 10;
+
+type Level2SetKindKey = keyof typeof texts.levels["2"]["setKinds"];
 
 function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3;
@@ -119,24 +108,19 @@ function snapAngleValue(angle: number, targets: number[], threshold: number): nu
 }
 
 function getInstructionPrompt(level: 1 | 2, gamePhase: "normal" | "monster" | "platinum") {
-  if (gamePhase === "platinum") {
-    return level === 1
-      ? "Type the exact angle, then press Fire."
-      : "Find the missing angle, type the exact answer, then press Fire.";
-  }
-  return level === 1
-    ? "Drag the cannon to aim, then press Fire."
-    : "Find the missing angle. Drag the cannon to aim, then press Fire.";
+  return gamePhase === "normal"
+    ? texts.levels[String(level) as "1" | "2"].prompts.normal
+    : texts.levels[String(level) as "1" | "2"].prompts.platinum;
 }
 
 function getAngleType(deg: number): { label: string; color: string } {
   const a = ((deg % 360) + 360) % 360; // normalise to [0, 360) so -90 → 270 (REFLEX)
-  if (a < 0.5 || a > 359.5)      return { label: "ZERO",          color: "#64748b" };
-  if (Math.abs(a - 90) < 2)      return { label: "RIGHT ANGLE",   color: "#22c55e" };
-  if (Math.abs(a - 180) < 2)     return { label: "STRAIGHT",      color: "#a78bfa" };
-  if (a > 180)                   return { label: "REFLEX",         color: "#f97316" };
-  if (a < 90)                    return { label: "ACUTE",          color: "#38bdf8" };
-  return                                { label: "OBTUSE",         color: "#c084fc" };
+  if (a < 0.5 || a > 359.5)      return { label: texts.levels["1"].angleTypes.ZERO, color: "#64748b" };
+  if (Math.abs(a - 90) < 2)      return { label: texts.levels["1"].angleTypes.RIGHT_ANGLE, color: "#22c55e" };
+  if (Math.abs(a - 180) < 2)     return { label: texts.levels["1"].angleTypes.STRAIGHT, color: "#a78bfa" };
+  if (a > 180)                   return { label: texts.levels["1"].angleTypes.REFLEX, color: "#f97316" };
+  if (a < 90)                    return { label: texts.levels["1"].angleTypes.ACUTE, color: "#38bdf8" };
+  return                                { label: texts.levels["1"].angleTypes.OBTUSE, color: "#c084fc" };
 }
 
 function toSVGPoint(svg: SVGSVGElement, clientX: number, clientY: number) {
@@ -195,6 +179,10 @@ function isPointOnCannon(svgX: number, svgY: number, aimAngle: number) {
   return onBase || onBarrel;
 }
 
+function isPointOnCannonBolt(svgX: number, svgY: number) {
+  return pointInCircle(svgX, svgY, CX, CY, 14);
+}
+
 function isPointOnAimRay(svgX: number, svgY: number, aimAngle: number) {
   const rayEnd = polarToXY(CX, CY, aimAngle, BEAM_LEN);
   return pointToSegmentDistance(svgX, svgY, CX, CY, rayEnd.x, rayEnd.y) <= 18;
@@ -203,37 +191,162 @@ function isPointOnAimRay(svgX: number, svgY: number, aimAngle: number) {
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 /** Retro arcade cannon centred at origin. Barrel rotates with aimAngle. */
-function CannonSprite({ aimAngle, dragging }: { aimAngle: number; dragging: boolean }) {
+function CannonSprite({
+  aimAngle,
+  dragging,
+  variant = "normal",
+}: {
+  aimAngle: number;
+  dragging: boolean;
+  variant?: "normal" | "ghost";
+}) {
   const barrelRot = -aimAngle; // math CCW → SVG CW
+  const isGhost = variant === "ghost";
+  const wheelFill = "#052e16";
+  const wheelStroke = "#15803d";
+  const wheelHub = "#14532d";
+  const wheelLine = "#166534";
+  const bodyFill = "#052e16";
+  const bodyStroke = "#16a34a";
+  const barrelStroke = isGhost ? "#67e8f9" : "#4ade80";
+  const pivotFill = "#14532d";
+  const pivotStroke = isGhost ? "#67e8f9" : "#22c55e";
+  const pivotCore = isGhost ? "#67e8f9" : "#86efac";
   return (
-    <g>
+    <g
+      opacity={isGhost ? 0.82 : 1}
+      style={isGhost
+        ? { filter: "drop-shadow(0 0 10px rgba(103,232,249,0.42))" }
+        : undefined}
+    >
       {/* Shadow */}
       <ellipse cx={0} cy={17} rx={28} ry={7} fill="rgba(0,0,0,0.45)" />
       {/* Wheels */}
       {([-14, 14] as const).map((wx, i) => (
         <g key={i}>
-          <circle cx={wx} cy={13} r={10} fill="#052e16" stroke="#15803d" strokeWidth={2.5} />
-          <circle cx={wx} cy={13} r={4} fill="#14532d" />
-          <line x1={wx} y1={3} x2={wx} y2={23} stroke="#166534" strokeWidth={1.5} />
-          <line x1={wx - 10} y1={13} x2={wx + 10} y2={13} stroke="#166534" strokeWidth={1.5} />
+          <circle cx={wx} cy={13} r={10} fill={wheelFill} stroke={wheelStroke} strokeWidth={2.5} />
+          <circle cx={wx} cy={13} r={4} fill={wheelHub} />
+          <line x1={wx} y1={3} x2={wx} y2={23} stroke={wheelLine} strokeWidth={1.5} />
+          <line x1={wx - 10} y1={13} x2={wx + 10} y2={13} stroke={wheelLine} strokeWidth={1.5} />
         </g>
       ))}
       {/* Body */}
       <rect x={-20} y={-8} width={40} height={20} rx={5}
-        fill="#052e16" stroke="#16a34a" strokeWidth={2} />
+        fill={bodyFill} stroke={bodyStroke} strokeWidth={2} />
       {/* Barrel (rotates) */}
       <g transform={`rotate(${barrelRot})`}>
         <rect x={2} y={-7} width={48} height={14} rx={4}
-          fill="#052e16" stroke="#4ade80" strokeWidth={2}
-          style={dragging ? { filter: "drop-shadow(0 0 7px #4ade80)" } : undefined} />
+          fill={bodyFill} stroke={barrelStroke} strokeWidth={2}
+          style={dragging ? { filter: `drop-shadow(0 0 7px ${barrelStroke})` } : undefined} />
         {/* Muzzle ring */}
         <rect x={46} y={-8} width={10} height={16} rx={3}
-          fill="#052e16" stroke="#4ade80" strokeWidth={2} />
+          fill={bodyFill} stroke={barrelStroke} strokeWidth={2} />
       </g>
       {/* Pivot hub */}
-      <circle cx={0} cy={0} r={7} fill="#14532d" stroke="#22c55e" strokeWidth={1.5} />
-      <circle cx={0} cy={0} r={3} fill="#86efac" />
+      <circle
+        cx={0}
+        cy={0}
+        r={7}
+        fill={pivotFill}
+        stroke={pivotStroke}
+        strokeWidth={1.5}
+      />
+      <circle cx={0} cy={0} r={3} fill={pivotCore} />
     </g>
+  );
+}
+
+function CannonDragHint({
+  startAngle,
+  hintAngle,
+}: {
+  startAngle: number;
+  hintAngle: number;
+}) {
+  const delta = shortestSignedAngleDelta(startAngle, hintAngle);
+  const absAngle = Math.abs(delta);
+  const arcR = 72;
+  const start = polarToXY(CX, CY, startAngle, arcR);
+  const end = polarToXY(CX, CY, hintAngle, arcR);
+  const largeArc = absAngle > 180 ? 1 : 0;
+  const sweepFlag = delta >= 0 ? 0 : 1;
+  const arcD = absAngle < 1
+    ? ""
+    : `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${arcR} ${arcR} 0 ${largeArc} ${sweepFlag} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+  const tipInset = Math.min(14, Math.max(8, absAngle * 0.18));
+  const tipAngle = hintAngle - (delta >= 0 ? 1 : -1) * Math.min(tipInset, absAngle / 2 || 0);
+  const tip = polarToXY(CX, CY, tipAngle, arcR);
+  const tangentAngle = delta >= 0 ? tipAngle + 90 : tipAngle - 90;
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      {arcD && (
+        <path
+          d={arcD}
+          fill="none"
+          stroke="#67e8f9"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeDasharray="6 5"
+          style={{ animation: "cannon-drag-arrow 1.6s ease-in-out infinite" }}
+        />
+      )}
+      {arcD && (
+        <g transform={`translate(${tip.x}, ${tip.y}) rotate(${90 - tangentAngle})`} style={{ animation: "cannon-drag-arrow 1.6s ease-in-out infinite" }}>
+          <path d="M 0 -7 L 6 4 L 0 2 L -6 4 Z" fill="#67e8f9" />
+        </g>
+      )}
+      <g transform={`translate(${CX}, ${CY})`}>
+        <CannonSprite aimAngle={hintAngle} dragging={false} variant="ghost" />
+      </g>
+    </g>
+  );
+}
+
+function FireButtonHint({ onFire }: { onFire: () => void }) {
+  const [settled, setSettled] = useState(false);
+  const [pressed, setPressed] = useState(false);
+
+  useEffect(() => {
+    setSettled(false);
+    const timer = window.setTimeout(() => setSettled(true), 460);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="absolute bottom-3 right-3 z-[70]">
+      <button
+        type="button"
+        onClick={onFire}
+        onPointerDown={() => setPressed(true)}
+        onPointerUp={() => setPressed(false)}
+        onPointerCancel={() => setPressed(false)}
+        onPointerLeave={() => setPressed(false)}
+        className="arcade-button flex h-10 w-[calc(50%-1px)] min-w-[5.25rem] items-center justify-center"
+        style={{
+          transformOrigin: "bottom right",
+          animation: settled
+            ? "tutorial-fire-pulse 1.05s ease-in-out infinite"
+            : "tutorial-fire-grow 460ms cubic-bezier(0.2,0.9,0.22,1) both",
+          borderColor: "#fde047",
+          boxShadow: "0 0 0 2px rgba(250,204,21,0.36), 0 0 28px rgba(250,204,21,0.72)",
+          zIndex: 70,
+        }}
+      >
+        <span
+          className="flex h-full w-full items-center justify-center"
+          style={{
+            transform: `scale(${pressed ? 0.86 : 1})`,
+            transition: "transform 120ms ease-out",
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="white" className="h-8 w-8">
+            <path d="M12 2C12 2 7 6 7 13H9L7 22L12 19L17 22L15 13H17C17 6 12 2 12 2Z" />
+            <path d="M9 13C9 13 7 14 6 16C7 16 8 15.5 9 15" fill="rgba(255,180,0,0.9)" />
+            <path d="M15 13C15 13 17 14 18 16C17 16 16 15.5 15 15" fill="rgba(255,180,0,0.9)" />
+          </svg>
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -406,17 +519,16 @@ function AngleTypeLabel({ gazeAngle }: { gazeAngle: number }) {
 }
 
 function SetTypeLabel({ label }: { label: string }) {
+  const setKindKey = label as Level2SetKindKey;
+  const setTexts = texts.levels["2"].setKinds[setKindKey];
   const color = label.includes("COMPLEMENTARY")
     ? "#22c55e"
     : label.includes("SUPPLEMENTARY")
       ? "#f97316"
       : "#38bdf8";
-  const sublabel = label === "COMPLEMENTARY"
-    ? "SUM = 90°"
-    : label === "SUPPLEMENTARY"
-      ? "SUM = 180°"
-      : "SUM = 360°";
-  const textW = Math.max(label.length * 9 + 28, sublabel.length * 7 + 24);
+  const displayLabel = setTexts?.label ?? label;
+  const sublabel = setTexts?.sublabel ?? "";
+  const textW = Math.max(displayLabel.length * 9 + 28, sublabel.length * 7 + 24);
   const rectW = textW + 16;
   const rectH = 40;
   const rx = rectH / 2;
@@ -430,7 +542,7 @@ function SetTypeLabel({ label }: { label: string }) {
       <text x={CX} y={rectY + 14} textAnchor="middle" dominantBaseline="middle"
         fontSize={12} fontWeight="900" fontFamily="monospace"
         fill={color} style={{ letterSpacing: "0.06em" }}>
-        {label}
+        {displayLabel}
       </text>
       <text x={CX} y={rectY + 28} textAnchor="middle" dominantBaseline="middle"
         fontSize={9} fontWeight="900" fontFamily="monospace"
@@ -613,21 +725,35 @@ function L2Scene({
 }
 
 /** Highlights numbers in yellow within prompt text. */
-function ColoredPrompt({ text, className = "" }: { text: string; className?: string }) {
+function ColoredPrompt({ text, className = "", hideFirstChar = false }: { text: string; className?: string; hideFirstChar?: boolean }) {
   const parts = text.split(/(\d+\.?\d*)/g);
+  let firstCharPending = hideFirstChar;
   return (
     <span className={className}>
-      {parts.map((p, i) =>
-        /^\d+\.?\d*$/.test(p)
-          ? <span key={i} className="text-yellow-300 font-black">{p}</span>
-          : p
-      )}
+      {parts.map((p, i) => {
+        if (!firstCharPending || p.length === 0) {
+          return /^\d+\.?\d*$/.test(p)
+            ? <span key={i} className="text-yellow-300 font-black">{p}</span>
+            : p;
+        }
+        firstCharPending = false;
+        const firstChar = p[0];
+        const rest = p.slice(1);
+        const isNumber = /^\d+\.?\d*$/.test(p);
+        const numberClass = isNumber ? "text-yellow-300 font-black" : undefined;
+        return (
+          <span key={i} className={numberClass}>
+            <span className="opacity-0">{firstChar}</span>
+            {rest}
+          </span>
+        );
+      })}
     </span>
   );
 }
 
 /** On-screen numeric keypad — replaces the keyboard input. */
-function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef, roundKey, fullWidth = false }: {
+function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled, hideDisplay = false, fireRef, roundKey, fullWidth = false, inviteGlow = false, emphasizeFire = false }: {
   value: string;
   onChange: (v: string) => void;
   onFire: () => void;
@@ -637,16 +763,47 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
   fireRef?: React.RefObject<HTMLButtonElement | null>;
   roundKey?: number;
   fullWidth?: boolean;
+  inviteGlow?: boolean;
+  emphasizeFire?: boolean;
 }) {
   const [minimized, setMinimized] = useState(false);
+  const [firePressed, setFirePressed] = useState(false);
+  const [fireGrowAnim, setFireGrowAnim] = useState(false);
+  const [glowKeys, setGlowKeys] = useState<string[]>([]);
   useEffect(() => {
     setMinimized(false);
   }, [roundKey]);
+  useEffect(() => {
+    if (!inviteGlow) {
+      setGlowKeys([]);
+      return;
+    }
+    const candidates = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "±", "⌫"];
+    const pickGlowKeys = () => {
+      const pool = [...candidates];
+      const idx = Math.floor(Math.random() * pool.length);
+      setGlowKeys([pool[idx]]);
+    };
+    pickGlowKeys();
+    const timer = window.setInterval(pickGlowKeys, 840);
+    return () => window.clearInterval(timer);
+  }, [inviteGlow]);
+  useEffect(() => {
+    if (!emphasizeFire) {
+      setFireGrowAnim(false);
+      setFirePressed(false);
+      return;
+    }
+    setFireGrowAnim(true);
+    const timer = window.setTimeout(() => setFireGrowAnim(false), 420);
+    return () => window.clearTimeout(timer);
+  }, [emphasizeFire]);
   function press(key: string) {
     playKeyClick();
     if (disabled) return;
     if (key === "⌫") {
-      onChange(value.slice(0, -1));
+      const next = value.slice(0, -1);
+      onChange(next === "-" ? "" : next);
     } else if (key === "±") {
       if (value.startsWith("-")) onChange(value.slice(1));
       else if (value === "" || value === "0") onChange("-0");
@@ -669,9 +826,22 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
     ["1", "2", "3", "."],
   ];
 
-  const base = "rounded flex items-center justify-center font-black select-none transition-transform active:scale-95 text-sm h-8";
-  const digit = `${base} bg-slate-800 text-slate-100 border border-slate-600/60`;
-  const op    = `${base} bg-slate-700/80 text-cyan-300 border border-slate-500/60`;
+  const base = "rounded flex items-center justify-center font-black select-none text-xl h-10 transition-[transform,background-color,color,border-color,box-shadow] active:scale-95";
+  const activeKeyStyle = "active:bg-cyan-300 active:text-sky-950 active:border-cyan-100 active:shadow-[0_0_0_2px_rgba(103,232,249,0.34),0_0_18px_rgba(34,211,238,0.55),inset_0_-2px_0_rgba(8,47,73,0.18)]";
+  const digit = `${base} bg-slate-800 text-slate-100 border border-slate-600/60 ${activeKeyStyle}`;
+  const op    = `${base} bg-slate-700/80 text-slate-100 border border-slate-500/60 ${activeKeyStyle}`;
+  const fireButtonStyle = emphasizeFire ? {
+    position: "absolute" as const,
+    right: 0,
+    bottom: 0,
+    zIndex: 30,
+    width: "calc(50% - 1px)",
+    height: "2.5rem",
+    transformOrigin: "bottom right",
+    animation: fireGrowAnim
+      ? "keypad-fire-grow 420ms cubic-bezier(0.2,0.9,0.22,1) both, keypad-fire-pulse 1.15s 420ms ease-in-out infinite"
+      : "keypad-fire-pulse 1.15s ease-in-out infinite",
+  } : undefined;
 
   return (
     <div className={`flex flex-col gap-1 rounded-xl p-1.5 shrink-0 min-w-0 ${fullWidth ? "w-full" : "w-36 sm:w-40 md:w-44 lg:w-48"}`}
@@ -698,7 +868,7 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
       {/* Digit rows */}
       <div className="flex flex-col gap-0.5"
         style={{
-          overflow: "hidden",
+          overflow: minimized ? "hidden" : "visible",
           maxHeight: minimized ? "0px" : "300px",
           opacity: minimized ? 0 : 1,
           pointerEvents: minimized ? "none" : "auto",
@@ -708,23 +878,71 @@ function NumericKeypad({ value, onChange, onFire, canFire: canFireProp, disabled
           <div key={r} className="grid grid-cols-4 gap-0.5">
             {row.map((btn) => (
               <button key={btn} onClick={() => press(btn)}
-                className={/[0-9]/.test(btn) ? digit : op}>
-                {btn}
+                className={/[0-9]/.test(btn) ? digit : op}
+                style={glowKeys.includes(btn) ? {
+                  background: "linear-gradient(180deg, #67e8f9 0%, #22d3ee 100%)",
+                  color: "#082f49",
+                  borderColor: "#cffafe",
+                  boxShadow: "0 0 0 2px rgba(103,232,249,0.34), 0 0 18px rgba(34,211,238,0.55), inset 0 -2px 0 rgba(8,47,73,0.18)",
+                  animation: "keypad-tutorial-key 1.2s ease-in-out infinite",
+                } : undefined}>
+                <span className={
+                  btn === "⌫" ? "text-4xl leading-none"
+                    : btn === "±" ? "text-3xl leading-none"
+                    : btn === "." ? "text-4xl leading-none font-black"
+                    : undefined
+                }>{btn}</span>
               </button>
             ))}
           </div>
         ))}
         {/* Zero + Fire */}
-        <div className="flex gap-0.5 mt-0.5">
+        <div className="flex gap-0.5 mt-0.5 relative">
           <button onClick={() => press("0")} className={`${digit} flex-[2]`}>0</button>
-          <button ref={fireRef} onClick={onFire} disabled={!canFireProp}
-            className={`${base} flex-[2] arcade-button disabled:opacity-40 disabled:cursor-not-allowed`}>
-            <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+          <button
+            ref={fireRef}
+            onClick={onFire}
+            onPointerDown={() => setFirePressed(true)}
+            onPointerUp={() => setFirePressed(false)}
+            onPointerCancel={() => setFirePressed(false)}
+            onPointerLeave={() => setFirePressed(false)}
+            disabled={!canFireProp}
+            className={`${base} flex-[2] arcade-button disabled:opacity-40 disabled:cursor-not-allowed`}
+            style={emphasizeFire && canFireProp ? { opacity: 0 } : undefined}>
+            <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6">
               <path d="M12 2C12 2 7 6 7 13H9L7 22L12 19L17 22L15 13H17C17 6 12 2 12 2Z" />
               <path d="M9 13C9 13 7 14 6 16C7 16 8 15.5 9 15" fill="rgba(255,180,0,0.9)" />
               <path d="M15 13C15 13 17 14 18 16C17 16 16 15.5 15 15" fill="rgba(255,180,0,0.9)" />
             </svg>
           </button>
+          {emphasizeFire && canFireProp && (
+            <button
+              type="button"
+              onClick={onFire}
+              onPointerDown={() => setFirePressed(true)}
+              onPointerUp={() => setFirePressed(false)}
+              onPointerCancel={() => setFirePressed(false)}
+              onPointerLeave={() => setFirePressed(false)}
+              className={`${base} arcade-button`}
+              style={fireButtonStyle}
+            >
+              <span
+                className="flex h-full w-full items-center justify-center rounded"
+                style={{
+                  borderColor: "#fde047",
+                  boxShadow: "0 0 0 2px rgba(250,204,21,0.32), 0 0 26px rgba(250,204,21,0.7)",
+                  transform: `scale(${firePressed ? 0.88 : 1})`,
+                  transition: "transform 140ms ease-out, box-shadow 180ms ease-out",
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="white" className="h-8 w-8">
+                  <path d="M12 2C12 2 7 6 7 13H9L7 22L12 19L17 22L15 13H17C17 6 12 2 12 2Z" />
+                  <path d="M9 13C9 13 7 14 6 16C7 16 8 15.5 9 15" fill="rgba(255,180,0,0.9)" />
+                  <path d="M15 13C15 13 17 14 18 16C17 16 16 15.5 15 15" fill="rgba(255,180,0,0.9)" />
+                </svg>
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -777,6 +995,11 @@ export default function ArcadeAngleScreen() {
   const [flash, setFlash]                     = useState<{ text: string; ok: boolean; icon?: boolean } | null>(null);
   const [monsterRoundName, setMonsterRoundName] = useState("");
   const [showMonsterAnnounce, setShowMonsterAnnounce] = useState(false);
+  const [hasDiscoveredCannonDrag, setHasDiscoveredCannonDrag] = useState(false);
+  const [typedAimTutorialStage, setTypedAimTutorialStage] = useState<"type" | "fire" | "done">("type");
+  const [hasSeenFirstFireTutorial, setHasSeenFirstFireTutorial] = useState(false);
+  const [firstFireTutorialReady, setFirstFireTutorialReady] = useState(false);
+  const [tutorialAngle, setTutorialAngle] = useState(0);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
 
@@ -847,6 +1070,26 @@ export default function ArcadeAngleScreen() {
     return () => window.removeEventListener("resize", syncViewportMode);
   }, []);
 
+  useEffect(() => {
+    if (hasDiscoveredCannonDrag || showMonsterAnnounce || gamePhase !== "normal" || introPhase !== "ready" || sceneBusy) {
+      return;
+    }
+
+    let frameId = 0;
+    const hintFrom = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
+    const targetDelta = shortestSignedAngleDelta(hintFrom, currentQ.hiddenAngleDeg);
+    const hintDelta = Math.sign(targetDelta || 1) * Math.min(Math.abs(targetDelta), 30);
+
+    const animate = (now: number) => {
+      const wave = (Math.sin(now / 520) + 1) / 2;
+      setTutorialAngle(hintFrom + hintDelta * wave);
+      frameId = requestAnimationFrame(animate);
+    };
+
+    frameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frameId);
+  }, [currentQ.hiddenAngleDeg, currentQ.startAngleDeg, gamePhase, hasDiscoveredCannonDrag, introPhase, level, sceneBusy, showMonsterAnnounce]);
+
   const canFireRef = useRef(false);
 
   function handleAudioToggle() {
@@ -865,8 +1108,8 @@ export default function ArcadeAngleScreen() {
       standalone?: boolean;
     };
     const shareData: ShareData = {
-      title: document.title || "Interactive Maths",
-      text: "Check out this maths game on Interactive Maths!",
+      title: document.title || texts.generic.appTitle,
+      text: texts.generic.social.shareTitle,
       url: SHELL_SHARE_URL,
     };
     const looksMobileOrPwa =
@@ -1116,6 +1359,9 @@ export default function ArcadeAngleScreen() {
       lastPointerAngleRef.current = null;
       dragAngleRef.current = gazeAngleRef.current;
       setDragging(false);
+      if (gamePhaseRef.current === "normal" && !hasSeenFirstFireTutorial && canFireRef.current) {
+        setFirstFireTutorialReady(true);
+      }
     }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -1129,13 +1375,22 @@ export default function ArcadeAngleScreen() {
 
   function startDrag(e: React.PointerEvent) {
     if (sceneBusy) return;
-    // In platinum the cannon is dead — only typing + fire moves it.
-    if (gamePhase === "platinum") return;
     if (!svgRef.current) return;
     const { x, y } = toSVGPoint(svgRef.current, e.clientX, e.clientY);
+    if (showFireHint && canKeypadFire && isPointOnCannonBolt(x, y)) {
+      e.preventDefault();
+      doSubmit();
+      return;
+    }
+    // In platinum the cannon is dead — only typing + fire moves it.
+    if (gamePhase === "platinum") return;
     const canDragFromRay = isAiming && isPointOnAimRay(x, y, aimForBeam);
     if (!isPointOnCannon(x, y, revealGaze) && !canDragFromRay) return;
     e.preventDefault();
+    if (!hasDiscoveredCannonDrag) setHasDiscoveredCannonDrag(true);
+    if (gamePhase === "normal" && !hasSeenFirstFireTutorial) {
+      setFirstFireTutorialReady(false);
+    }
     lastTickAngleRef.current = -999;
     lastPointerAngleRef.current = null; // reset so first point sets the base
     dragAngleRef.current = gazeAngleRef.current;
@@ -1177,6 +1432,13 @@ export default function ArcadeAngleScreen() {
     playCannonFire();
     setShotT(0);
     setIsFiring({ hit, aimAngle });
+  }
+
+  function commitAimAngle(angle: number) {
+    lastPointerAngleRef.current = null;
+    dragAngleRef.current = angle;
+    gazeAngleRef.current = angle;
+    setGazeAngle(angle);
   }
 
   function earnEgg() {
@@ -1235,7 +1497,7 @@ export default function ArcadeAngleScreen() {
     playMonsterStart();
     switchToMonsterMusic();
     nextQuestion(level);
-    window.setTimeout(() => setShowMonsterAnnounce(false), 2800);
+    window.setTimeout(() => setShowMonsterAnnounce(false), ROUND_ANNOUNCE_MS);
     setCalcRoundKey((k) => k + 1);
   }
 
@@ -1248,7 +1510,7 @@ export default function ArcadeAngleScreen() {
     playMonsterStart();
     switchToMonsterMusic();
     nextQuestion(level);
-    window.setTimeout(() => setShowMonsterAnnounce(false), 2800);
+    window.setTimeout(() => setShowMonsterAnnounce(false), ROUND_ANNOUNCE_MS);
     setCalcRoundKey((k) => k + 1);
   }
 
@@ -1286,6 +1548,8 @@ export default function ArcadeAngleScreen() {
     setGamePhase("normal");
     setFlash(null);
     setDragging(false);
+    setHasSeenFirstFireTutorial(false);
+    setFirstFireTutorialReady(false);
     setAnswer("");
     setSubAnswers(["", "", ""]);
     setSubStep(0);
@@ -1305,6 +1569,7 @@ export default function ArcadeAngleScreen() {
     setFlash(null);
     setDragging(false);
     draggingRef.current = false;
+    setFirstFireTutorialReady(false);
     setAnswer("");
     setSubAnswers(["", "", ""]);
     setSubStep(0);
@@ -1330,6 +1595,11 @@ export default function ArcadeAngleScreen() {
   }
 
   function handleKeypadChange(v: string) {
+    const parsed = parseFloat(v);
+    const hasLockedTypedAngle = !isNaN(parsed) && Math.abs(parsed) > 0;
+    if (gamePhase !== "normal" && typedAimTutorialStage !== "done") {
+      setTypedAimTutorialStage(hasLockedTypedAngle ? "fire" : "type");
+    }
     if (currentQ.promptLines) {
       setSubAnswers((prev) => {
         const next = [...prev] as [string, string, string];
@@ -1359,6 +1629,13 @@ export default function ArcadeAngleScreen() {
   // ── Submit / Fire ──────────────────────────────────────────────────────────
   function doSubmit() {
     if (sceneBusy || submitLockRef.current) return;
+    if (gamePhase === "normal" && !hasSeenFirstFireTutorial) {
+      setHasSeenFirstFireTutorial(true);
+      setFirstFireTutorialReady(false);
+    }
+    if (gamePhase !== "normal" && typedAimTutorialStage === "fire") {
+      setTypedAimTutorialStage("done");
+    }
 
     // Monster round single-step: typed value must be exact
     if (isMonster && !currentQ.promptLines) {
@@ -1369,6 +1646,7 @@ export default function ArcadeAngleScreen() {
       const typedAim = level === 2
         ? Math.min(Math.max((currentQ.startAngleDeg ?? 0) + typed, currentQ.startAngleDeg ?? 0), currentQ.totalContext)
         : typed;
+      commitAimAngle(typedAim);
       submitLockRef.current = true;
       fireCannon(correct, typedAim);
       return;
@@ -1398,14 +1676,14 @@ export default function ArcadeAngleScreen() {
     if (currentQ.promptLines && currentQ.subAnswers) {
       // L3 multi-step
       const g = parseFloat(subAnswers[subStep]);
-      if (isNaN(g)) { showFlash("Enter a number!", false); return; }
+      if (isNaN(g)) { showFlash(texts.generic.feedback.enterNumber, false); return; }
       const ok = Math.abs(g - currentQ.subAnswers[subStep]) < 0.6;
       if (subStep < 2) {
         if (ok) {
           setSubStep((s) => s + 1);
         } else {
           playWrong();
-          showFlash("Try again!", false);
+          showFlash(texts.generic.feedback.tryAgain, false);
           setSubAnswers((prev) => {
             const next = [...prev] as [string, string, string];
             next[subStep] = "";
@@ -1433,6 +1711,7 @@ export default function ArcadeAngleScreen() {
       const guessAim = level === 2
         ? Math.min(Math.max((currentQ.startAngleDeg ?? 0) + guess, currentQ.startAngleDeg ?? 0), currentQ.totalContext)
         : guess;
+      commitAimAngle(guessAim);
       submitLockRef.current = true;
       fireCannon(correct, guessAim);
     }
@@ -1452,9 +1731,12 @@ export default function ArcadeAngleScreen() {
   const targetX = CX + (fh.x - CX) * deployT;
   const targetY = CY + (fh.y - CY) * deployT;
   const promptText = isPlatinum && !showSceneActors && level === 2
-    ? "Find the missing angle, type the exact number, then shoot the target."
+    ? texts.levels["2"].prompts.blindShot
     : getInstructionPrompt(level, gamePhase);
-  const displayPrompt = panelVisible ? promptText.slice(0, Math.max(typeIdx, 0)) : "";
+  const displayPrompt = panelVisible
+    ? promptText.slice(0, Math.max(typeIdx, 1))
+    : promptText.slice(0, 1);
+  const hideFirstPromptChar = !currentQ.promptLines && typeIdx === 0;
   const showDevAnswer = IS_DEV && panelVisible && (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
   const activeArcRadius = level === 2 ? getMissingSectorRadius(currentQ) ?? 52 : 52;
@@ -1463,6 +1745,8 @@ export default function ArcadeAngleScreen() {
     && (dragging || answer.trim() !== "" || Math.abs(gazeAngle - baseAngle) > 0.5 || isFiring !== null || spinAnim !== null);
 
   const parsedAnswer = parseFloat(answer.trim());
+  const showCannonDragHint = !hasDiscoveredCannonDrag && !showMonsterAnnounce && gamePhase === "normal" && introPhase === "ready" && !sceneBusy;
+  const showKeypadTypeHint = typedAimTutorialStage === "type" && !showMonsterAnnounce && gamePhase !== "normal" && introPhase === "ready" && !sceneBusy;
   // isAiming: cannon is actively pointed somewhere (dragging, firing, spinAnim, or valid number typed)
   const isAiming = showSceneActors && (
     dragging || isFiring !== null || spinAnim !== null
@@ -1477,6 +1761,15 @@ export default function ArcadeAngleScreen() {
   const canKeypadFire = currentQ.promptLines
     ? !sceneBusy && !isNaN(parseFloat(subAnswers[subStep]))
     : canFire;
+  const showFirstRoundFireHint = gamePhase === "normal"
+    && !showMonsterAnnounce
+    && introPhase === "ready"
+    && !sceneBusy
+    && canKeypadFire
+    && hasDiscoveredCannonDrag
+    && firstFireTutorialReady
+    && !hasSeenFirstFireTutorial;
+  const showFireHint = showFirstRoundFireHint;
   keypadValueRef.current        = keypadValue;
   handleKeypadChangeRef.current = handleKeypadChange;
   doSubmitRef.current           = doSubmit;
@@ -1530,7 +1823,7 @@ export default function ArcadeAngleScreen() {
                 textShadow: "0 0 10px rgba(250,204,21,0.9)",
                 animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
               }}>
-              {isPlatinum ? "🎯" : "⚡"} {monsterRoundName} {isPlatinum ? "🎯" : "⚡"}
+              {isPlatinum ? texts.rounds.platinum.badgeIcon : texts.rounds.monster.badgeIcon} {monsterRoundName} {isPlatinum ? texts.rounds.platinum.badgeIcon : texts.rounds.monster.badgeIcon}
             </div>
           )}
 
@@ -1551,7 +1844,7 @@ export default function ArcadeAngleScreen() {
 
         {/* Right buttons */}
         <div className="flex flex-row gap-1.5 shrink-0" style={{ marginTop: "6px" }}>
-          <button onClick={resetCurrentQuestion} title="Reset"
+          <button onClick={resetCurrentQuestion} title={texts.generic.buttons.reset}
             className="arcade-button w-10 h-10 flex items-center justify-center p-2">
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               <path d="M1 4v6h6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1560,7 +1853,7 @@ export default function ArcadeAngleScreen() {
                 stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          <button onClick={handleAudioToggle} title="Mute"
+          <button onClick={handleAudioToggle} title={texts.generic.buttons.mute}
             className="arcade-button w-10 h-10 flex items-center justify-center p-2"
             style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", boxShadow: "0 5px 0 #1e293b", borderColor: "#94a3b8" } : {}}>
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -1651,8 +1944,15 @@ export default function ArcadeAngleScreen() {
               </g>
             )}
 
+            {showSceneActors && showCannonDragHint && (
+              <CannonDragHint
+                startAngle={level === 2 ? (currentQ.startAngleDeg ?? 0) : 0}
+                hintAngle={tutorialAngle}
+              />
+            )}
+
             {/* Show angle measure whenever the visible arc has a non-zero sweep */}
-            {isAiming && introPhase === "ready" && Math.abs(arcSweep) >= 0.5 && (
+            {isAiming && introPhase === "ready" && Math.abs(arcSweep) >= 0.5 && ((!isMonster && !isPlatinum) || revealedAngle !== null) && (
               <LiveAngleLabel
                 gazeAngle={aimForBeam}
                 revealed={revealedAngle !== null}
@@ -1685,13 +1985,13 @@ export default function ArcadeAngleScreen() {
                   })}
                 </div>
               ) : (
-                <div className="arcade-panel px-3 py-2 text-sm leading-5 text-white font-bold">
-                  <ColoredPrompt text={displayPrompt} />
+                <div className="arcade-panel min-h-[3rem] px-3 py-2 text-sm leading-5 text-white font-bold">
+                  <ColoredPrompt text={displayPrompt} hideFirstChar={hideFirstPromptChar} />
                 </div>
               )}
               {showDevAnswer && (
                 <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
-                  Ans: {currentQ.answer}°
+                  {texts.generic.devAnswerPrefix} {currentQ.answer}°
                 </div>
               )}
             </div>
@@ -1706,7 +2006,7 @@ export default function ArcadeAngleScreen() {
           {/* Buttons + level select */}
           <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5">
             <div className="flex flex-row gap-1.5">
-              <button onClick={resetCurrentQuestion} title="Reset"
+              <button onClick={resetCurrentQuestion} title={texts.generic.buttons.reset}
                 className="arcade-button w-10 h-10 flex items-center justify-center p-2">
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   <path d="M1 4v6h6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1715,7 +2015,7 @@ export default function ArcadeAngleScreen() {
                     stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <button onClick={handleAudioToggle} title="Mute"
+              <button onClick={handleAudioToggle} title={texts.generic.buttons.mute}
                 className="arcade-button w-10 h-10 flex items-center justify-center p-2"
                 style={soundMuted ? { background: "linear-gradient(180deg,#475569,#334155)", borderColor: "#94a3b8" } : {}}>
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -1770,8 +2070,7 @@ export default function ArcadeAngleScreen() {
           </div>
 
           {!isMobileLandscape && (
-            <div className="flex-1 min-h-0 flex flex-col justify-center px-1 py-4">
-            <div className="flex flex-col gap-3">
+            <div className="shrink-0 flex flex-col gap-3 px-1 pt-3 pb-2">
               {currentQ.promptLines && currentQ.subAnswers ? (
                 <div className="arcade-panel flex flex-col gap-1 px-2 py-2 text-[10px]">
                   {panelVisible && currentQ.promptLines.map((line, i) => {
@@ -1791,28 +2090,27 @@ export default function ArcadeAngleScreen() {
                   })}
                 </div>
               ) : (
-                <div className="arcade-panel px-3 py-3 text-sm leading-6 text-white font-bold text-left">
-                  <ColoredPrompt text={displayPrompt} />
+                <div className="arcade-panel min-h-[4.5rem] px-3 py-3 text-sm leading-6 text-white font-bold text-left">
+                  <ColoredPrompt text={displayPrompt} hideFirstChar={hideFirstPromptChar} />
                 </div>
               )}
               {showDevAnswer && (
                 <div className="arcade-panel px-2 py-1 text-[10px] font-black text-yellow-300">
-                  Ans: {currentQ.answer}°
+                  {texts.generic.devAnswerPrefix} {currentQ.answer}°
                 </div>
               )}
               {(isMonster || isPlatinum) && (
                 <div className="text-xs font-black uppercase tracking-widest px-2 py-1 rounded-full text-center"
                   style={isPlatinum ? { background: "rgba(71,85,105,0.85)", color: "#e2e8f0", border: "1px solid #94a3b8" }
                     : { background: "rgba(161,122,6,0.85)", color: "#fef08a", border: "1px solid #fbbf24" }}>
-                  {isPlatinum ? "🎯" : "⚡"} {monsterRoundName}
+                  {isPlatinum ? texts.rounds.platinum.badgeIcon : texts.rounds.monster.badgeIcon} {monsterRoundName}
                 </div>
               )}
-            </div>
             </div>
           )}
 
           {/* Keypad fills remaining space */}
-          <div className="flex-1 min-h-0 flex flex-col justify-end px-1"
+          <div className="mt-auto shrink-0 px-1 relative"
             style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
             <NumericKeypad
               value={keypadValue}
@@ -1822,7 +2120,11 @@ export default function ArcadeAngleScreen() {
               disabled={sceneBusy}
               roundKey={calcRoundKey}
               fullWidth
+              inviteGlow={showKeypadTypeHint}
             />
+            {showFireHint && canKeypadFire && (
+              <FireButtonHint onFire={doSubmit} />
+            )}
           </div>
         </div>
       </div>
@@ -1833,8 +2135,7 @@ export default function ArcadeAngleScreen() {
 
         {/* Prompt / question text — left column */}
         <div className="flex-1 min-w-0 self-stretch flex flex-col justify-end">
-          {panelVisible && (
-            <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
               {currentQ.promptLines && currentQ.subAnswers ? (
                 /* L3 multi-step */
                 <div className="arcade-panel flex flex-col gap-1.5 px-3 py-2 text-xs md:text-sm">
@@ -1859,30 +2160,35 @@ export default function ArcadeAngleScreen() {
                 </div>
               ) : (
                 /* Single-step prompt */
-                <div className="arcade-panel px-3 py-2 text-xl leading-6 text-white font-bold">
-                  <ColoredPrompt text={displayPrompt} />
+                <div className="arcade-panel min-h-[4.25rem] px-3 py-2 text-xl leading-6 text-white font-bold">
+                  <ColoredPrompt text={displayPrompt} hideFirstChar={hideFirstPromptChar} />
                 </div>
               )}
               {showDevAnswer && (
                 <div className="arcade-panel px-3 py-1.5 text-xs font-black text-yellow-300">
-                  Ans: {currentQ.answer}°
+                  {texts.generic.devAnswerPrefix} {currentQ.answer}°
                 </div>
               )}
             </div>
-          )}
         </div>
 
         {/* Numeric keypad — always visible */}
-        <NumericKeypad
-          value={keypadValue}
-          onChange={handleKeypadChange}
-          onFire={doSubmit}
-          canFire={canKeypadFire}
-          disabled={sceneBusy}
-          fireRef={fireButtonRef}
-          roundKey={calcRoundKey}
-          fullWidth
-        />
+        <div className="relative">
+          <NumericKeypad
+            value={keypadValue}
+            onChange={handleKeypadChange}
+            onFire={doSubmit}
+            canFire={canKeypadFire}
+            disabled={sceneBusy}
+            fireRef={fireButtonRef}
+            roundKey={calcRoundKey}
+            fullWidth
+            inviteGlow={showKeypadTypeHint}
+          />
+          {showFireHint && canKeypadFire && (
+            <FireButtonHint onFire={doSubmit} />
+          )}
+        </div>
       </div>
 
       {/* ── Flash feedback ── */}
@@ -1932,20 +2238,28 @@ export default function ArcadeAngleScreen() {
       {/* ── Monster Round announcement ── */}
       {showMonsterAnnounce && (
         <div className="absolute inset-0 z-[70] flex flex-col items-center justify-center"
-          style={{ background: isPlatinum
-            ? "radial-gradient(ellipse at center, rgba(30,41,59,0.97) 0%, rgba(5,8,20,0.99) 75%)"
-            : "radial-gradient(ellipse at center, rgba(88,28,135,0.95) 0%, rgba(10,2,20,0.98) 75%)" }}>
-          <div className="text-7xl mb-4" style={{ animation: "icon-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>{isPlatinum ? "🎯" : "💥"}</div>
+          style={{
+            background: isPlatinum
+              ? "radial-gradient(ellipse at center, rgba(30,41,59,0.97) 0%, rgba(5,8,20,0.99) 75%)"
+              : "radial-gradient(ellipse at center, rgba(88,28,135,0.95) 0%, rgba(10,2,20,0.98) 75%)",
+            animation: `round-announce-fade ${ROUND_ANNOUNCE_MS}ms ease-in-out both`,
+          }}>
+          <div className="text-7xl mb-4" style={{ animation: `round-announce-content ${ROUND_ANNOUNCE_MS}ms ease-in-out both` }}>{isPlatinum ? texts.rounds.platinum.announceIcon : texts.rounds.monster.announceIcon}</div>
           <div className="text-4xl md:text-5xl font-black uppercase tracking-widest text-center px-4"
-            style={{ color: isPlatinum ? "#e2e8f0" : "#fde047", textShadow: isPlatinum ? "0 0 30px rgba(226,232,240,0.6)" : "0 0 30px rgba(250,204,21,0.8)" }}>
+            style={{
+              color: isPlatinum ? "#e2e8f0" : "#fde047",
+              textShadow: isPlatinum ? "0 0 30px rgba(226,232,240,0.6)" : "0 0 30px rgba(250,204,21,0.8)",
+              animation: `round-announce-content ${ROUND_ANNOUNCE_MS}ms ease-in-out both`,
+            }}>
             {monsterRoundName}
           </div>
-          <div className="mt-5 text-lg tracking-wide" style={{ color: isPlatinum ? "#94a3b8" : "#d8b4fe" }}>
-            {isPlatinum
-              ? "Type the exact angle, then press Fire."
-              : "Drag the cannon to aim, then press Fire."}
+          <div className="mt-4 px-6 text-center text-base font-black whitespace-nowrap"
+            style={{
+              color: isPlatinum ? "#cbd5e1" : "#fef08a",
+              animation: `round-announce-content ${ROUND_ANNOUNCE_MS}ms ease-in-out both`,
+            }}>
+            {promptText}
           </div>
-          <div className="mt-2 text-xl text-yellow-400 font-black">Destroy 10 targets 🎯</div>
         </div>
       )}
 
@@ -1957,10 +2271,10 @@ export default function ArcadeAngleScreen() {
               <>
                 <div className="text-4xl font-black uppercase tracking-[0.18em] md:text-5xl"
                   style={{ color: isPlatinum ? "#e2e8f0" : "#fde047" }}>
-                  Level {level} Complete!
+                  {formatText(texts.levels[String(level) as "1" | "2"].completion.finalTitle, { level })}
                 </div>
                 <div className="mt-1 text-lg font-bold" style={{ color: isPlatinum ? "#94a3b8" : "#d8b4fe" }}>
-                  {isPlatinum ? "🎯 Platinum Cleared! 🎯" : "💥 Barrage Survived! 💥"}
+                  {isPlatinum ? texts.rounds.platinum.victorySubtitle : texts.rounds.monster.victorySubtitle}
                 </div>
                 <div className="mt-2 flex items-center justify-center gap-2">
                   {[0,1,2,3,4].map((i) => <GoldenTarget key={i} />)}
@@ -1969,16 +2283,16 @@ export default function ArcadeAngleScreen() {
             ) : (
               <>
                 <div className="text-4xl font-black uppercase tracking-[0.18em] text-emerald-400 md:text-5xl">
-                  Level {level} Clear!
+                  {formatText(texts.levels["1"].completion.standardTitle, { level })}
                 </div>
-                <div className="mt-2 text-xl text-yellow-300">🎯🎯🎯🎯🎯 All targets hit!</div>
+                <div className="mt-2 text-xl text-yellow-300">{texts.levels["1"].completion.standardSubtitle}</div>
               </>
             )}
             <div className="mt-8 flex flex-col items-center gap-3">
               {level < 2 && (
                 <button onClick={() => beginNewRun(2)}
                   className="arcade-button px-8 py-4 text-base md:text-lg">
-                  Next Level
+                  {texts.generic.buttons.nextLevel}
                 </button>
               )}
             </div>
@@ -1995,16 +2309,18 @@ export default function ArcadeAngleScreen() {
             <div className="flex justify-center gap-3 text-4xl mb-4">🎯💥🎯</div>
             <div className="text-3xl md:text-4xl font-black uppercase tracking-widest text-yellow-300"
               style={{ textShadow: "0 0 24px rgba(250,204,21,0.8)" }}>
-              You Did It!
+              {texts.generic.completeAllLevels.title}
             </div>
-            <div className="mt-2 text-base md:text-lg text-purple-200 font-bold">All 2 Levels Cleared</div>
+            <div className="mt-2 text-base md:text-lg text-purple-200 font-bold">
+              {formatText(texts.generic.completeAllLevels.subtitle, { count: 2 })}
+            </div>
             <div className="flex justify-center gap-2 mt-5">
               {[0,1,2,3,4].map((i) => <GoldenTarget key={i} />)}
             </div>
             <button onClick={() => { setUnlockedLevel(1); beginNewRun(1); }}
               className="arcade-button mt-8 px-10 py-4 text-lg font-black uppercase tracking-wider w-full"
               style={{ boxShadow: "0 0 16px rgba(251,191,36,0.4), 0 6px 0 #78350f", borderColor: "#fbbf24" }}>
-              Play Again
+              {texts.generic.buttons.playAgain}
             </button>
           </div>
         </div>
@@ -2012,7 +2328,7 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Share + Comments buttons — bottom-left ── */}
       <div className="absolute z-[60] flex flex-row gap-1.5" style={{ bottom: "1rem", left: "1rem" }}>
-        <button onClick={handleShare} title="Share"
+        <button onClick={handleShare} title={texts.generic.buttons.share}
           className="arcade-button w-10 h-10 flex items-center justify-center p-2"
           style={showShareDrawer ? { background: "linear-gradient(180deg,#0369a1,#075985)", borderColor: "#38bdf8" } : {}}>
           <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -2023,7 +2339,7 @@ export default function ArcadeAngleScreen() {
             <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49" stroke="white" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <button onClick={() => { setShowCommentsDrawer(s => !s); setShowShareDrawer(false); }} title="Comments"
+        <button onClick={() => { setShowCommentsDrawer(s => !s); setShowShareDrawer(false); }} title={texts.generic.buttons.comments}
           className="arcade-button w-10 h-10 flex items-center justify-center p-2"
           style={showCommentsDrawer ? { background: "linear-gradient(180deg,#854d0e,#713f12)", borderColor: "#facc15" } : {}}>
           <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -2056,7 +2372,7 @@ export default function ArcadeAngleScreen() {
         <div className="flex items-center justify-between gap-4 px-4 py-2"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="text-sm font-black uppercase tracking-widest text-cyan-300">
-            Spread the word...
+            {texts.generic.drawers.shareHeading}
           </div>
           <button onClick={() => setShowShareDrawer(false)}
             style={{ color: "#94a3b8", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
@@ -2081,7 +2397,7 @@ export default function ArcadeAngleScreen() {
           style={{ background: "#171717", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div>
             <div className="text-base font-black uppercase tracking-widest text-yellow-300">
-              Comments
+              {texts.generic.drawers.commentsHeading}
             </div>
           </div>
           <button onClick={() => setShowCommentsDrawer(false)}

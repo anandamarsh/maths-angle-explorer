@@ -1,0 +1,124 @@
+{
+  "generic": {
+    "appTitle": "Interactive Maths",
+    "shellShareUrl": "https://interactive-maths.vercel.app/",
+    "devAnswerPrefix": "Ans:",
+    "buttons": {
+      "reset": "Reset",
+      "mute": "Mute",
+      "share": "Share",
+      "comments": "Comments",
+      "nextLevel": "Next Level",
+      "playAgain": "Play Again",
+      "close": "Close"
+    },
+    "feedback": {
+      "enterNumber": "Enter a number!",
+      "tryAgain": "Try again!"
+    },
+    "hints": {
+      "dragCannonHead": "Rotate the cannon head to aim",
+      "typeNumberToAim": "Type the angle on the keypad to aim"
+    },
+    "drawers": {
+      "shareHeading": "Spread the word...",
+      "commentsHeading": "Comments"
+    },
+    "social": {
+      "shareTitle": "Check out maths games on Interactive Maths!",
+      "commentsTitle": "Interactive Maths",
+      "commentsPageId": "interactive-maths"
+    },
+    "rotatePrompt": {
+      "title": "Rotate your device",
+      "subtitle": "Angle Explorer plays best in landscape mode"
+    },
+    "completeAllLevels": {
+      "title": "You Did It!",
+      "subtitle": "All {count} Levels Cleared. You now know your angles!"
+    }
+  },
+  "levels": {
+    "1": {
+      "prompts": {
+        "normal": "Rotate the canon head to aim, then hit Fire.",
+        "platinum": "Enter the angle to aim, then hit Fire."
+      },
+      "angleTypes": {
+        "ZERO": "ZERO",
+        "RIGHT_ANGLE": "RIGHT ANGLE",
+        "STRAIGHT": "STRAIGHT",
+        "REFLEX": "REFLEX",
+        "ACUTE": "ACUTE",
+        "OBTUSE": "OBTUSE"
+      },
+      "completion": {
+        "standardTitle": "Level {level} Clear!",
+        "standardSubtitle": "🎯🎯🎯🎯🎯 All targets hit!",
+        "finalTitle": "Level {level} Complete!"
+      }
+    },
+    "2": {
+      "prompts": {
+        "normal": "Rotate the canon to find the missing angle and fire.",
+        "platinum": "Type in the missing angle and fire.",
+        "blindShot": "Type in the missing angle and fire."
+      },
+      "setKinds": {
+        "COMPLEMENTARY": {
+          "label": "COMPLEMENTARY",
+          "sublabel": "SUM = 90°"
+        },
+        "SUPPLEMENTARY": {
+          "label": "SUPPLEMENTARY",
+          "sublabel": "SUM = 180°"
+        },
+        "COMPLETE": {
+          "label": "COMPLETE",
+          "sublabel": "SUM = 360°"
+        }
+      },
+      "completion": {
+        "finalTitle": "Level {level} Complete!"
+      }
+    }
+  },
+  "rounds": {
+    "targetCount": 10,
+    "monster": {
+      "names": [
+        "BARRAGE MODE",
+        "TITAN FUSILLADE",
+        "SHOCK AND AWE",
+        "ARTILLERY STORM",
+        "BLACKOUT ROUND",
+        "THUNDER VOLLEY"
+      ],
+      "badgeIcon": "⚡",
+      "announceIcon": "💥",
+      "instruction": "Enter the angle to aim, then hit Fire.",
+      "announceMessage": "Now enter the angle with the keypad.",
+      "destroyTargets": "Destroy {count} targets 🎯",
+      "victorySubtitle": "💥 Barrage Survived! 💥"
+    },
+    "platinum": {
+      "names": [
+        "PLATINUM STRIKE",
+        "SILVER BULLET",
+        "PRECISION SHOT",
+        "DEAD EYE",
+        "SNIPER ELITE",
+        "ONE SHOT ONE KILL"
+      ],
+      "badgeIcon": "🎯",
+      "announceIcon": "🎯",
+      "instructionByLevel": {
+        "1": "Type the angle, then press Fire.",
+        "2": "Type the angle, then press Fire."
+      },
+      "announceMessage": "Now enter the angle with the keypad.",
+      "destroyTargets": "Destroy {count} targets 🎯",
+      "victorySubtitle": "🎯 Platinum Cleared! 🎯"
+    }
+  }
+}

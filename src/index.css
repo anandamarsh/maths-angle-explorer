@@ -76,6 +76,49 @@ body {
   0%, 100% { opacity: 0.55; transform: scale(1); }
   50% { opacity: 0.9; transform: scale(1.08); }
 }
+@keyframes cannon-head-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+@keyframes cannon-drag-ghost {
+  0%, 100% { transform: translate(0px, 0px); opacity: 0.4; }
+  25% { transform: translate(12px, -8px); opacity: 0.95; }
+  50% { transform: translate(24px, -14px); opacity: 0.95; }
+  75% { transform: translate(12px, -8px); opacity: 0.7; }
+}
+@keyframes cannon-drag-arrow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.95; }
+}
+@keyframes round-announce-fade {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes round-announce-content {
+  0% { opacity: 0; transform: translateY(18px) scale(0.96); }
+  14% { opacity: 1; transform: translateY(0) scale(1); }
+  84% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.985); }
+}
+@keyframes keypad-tutorial-key {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes tutorial-fire-grow {
+  0% { transform: scale(1); }
+  65% { transform: scale(2.14); }
+  100% { transform: scale(2); }
+}
+@keyframes tutorial-fire-pulse {
+  0%, 100% { transform: scale(2); opacity: 0.92; }
+  50% { transform: scale(2.12); opacity: 1; }
+}
+@keyframes keypad-tutorial-caret {
+  0%, 45% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
 
 .animate-bounce-in { animation: bounce-in 0.4s cubic-bezier(0.36,0.07,0.19,0.97); }
 .animate-shake { animation: shake 0.4s ease-in-out; }

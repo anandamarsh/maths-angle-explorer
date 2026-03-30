@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { texts } from "../texts";
 
 function usePortraitMobile() {
   const isTouchDevice =
@@ -106,10 +107,10 @@ export default function RotatePrompt() {
             letterSpacing: "0.02em",
           }}
         >
-          Rotate your device
+          {texts.generic.rotatePrompt.title}
         </p>
         <p style={{ fontSize: "1rem", color: "#818cf8", lineHeight: 1.5 }}>
-          Angle Explorer plays best in landscape mode
+          {texts.generic.rotatePrompt.subtitle}
         </p>
       </div>
 
