@@ -1105,6 +1105,18 @@ export default function ArcadeAngleScreen() {
     setSoundMuted(nextMuted);
   }
 
+  function canUseNativeShare() {
+    const nav = navigator as Navigator & {
+      standalone?: boolean;
+    };
+
+    return (
+      window.matchMedia?.("(display-mode: standalone)").matches
+      || !!nav.standalone
+      || navigator.maxTouchPoints > 0
+    );
+  }
+
   async function handleShare() {
     playButton();
     setShowCommentsDrawer(false);
@@ -1119,10 +1131,7 @@ export default function ArcadeAngleScreen() {
       text: texts.generic.social.shareTitle,
       url: SHELL_SHARE_URL,
     };
-    const looksMobileOrPwa =
-      window.matchMedia?.("(display-mode: standalone)").matches
-      || !!nav.standalone
-      || navigator.maxTouchPoints > 0;
+    const looksMobileOrPwa = canUseNativeShare();
 
     if (looksMobileOrPwa && typeof nav.share === "function" && (!nav.canShare || nav.canShare(shareData))) {
       try {
@@ -1202,7 +1211,7 @@ export default function ArcadeAngleScreen() {
         text: "Save or share this Angle Explorer scene.",
       };
 
-      if (typeof nav.share === "function" && (!nav.canShare || nav.canShare(shareData))) {
+      if (canUseNativeShare() && typeof nav.share === "function" && (!nav.canShare || nav.canShare(shareData))) {
         try {
           await nav.share(shareData);
           showFlash("Image ready to share", true);
@@ -1222,7 +1231,7 @@ export default function ArcadeAngleScreen() {
       link.click();
       link.remove();
       URL.revokeObjectURL(pngUrl);
-      showFlash("Scene captured", true);
+      showFlash("Scene downloaded", true);
     } catch {
       showFlash("Capture failed", false);
     }
