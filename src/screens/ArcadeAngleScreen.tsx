@@ -195,10 +195,12 @@ function CannonSprite({
   aimAngle,
   dragging,
   variant = "normal",
+  showFingerHint = false,
 }: {
   aimAngle: number;
   dragging: boolean;
   variant?: "normal" | "ghost";
+  showFingerHint?: boolean;
 }) {
   const barrelRot = -aimAngle; // math CCW → SVG CW
   const isGhost = variant === "ghost";
@@ -212,6 +214,7 @@ function CannonSprite({
   const pivotFill = "#14532d";
   const pivotStroke = isGhost ? "#67e8f9" : "#22c55e";
   const pivotCore = isGhost ? "#67e8f9" : "#86efac";
+  const fingerFill = "#67e8f9";
   return (
     <g
       opacity={isGhost ? 0.82 : 1}
@@ -241,6 +244,18 @@ function CannonSprite({
         {/* Muzzle ring */}
         <rect x={46} y={-8} width={10} height={16} rx={3}
           fill={bodyFill} stroke={barrelStroke} strokeWidth={2} />
+        {showFingerHint && (
+          <g transform="translate(56 -2) scale(0.6) translate(-30.53 -4.53)">
+            <path
+              d="M24.76,22.64V12.4c0-3.18,2.59-5.77,5.77-5.77,1.44,0,2.82,.54,3.89,1.51,1.07,1,1.72,2.33,1.85,3.76l.87,10.08c2.12-1.88,3.39-4.59,3.39-7.48,0-5.51-4.49-10-10-10s-10,4.49-10,10c0,3.29,1.62,6.29,4.23,8.14Z"
+              fill={fingerFill}
+            />
+            <path
+              d="M55.98,69.53c0-.14,.03-.28,.09-.41l4.48-9.92v-18.37c0-1.81-1.08-3.48-2.76-4.26-6.75-3.13-13.8-4.84-20.95-5.08-.51-.01-.92-.41-.97-.91l-1.6-18.5c-.08-.94-.51-1.82-1.2-2.46-.7-.63-1.6-.99-2.54-.99-2.08,0-3.77,1.69-3.77,3.77V48.48h-2v-13.32c-2.61,.46-4.69,2.65-4.91,5.36-.56,6.79-.53,14.06,.08,21.62,.28,3.44,2.42,6.52,5.58,8.05l4.49,2.18c.35,.17,.56,.52,.56,.9v2.23h25.42v-5.97Z"
+              fill={fingerFill}
+            />
+          </g>
+        )}
       </g>
       {/* Pivot hub */}
       <circle
@@ -265,7 +280,7 @@ function CannonDragHint({
 }) {
   const delta = shortestSignedAngleDelta(startAngle, hintAngle);
   const absAngle = Math.abs(delta);
-  const arcR = 72;
+  const arcR = 86;
   const start = polarToXY(CX, CY, startAngle, arcR);
   const end = polarToXY(CX, CY, hintAngle, arcR);
   const largeArc = absAngle > 180 ? 1 : 0;
@@ -296,7 +311,7 @@ function CannonDragHint({
         </g>
       )}
       <g transform={`translate(${CX}, ${CY})`}>
-        <CannonSprite aimAngle={hintAngle} dragging={false} variant="ghost" />
+        <CannonSprite aimAngle={hintAngle} dragging={false} variant="ghost" showFingerHint />
       </g>
     </g>
   );
@@ -1005,6 +1020,7 @@ export default function ArcadeAngleScreen() {
   const [hasSeenFirstFireTutorial, setHasSeenFirstFireTutorial] = useState(false);
   const [firstFireTutorialReady, setFirstFireTutorialReady] = useState(false);
   const [tutorialAngle, setTutorialAngle] = useState(0);
+  const [tutorialHintVisible, setTutorialHintVisible] = useState(false);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
 
@@ -1079,22 +1095,34 @@ export default function ArcadeAngleScreen() {
 
   useEffect(() => {
     if (hasDiscoveredCannonDrag || showMonsterAnnounce || gamePhase !== "normal" || introPhase !== "ready" || sceneBusy) {
+      setTutorialHintVisible(false);
       return;
     }
 
     let frameId = 0;
+    let startedAt = 0;
+    const delayMs = 2000;
+    const revealTimer = window.setTimeout(() => setTutorialHintVisible(true), delayMs);
     const hintFrom = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
     const targetDelta = shortestSignedAngleDelta(hintFrom, currentQ.hiddenAngleDeg);
-    const hintDelta = Math.sign(targetDelta || 1) * Math.min(Math.abs(targetDelta), 30);
+    const hintDelta = Math.sign(targetDelta || 1) * Math.min(Math.abs(targetDelta), 60);
+    setTutorialHintVisible(false);
+    setTutorialAngle(hintFrom);
 
     const animate = (now: number) => {
-      const wave = (Math.sin(now / 520) + 1) / 2;
+      if (!startedAt) startedAt = now;
+      const elapsed = now - startedAt;
+      const activeElapsed = Math.max(0, elapsed - delayMs);
+      const wave = elapsed < delayMs ? 0 : (1 - Math.cos(activeElapsed / 520)) / 2;
       setTutorialAngle(hintFrom + hintDelta * wave);
       frameId = requestAnimationFrame(animate);
     };
 
     frameId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.clearTimeout(revealTimer);
+    };
   }, [currentQ.hiddenAngleDeg, currentQ.startAngleDeg, gamePhase, hasDiscoveredCannonDrag, introPhase, level, sceneBusy, showMonsterAnnounce]);
 
   const canFireRef = useRef(false);
@@ -1853,7 +1881,7 @@ export default function ArcadeAngleScreen() {
     && (dragging || answer.trim() !== "" || Math.abs(gazeAngle - baseAngle) > 0.5 || isFiring !== null || spinAnim !== null);
 
   const parsedAnswer = parseFloat(answer.trim());
-  const showCannonDragHint = !hasDiscoveredCannonDrag && !showMonsterAnnounce && gamePhase === "normal" && introPhase === "ready" && !sceneBusy;
+  const showCannonDragHint = tutorialHintVisible && !hasDiscoveredCannonDrag && !showMonsterAnnounce && gamePhase === "normal" && introPhase === "ready" && !sceneBusy;
   const showKeypadTypeHint = typedAimTutorialStage === "type" && !showMonsterAnnounce && gamePhase !== "normal" && introPhase === "ready" && !sceneBusy;
   // isAiming: cannon is actively pointed somewhere (dragging, firing, spinAnim, or valid number typed)
   const isAiming = showSceneActors && (
@@ -2042,6 +2070,13 @@ export default function ArcadeAngleScreen() {
                 level={level}
                 baseAngle={baseAngle}
                 arcRadiusOverride={activeArcRadius}
+              />
+            )}
+            {showCannonDragHint && level === 1 && (
+              <GazeBeamDrag
+                gazeAngle={tutorialAngle}
+                level={level}
+                baseAngle={0}
               />
             )}
 
