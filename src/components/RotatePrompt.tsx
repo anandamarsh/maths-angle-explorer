@@ -27,6 +27,11 @@ function usePortraitMobile() {
 export default function RotatePrompt() {
   const show = usePortraitMobile();
 
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    window.parent.postMessage({ type: "interactive-maths:overlay-active", active: show }, "*");
+  }, [show]);
+
   // Attempt runtime lock when the overlay appears (requires fullscreen on some browsers)
   useEffect(() => {
     if (show) {

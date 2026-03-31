@@ -1005,6 +1005,15 @@ export default function ArcadeAngleScreen() {
   const [tutorialHintVisible, setTutorialHintVisible] = useState(false);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
+  const isFullScreenOverlayActive = showMonsterAnnounce || screen === "won" || screen === "gameover";
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    window.parent.postMessage(
+      { type: "interactive-maths:overlay-active", active: showShareDrawer || showCommentsDrawer || isFullScreenOverlayActive },
+      "*",
+    );
+  }, [isFullScreenOverlayActive, showCommentsDrawer, showShareDrawer]);
 
   // Intro / deploy animation
   type IntroPhase = "origin" | "deploying" | "ready";
