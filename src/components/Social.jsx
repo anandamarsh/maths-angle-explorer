@@ -13,7 +13,7 @@ import { texts } from '../texts';
 const SHARE_TITLE      = texts.generic.social.shareTitle;
 const SHARE_URL        = texts.generic.shellShareUrl;
 const DEFAULT_DISCUSSIT_URL = import.meta.env.PROD
-  ? 'https://widget-two-kohl.vercel.app'
+  ? 'https://discussit-widget.vercel.app'
   : 'http://localhost:5001';
 const LOCAL_DISCUSSIT_URL = (import.meta.env.VITE_DISCUSSIT_URL ?? DEFAULT_DISCUSSIT_URL).replace(/\/$/, '');
 
