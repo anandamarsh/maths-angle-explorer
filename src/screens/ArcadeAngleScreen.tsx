@@ -2590,14 +2590,14 @@ export default function ArcadeAngleScreen() {
           borderTop: "3px solid rgba(250,204,21,0.4)",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
         }}>
-        <div className="sticky top-0 flex flex-nowrap items-center justify-between gap-3 px-4 py-3"
-          style={{ background: "#171717", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="shrink-0">
+        <div className="sticky top-0 px-4 py-3"
+          style={{ background: "#171717", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
+          <div className="pr-[13rem]">
             <div className="text-base font-black uppercase tracking-widest text-yellow-300 whitespace-nowrap">
               {texts.generic.drawers.commentsHeading}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="absolute right-4 top-3 flex items-center gap-3">
             <button
               onClick={openCommentsComposer}
               style={{
@@ -2605,12 +2605,13 @@ export default function ArcadeAngleScreen() {
                 borderRadius: "999px",
                 background: "rgba(250, 204, 21, 0.08)",
                 color: "#fde047",
-                padding: "0.55rem 1rem",
-                fontSize: "0.76rem",
+                padding: "0.5rem 0.85rem",
+                fontSize: "0.72rem",
                 fontWeight: 900,
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               New comment
