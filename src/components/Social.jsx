@@ -12,7 +12,10 @@ import { texts } from '../texts';
 
 const SHARE_TITLE      = texts.generic.social.shareTitle;
 const SHARE_URL        = texts.generic.shellShareUrl;
-const LOCAL_DISCUSSIT_URL = (import.meta.env.VITE_DISCUSSIT_URL ?? 'http://localhost:5001').replace(/\/$/, '');
+const DEFAULT_DISCUSSIT_URL = import.meta.env.PROD
+  ? 'https://discussit-widget.vercel.app'
+  : 'http://localhost:5001';
+const LOCAL_DISCUSSIT_URL = (import.meta.env.VITE_DISCUSSIT_URL ?? DEFAULT_DISCUSSIT_URL).replace(/\/$/, '');
 
 /** Just the four share buttons — no heading. */
 export function SocialShare() {
