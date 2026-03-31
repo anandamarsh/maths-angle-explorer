@@ -2539,12 +2539,12 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Backdrop — closes whichever drawer is open ── */}
       {(showShareDrawer || showCommentsDrawer) && (
-        <div className="fixed inset-0 z-[20005]"
+        <div className="fixed inset-0 z-[2147483646]"
           onClick={() => { setShowShareDrawer(false); setShowCommentsDrawer(false); }} />
       )}
 
       {/* ── Share drawer ── */}
-      <div className="fixed z-[10010]"
+      <div className="fixed z-[2147483646]"
         style={{
           left: "1rem",
           bottom: "1rem",
@@ -2569,7 +2569,7 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── Comments drawer ── */}
-      <div className="fixed inset-x-0 bottom-0 z-[20020] overflow-y-auto"
+      <div className="fixed inset-x-0 bottom-0 z-[2147483647] overflow-y-auto"
         style={{
           height: isMobileLandscape ? "100dvh" : "58vh",
           maxHeight: isMobileLandscape ? "100dvh" : "58vh",
