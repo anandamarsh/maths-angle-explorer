@@ -43,7 +43,7 @@ export function SocialComments() {
   const iframeUrl = `${LOCAL_DISCUSSIT_URL}/?url=${encodeURIComponent(pageUrl)}&theme=dark`;
 
   return (
-    <div style={{ padding: '1rem 1rem 1.25rem', height: '100%', boxSizing: 'border-box' }}>
+    <div style={{ padding: '0.75rem 1rem 1.25rem', height: '100%', boxSizing: 'border-box' }}>
       <iframe
         src={iframeUrl}
         title="DiscussIt comments"

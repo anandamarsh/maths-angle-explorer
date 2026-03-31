@@ -2539,12 +2539,12 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Backdrop — closes whichever drawer is open ── */}
       {(showShareDrawer || showCommentsDrawer) && (
-        <div className="fixed inset-0 z-[85]"
+        <div className="fixed inset-0 z-[10005]"
           onClick={() => { setShowShareDrawer(false); setShowCommentsDrawer(false); }} />
       )}
 
       {/* ── Share drawer ── */}
-      <div className="fixed z-[90]"
+      <div className="fixed z-[10010]"
         style={{
           left: "1rem",
           bottom: "1rem",
@@ -2569,10 +2569,10 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── Comments drawer ── */}
-      <div className="fixed inset-x-0 bottom-0 z-[90] overflow-y-auto"
+      <div className="fixed inset-x-0 bottom-0 z-[10020] overflow-y-auto"
         style={{
-          height: isMobileLandscape ? "100dvh" : "50vh",
-          maxHeight: isMobileLandscape ? "100dvh" : "50vh",
+          height: isMobileLandscape ? "100dvh" : "58vh",
+          maxHeight: isMobileLandscape ? "100dvh" : "58vh",
           display: "flex",
           flexDirection: "column",
           transform: showCommentsDrawer ? "translateY(0)" : "translateY(100%)",
@@ -2589,7 +2589,7 @@ export default function ArcadeAngleScreen() {
             </div>
           </div>
           <button onClick={() => setShowCommentsDrawer(false)}
-            style={{ color: "#94a3b8", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
+            style={{ color: "#fde047", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
         </div>
         <div style={{ flex: 1, minHeight: 0 }}>
           <SocialComments />
