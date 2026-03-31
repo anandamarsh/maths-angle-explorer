@@ -30,7 +30,7 @@ import {
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 import { formatText, texts } from "../texts";
 // @ts-expect-error — JS component
-import { SocialShare, SocialComments } from "../components/Social";
+import { SocialShare, SocialComments, openCommentsComposer } from "../components/Social";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -2539,7 +2539,7 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Backdrop — closes whichever drawer is open ── */}
       {(showShareDrawer || showCommentsDrawer) && (
-        <div className="fixed inset-0 z-[10005]"
+        <div className="fixed inset-0 z-[20005]"
           onClick={() => { setShowShareDrawer(false); setShowCommentsDrawer(false); }} />
       )}
 
@@ -2569,7 +2569,7 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── Comments drawer ── */}
-      <div className="fixed inset-x-0 bottom-0 z-[10020] overflow-y-auto"
+      <div className="fixed inset-x-0 bottom-0 z-[20020] overflow-y-auto"
         style={{
           height: isMobileLandscape ? "100dvh" : "58vh",
           maxHeight: isMobileLandscape ? "100dvh" : "58vh",
@@ -2588,8 +2588,43 @@ export default function ArcadeAngleScreen() {
               {texts.generic.drawers.commentsHeading}
             </div>
           </div>
-          <button onClick={() => setShowCommentsDrawer(false)}
-            style={{ color: "#fde047", fontSize: "1.75rem", lineHeight: 1, fontWeight: 900, padding: "4px 8px" }}>✕</button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={openCommentsComposer}
+              style={{
+                border: "1px solid rgba(250, 204, 21, 0.7)",
+                borderRadius: "999px",
+                background: "rgba(250, 204, 21, 0.08)",
+                color: "#fde047",
+                padding: "0.55rem 1rem",
+                fontSize: "0.76rem",
+                fontWeight: 900,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              New comment
+            </button>
+            <button
+              onClick={() => setShowCommentsDrawer(false)}
+              style={{
+                width: "2.2rem",
+                height: "2.2rem",
+                borderRadius: "999px",
+                border: "0",
+                background: "transparent",
+                color: "#fde047",
+                fontSize: "1.75rem",
+                lineHeight: 1,
+                fontWeight: 900,
+                padding: "0",
+                cursor: "pointer",
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div style={{ flex: 1, minHeight: 0 }}>
           <SocialComments />
