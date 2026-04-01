@@ -43,7 +43,7 @@ export function SocialComments() {
   const iframeUrl = `${LOCAL_DISCUSSIT_URL}/?url=${encodeURIComponent(pageUrl)}&theme=dark`;
 
   return (
-    <div style={{ padding: '0.75rem 1rem 1.25rem', height: '100%', boxSizing: 'border-box' }}>
+    <div style={{ padding: '0', height: '100%', boxSizing: 'border-box' }}>
       <iframe
         data-discussit-comments="true"
         src={iframeUrl}
@@ -53,7 +53,7 @@ export function SocialComments() {
           height: '100%',
           minHeight: '100%',
           border: 0,
-          borderRadius: '18px',
+          borderRadius: '0',
           background: 'transparent',
         }}
       />

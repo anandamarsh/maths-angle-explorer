@@ -2578,44 +2578,53 @@ export default function ArcadeAngleScreen() {
       </div>
 
       {/* ── Comments drawer ── */}
-      <div className="fixed inset-x-0 bottom-0 z-[2147483647] overflow-y-auto"
+      <div className="fixed bottom-0 z-[2147483647] overflow-y-auto"
         style={{
-          height: isMobileLandscape ? "100dvh" : "58vh",
-          maxHeight: isMobileLandscape ? "100dvh" : "58vh",
+          left: isMobileLandscape || isCompactViewport ? "0" : "50%",
+          width: isMobileLandscape || isCompactViewport ? "100vw" : "70vw",
+          height: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
+          maxWidth: isMobileLandscape || isCompactViewport ? "100vw" : "70vw",
+          maxHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           display: "flex",
           flexDirection: "column",
-          transform: showCommentsDrawer ? "translateY(0)" : "translateY(100%)",
+          transform: showCommentsDrawer
+            ? (isMobileLandscape || isCompactViewport ? "translateY(0)" : "translate(-50%, 0)")
+            : (isMobileLandscape || isCompactViewport ? "translateY(100%)" : "translate(-50%, 100%)"),
           transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
           background: "#171717",
           borderTop: "3px solid rgba(250,204,21,0.4)",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.6)",
         }}>
         <div className="sticky top-0 px-4 py-3"
-          style={{ background: "#171717", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
-          <div className="pr-[13rem]">
-            <div className="text-base font-black uppercase tracking-widest text-yellow-300 whitespace-nowrap">
-              {texts.generic.drawers.commentsHeading}
-            </div>
-          </div>
-          <div className="absolute right-4 top-3 flex items-center gap-3">
+          style={{
+            background: "#171717",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "0.75rem",
+          }}>
+          <div>
             <button
               onClick={openCommentsComposer}
               style={{
                 border: "1px solid rgba(250, 204, 21, 0.7)",
                 borderRadius: "999px",
-                background: "rgba(250, 204, 21, 0.08)",
-                color: "#fde047",
-                padding: "0.5rem 0.85rem",
-                fontSize: "0.72rem",
+                background: "#facc15",
+                color: "#111111",
+                padding: "0.55rem 0.95rem",
+                fontSize: "0.76rem",
                 fontWeight: 900,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
               }}
             >
-              New comment
+              Add Comment
             </button>
+          </div>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCommentsDrawer(false)}
               style={{
