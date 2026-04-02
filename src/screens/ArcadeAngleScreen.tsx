@@ -2580,16 +2580,17 @@ export default function ArcadeAngleScreen() {
       {/* ── Comments drawer ── */}
       <div className="fixed bottom-0 z-[2147483647] overflow-y-auto"
         style={{
-          left: isMobileLandscape || isCompactViewport ? "0" : "50%",
-          width: isMobileLandscape || isCompactViewport ? "100vw" : "70vw",
+          left: "0",
+          right: "0",
+          width: "100vw",
           height: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
-          maxWidth: isMobileLandscape || isCompactViewport ? "100vw" : "70vw",
+          maxWidth: "100vw",
           maxHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           display: "flex",
           flexDirection: "column",
           transform: showCommentsDrawer
-            ? (isMobileLandscape || isCompactViewport ? "translateY(0)" : "translate(-50%, 0)")
-            : (isMobileLandscape || isCompactViewport ? "translateY(100%)" : "translate(-50%, 100%)"),
+            ? "translateY(0)"
+            : "translateY(100%)",
           transition: "transform 0.35s cubic-bezier(0.32,0.72,0,1)",
           background: "#171717",
           borderTop: "3px solid rgba(250,204,21,0.4)",
@@ -2612,8 +2613,8 @@ export default function ArcadeAngleScreen() {
                 borderRadius: "999px",
                 background: "#facc15",
                 color: "#111111",
-                padding: "0.55rem 0.95rem",
-                fontSize: "0.76rem",
+                padding: "0.5rem 0.85rem",
+                fontSize: "0.72rem",
                 fontWeight: 900,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
