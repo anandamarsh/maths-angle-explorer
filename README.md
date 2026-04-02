@@ -1,75 +1,48 @@
-# React + TypeScript + Vite
+# Angle Explorer
 
-Deployment trigger update.
+> An arcade-style maths game where learners rotate a cannon, read angle values, and solve angle questions by aiming and firing.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## What It Is
 
-Currently, two official plugins are available:
+Angle Explorer is an interactive maths game built as a Progressive Web App. A cannon rotates from a fixed base, and the player uses dragging and keypad input to aim at targets while learning how different angles behave.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The game is designed to move from visual intuition to calculation:
+- Level 1 focuses on recognising and targeting angle types by sight.
+- Level 2 focuses on missing-angle reasoning in 90°, 180°, and 360° sector problems.
+- Level 3 is planned as a less scaffolded angle-reasoning mode.
 
-## React Compiler
+## Objective
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The objective is to aim correctly, answer the angle prompt, and clear the level by building enough progress to survive the Monster Round. Correct shots collect stars, wrong answers break momentum, and the final challenge rewards fluency rather than guessing.
 
-## Expanding the ESLint configuration
+## What It Teaches
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Level | Skill |
+|---|---|
+| **Level 1** | Recognising acute, right, obtuse, straight, and reflex angles |
+| **Level 2** | Solving missing-angle questions using totals of 90°, 180°, and 360° |
+| **Level 3** | Angle reasoning with less visual scaffolding |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## How to Play
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Read the question prompt.
+2. Drag the cannon to aim or type the angle on the keypad.
+3. Fire at the target.
+4. Correct answers collect stars and push the run forward.
+5. Collect enough stars to trigger the Monster Round.
+6. Clear the Monster Round to complete the level.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Design Notes
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- The live angle readout helps learners connect movement to angle measure.
+- Snapping at landmark values like 90° and 180° reinforces core angle relationships.
+- Sector-based missing-angle questions push learners to subtract from a known total instead of adding everything they see.
+- The Monster Round increases pressure without changing the underlying maths, which makes it a fluency test rather than a different game.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Tech
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- SVG
