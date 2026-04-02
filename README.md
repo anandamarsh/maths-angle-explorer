@@ -1,6 +1,6 @@
 # Angle Explorer
 
-![Angle Explorer screenshot](public/screenshots/angle-explorer-scene-2026-03-30T13-20-23-608Z.png)
+![Angle Explorer screenshot](public/screenshots/angle-explorer-scene-2026-03-30T06-02-40-492Z.png)
 
 > An arcade-style maths game where learners rotate a cannon, read angle values, and solve angle questions by aiming and firing.
 
