@@ -2613,6 +2613,7 @@ export default function ArcadeAngleScreen() {
                 borderRadius: "999px",
                 background: "#facc15",
                 color: "#111111",
+                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                 padding: "0.55rem 0.95rem",
                 fontSize: "0.76rem",
                 fontWeight: 900,
