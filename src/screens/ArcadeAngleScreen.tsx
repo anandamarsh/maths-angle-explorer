@@ -2583,7 +2583,9 @@ export default function ArcadeAngleScreen() {
           left: "0",
           right: "0",
           width: "100vw",
+          minWidth: "100vw",
           height: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
+          minHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           maxWidth: "100vw",
           maxHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           display: "flex",
@@ -2613,11 +2615,12 @@ export default function ArcadeAngleScreen() {
                 borderRadius: "999px",
                 background: "#facc15",
                 color: "#111111",
-                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                fontFamily: '"Courier New", "Lucida Console", monospace',
                 padding: "0.55rem 0.95rem",
                 fontSize: "0.76rem",
                 fontWeight: 900,
-                letterSpacing: "0.08em",
+                lineHeight: 1,
+                letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
@@ -2647,7 +2650,7 @@ export default function ArcadeAngleScreen() {
             </button>
           </div>
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0 }}>
           <SocialComments />
         </div>
       </div>
