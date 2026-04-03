@@ -64,6 +64,9 @@ const HIT_RESOLVE_MS = 1000;
 const PLATINUM_REVEAL_MS = 500;
 const ROUND_ANNOUNCE_MS = 4200;
 const L1_TARGET_RADIUS = 100;
+const TARGET_DISTANCE = BEAM_LEN;
+const SHOT_TRAVEL_MS = Math.round((TARGET_DISTANCE / L1_TARGET_RADIUS) * SHOT_MS);
+const SAFE_AREA_BOTTOM_PAD = "calc(env(safe-area-inset-bottom, 0px) + 12px)";
 const MIN_AIM_RADIUS = 40;
 const LEVEL_TARGET_COUNT = texts.rounds.targetCount;
 const SHELL_SHARE_URL = texts.generic.shellShareUrl;
@@ -1383,16 +1386,16 @@ export default function ArcadeAngleScreen() {
     function frame(now: number) {
       if (cancelled) return;
       const elapsed = now - t0;
-      const t = Math.min(1, elapsed / SHOT_MS);
+      const t = Math.min(1, elapsed / SHOT_TRAVEL_MS);
       setShotT(t);
-      if (elapsed < SHOT_MS) { animId = requestAnimationFrame(frame); return; }
+      if (elapsed < SHOT_TRAVEL_MS) { animId = requestAnimationFrame(frame); return; }
       // Shot complete
       setIsFiring(null);
       if (hit) {
         playCorrect();
         playExplosion();
         const q = currentQRef.current;
-        const qRadius = q.level === 1 ? L1_TARGET_RADIUS : EGG_RADIUS;
+        const qRadius = TARGET_DISTANCE;
         const fhPt = polarToXY(CX, CY, q.hiddenAngleDeg, qRadius);
         setRevealedAngle(aimAngle);
         setExplosion({ x: fhPt.x, y: fhPt.y });
@@ -1531,7 +1534,7 @@ export default function ArcadeAngleScreen() {
     }
     // In platinum the cannon is dead — only typing + fire moves it.
     if (gamePhase === "platinum") return;
-    const canDragFromRay = isAiming && isPointOnAimRay(x, y, aimForBeam);
+    const canDragFromRay = showSceneActors && isPointOnAimRay(x, y, aimForBeam);
     if (!isPointOnCannon(x, y, revealGaze) && !canDragFromRay) return;
     e.preventDefault();
     if (!hasDiscoveredCannonDrag) setHasDiscoveredCannonDrag(true);
@@ -1873,7 +1876,7 @@ export default function ArcadeAngleScreen() {
 
   const revealGaze = revealedAngle ?? gazeAngle;
   const aimForBeam = isFiring ? isFiring.aimAngle : revealGaze;
-  const targetRadius = currentQ.level === 1 ? L1_TARGET_RADIUS : EGG_RADIUS;
+  const targetRadius = TARGET_DISTANCE;
   const fh = polarToXY(CX, CY, currentQ.hiddenAngleDeg, targetRadius);
   const targetX = CX + (fh.x - CX) * deployT;
   const targetY = CY + (fh.y - CY) * deployT;
@@ -2074,8 +2077,8 @@ export default function ArcadeAngleScreen() {
             {/* Explosion */}
             {explosion && <ExplosionAt x={explosion.x} y={explosion.y} />}
 
-            {/* Aim beam — whenever cannon is aimed */}
-            {isAiming && (
+            {/* Aim beam — always visible as part of the cannon */}
+            {showSceneActors && (
               <GazeBeamDrag
                 gazeAngle={aimForBeam}
                 level={level}
@@ -2266,7 +2269,7 @@ export default function ArcadeAngleScreen() {
 
           {/* Keypad fills remaining space */}
           <div className="mt-auto shrink-0 px-1 relative"
-            style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+            style={{ paddingBottom: SAFE_AREA_BOTTOM_PAD }}>
             <NumericKeypad
               value={keypadValue}
               onChange={handleKeypadChange}
@@ -2286,7 +2289,7 @@ export default function ArcadeAngleScreen() {
 
       {/* ── Portrait: Bottom panel (hidden in landscape) ── */}
       <div className="shrink-0 z-50 flex flex-col gap-2 px-2 landscape:hidden"
-        style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+        style={{ paddingBottom: SAFE_AREA_BOTTOM_PAD }}>
 
         {/* Prompt / question text — left column */}
         <div className="flex-1 min-w-0 self-stretch flex flex-col justify-end">
@@ -2328,7 +2331,7 @@ export default function ArcadeAngleScreen() {
         </div>
 
         {/* Numeric keypad — always visible */}
-        <div className="relative">
+        <div className="relative" style={{ paddingBottom: SAFE_AREA_BOTTOM_PAD }}>
           <NumericKeypad
             value={keypadValue}
             onChange={handleKeypadChange}
