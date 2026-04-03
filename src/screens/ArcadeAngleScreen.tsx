@@ -3792,28 +3792,30 @@ export default function ArcadeAngleScreen() {
           className="absolute z-[60] flex flex-col items-start gap-1.5"
           style={{ bottom: "1rem", left: "1rem" }}
         >
-          <button
-            onClick={handleCaptureScene}
-            title="Capture scene"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <path
-                d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="12"
-                cy="12.5"
-                r="3.25"
-                stroke="white"
-                strokeWidth="2"
-              />
-            </svg>
-          </button>
+          {IS_DEV && (
+            <button
+              onClick={handleCaptureScene}
+              title="Capture scene"
+              className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                <path
+                  d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12.5"
+                  r="3.25"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+              </svg>
+            </button>
+          )}
           <div className="flex flex-row gap-1.5">
             <button
               onClick={handleShare}
@@ -3992,28 +3994,30 @@ export default function ArcadeAngleScreen() {
               />
             </svg>
           </button>
-          <button
-            onClick={handleCaptureScene}
-            title="Capture scene"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <path
-                d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="12"
-                cy="12.5"
-                r="3.25"
-                stroke="white"
-                strokeWidth="2"
-              />
-            </svg>
-          </button>
+          {IS_DEV && (
+            <button
+              onClick={handleCaptureScene}
+              title="Capture scene"
+              className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                <path
+                  d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12.5"
+                  r="3.25"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 
