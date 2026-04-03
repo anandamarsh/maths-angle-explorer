@@ -2093,18 +2093,18 @@ export default function ArcadeAngleScreen() {
             )}
 
             {/* Cannon */}
-            {showSceneActors && (
-              <g transform={`translate(${CX}, ${CY})`}>
-                <CannonSprite aimAngle={revealGaze} dragging={dragging} />
-              </g>
-            )}
+                  {showSceneActors && showCannonDragHint && (
+                    <CannonDragHint
+                      startAngle={level === 2 ? (currentQ.startAngleDeg ?? 0) : 0}
+                      hintAngle={tutorialAngle}
+                    />
+                  )}
 
-            {showSceneActors && showCannonDragHint && (
-              <CannonDragHint
-                startAngle={level === 2 ? (currentQ.startAngleDeg ?? 0) : 0}
-                hintAngle={tutorialAngle}
-              />
-            )}
+                  {showSceneActors && (
+                    <g transform={`translate(${CX}, ${CY})`}>
+                      <CannonSprite aimAngle={revealGaze} dragging={dragging} />
+                    </g>
+                  )}
 
             {/* Show angle measure whenever the visible arc has a non-zero sweep */}
             {isAiming && introPhase === "ready" && Math.abs(arcSweep) >= 0.5 && ((!isMonster && !isPlatinum) || revealedAngle !== null) && (
