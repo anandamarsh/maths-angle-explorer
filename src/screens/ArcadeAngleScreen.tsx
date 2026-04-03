@@ -411,7 +411,7 @@ function CannonDragHint({
   const endpoint = polarToXY(CX, CY, hintAngle, BEAM_LEN);
   const hintLabel = isTouchInput ? "Touch and Rotate" : "Click and Rotate";
   const hintFontSize = isMobile ? 19.5 : 13;
-  const hintBoxWidth = isMobile ? 294 : 196;
+  const hintBoxWidth = isMobile ? 248 : 174;
   return (
     <g style={{ pointerEvents: "none" }}>
       <g transform={`translate(${CX}, ${CY})`}>
@@ -2764,7 +2764,7 @@ export default function ArcadeAngleScreen() {
     level === 1 &&
     showSceneActors &&
     introPhase === "ready" &&
-    Math.abs(arcSweep) >= 0.5;
+    (dragging || Math.abs(arcSweep) >= 0.5);
   const showAngleOverlay =
     isAiming &&
     introPhase === "ready" &&
