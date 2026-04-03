@@ -78,6 +78,8 @@ const PLATINUM_REVEAL_MS = 500;
 const ROUND_ANNOUNCE_MS = 4200;
 const L1_TARGET_RADIUS = 100;
 const TARGET_DISTANCE = BEAM_LEN;
+const TARGET_EDGE_MARGIN = 4;
+const TARGET_SPRITE_RADIUS = 20;
 const SHOT_TRAVEL_MS = Math.round(
   (TARGET_DISTANCE / L1_TARGET_RADIUS) * SHOT_MS,
 );
@@ -2688,8 +2690,17 @@ export default function ArcadeAngleScreen() {
   const aimForBeam = isFiring ? isFiring.aimAngle : revealGaze;
   const targetRadius = TARGET_DISTANCE;
   const fh = polarToXY(CX, CY, currentQ.hiddenAngleDeg, targetRadius);
-  const targetX = CX + (fh.x - CX) * deployT;
-  const targetY = CY + (fh.y - CY) * deployT;
+  const unclampedTargetX = CX + (fh.x - CX) * deployT;
+  const unclampedTargetY = CY + (fh.y - CY) * deployT;
+  const targetCenterInset = TARGET_SPRITE_RADIUS + TARGET_EDGE_MARGIN;
+  const targetX = Math.min(
+    Math.max(unclampedTargetX, targetCenterInset),
+    W - targetCenterInset,
+  );
+  const targetY = Math.min(
+    Math.max(unclampedTargetY, targetCenterInset),
+    H - targetCenterInset,
+  );
   const promptText =
     isPlatinum && !showSceneActors && level === 2
       ? texts.levels["2"].prompts.blindShot
