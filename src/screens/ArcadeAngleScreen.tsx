@@ -1169,7 +1169,7 @@ function L1Scene() {
         <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
       ))}
       <path
-        d={`M0 ${H} Q60 220 120 250 Q160 200 200 235 Q250 190 300 230 Q340 195 380 225 Q420 180 460 215 L480 ${H} Z`}
+        d={`M0 ${H} Q60 236 120 254 Q160 214 200 240 Q250 206 300 236 Q340 210 380 232 Q420 198 460 220 L480 ${H} Z`}
         fill="rgba(30,58,95,0.35)"
       />
     </g>
@@ -3119,7 +3119,8 @@ export default function ArcadeAngleScreen() {
               )}
           </svg>
 
-          {isMobileLandscape && (
+          {isMobileLandscape &&
+            (Boolean(currentQ.promptLines && currentQ.subAnswers) || showDevAnswer) && (
             <div
               className="shrink-0 z-20 py-2"
               style={{
