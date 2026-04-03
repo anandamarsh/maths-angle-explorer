@@ -2705,6 +2705,10 @@ export default function ArcadeAngleScreen() {
     isPlatinum && !showSceneActors && level === 2
       ? texts.levels["2"].prompts.blindShot
       : getInstructionPrompt(level, gamePhase);
+  const displayPrompt = panelVisible
+    ? promptText.slice(0, Math.max(typeIdx, 1))
+    : promptText.slice(0, 1);
+  const hideFirstPromptChar = !currentQ.promptLines && typeIdx === 0;
   const showDevAnswer =
     IS_DEV &&
     panelVisible &&
@@ -2742,6 +2746,16 @@ export default function ArcadeAngleScreen() {
       isFiring !== null ||
       spinAnim !== null ||
       (!isPlatinum && answer.trim() !== "" && !isNaN(parsedAnswer)));
+  const showCoordAxes =
+    level === 1 &&
+    showSceneActors &&
+    introPhase === "ready" &&
+    Math.abs(arcSweep) >= 0.5;
+  const showAngleOverlay =
+    isAiming &&
+    introPhase === "ready" &&
+    Math.abs(arcSweep) >= 0.5 &&
+    ((!isMonster && !isPlatinum) || revealedAngle !== null);
 
   // Fire only enabled when typed value matches current aim (confirms the user has read the angle)
   const canFire =
@@ -3028,7 +3042,7 @@ export default function ArcadeAngleScreen() {
             )}
 
             {/* Coordinate axes — L1 only */}
-            {isAiming && level === 1 && <CoordAxes />}
+            {showCoordAxes && <CoordAxes />}
 
             {/* Known angle markers */}
             {currentQ.knownEggs.map((egg, i) => {
@@ -3117,10 +3131,7 @@ export default function ArcadeAngleScreen() {
             )}
 
             {/* Show angle measure whenever the visible arc has a non-zero sweep */}
-            {isAiming &&
-              introPhase === "ready" &&
-              Math.abs(arcSweep) >= 0.5 &&
-              ((!isMonster && !isPlatinum) || revealedAngle !== null) && (
+            {showAngleOverlay && (
                 <LiveAngleLabel
                   gazeAngle={aimForBeam}
                   revealed={revealedAngle !== null}
@@ -3131,7 +3142,9 @@ export default function ArcadeAngleScreen() {
           </svg>
 
           {isMobileLandscape &&
-            (Boolean(currentQ.promptLines && currentQ.subAnswers) || showDevAnswer) && (
+            (Boolean(currentQ.promptLines && currentQ.subAnswers) ||
+              !currentQ.promptLines ||
+              showDevAnswer) && (
             <div
               className="shrink-0 z-20 py-2"
               style={{
@@ -3173,7 +3186,14 @@ export default function ArcadeAngleScreen() {
                       );
                     })}
                 </div>
-              ) : null}
+              ) : (
+                <div className="arcade-panel min-h-[3rem] px-3 py-2 text-sm leading-5 text-white font-bold">
+                  <ColoredPrompt
+                    text={displayPrompt}
+                    hideFirstChar={hideFirstPromptChar}
+                  />
+                </div>
+              )}
               {showDevAnswer && (
                 <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
                   {texts.generic.devAnswerPrefix} {currentQ.answer}°
@@ -3395,7 +3415,14 @@ export default function ArcadeAngleScreen() {
                       );
                     })}
                 </div>
-              ) : null}
+              ) : (
+                <div className="arcade-panel min-h-[4.5rem] px-3 py-3 text-sm leading-6 text-white font-bold text-left">
+                  <ColoredPrompt
+                    text={displayPrompt}
+                    hideFirstChar={hideFirstPromptChar}
+                  />
+                </div>
+              )}
               {showDevAnswer && (
                 <div className="arcade-panel px-2 py-1 text-[10px] font-black text-yellow-300">
                   {texts.generic.devAnswerPrefix} {currentQ.answer}°
@@ -3488,7 +3515,14 @@ export default function ArcadeAngleScreen() {
                   );
                 })}
               </div>
-            ) : null}
+            ) : (
+              <div className="arcade-panel min-h-[4.25rem] px-3 py-2 text-xl leading-6 text-white font-bold">
+                <ColoredPrompt
+                  text={displayPrompt}
+                  hideFirstChar={hideFirstPromptChar}
+                />
+              </div>
+            )}
             {showDevAnswer && (
               <div className="arcade-panel px-3 py-1.5 text-xs font-black text-yellow-300">
                 {texts.generic.devAnswerPrefix} {currentQ.answer}°
