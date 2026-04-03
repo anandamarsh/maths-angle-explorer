@@ -27,7 +27,11 @@ import {
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 import { formatText, texts } from "../texts";
 // @ts-expect-error — JS component
-import { SocialShare, SocialComments, openCommentsComposer } from "../components/Social";
+import {
+  SocialShare,
+  SocialComments,
+  openCommentsComposer,
+} from "../components/Social";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -364,11 +368,22 @@ function CannonSprite({
   );
 }
 
-function FingerHintSprite({ x, y, scale = 0.6 }: { x: number; y: number; scale?: number }) {
+function FingerHintSprite({
+  x,
+  y,
+  scale = 0.6,
+}: {
+  x: number;
+  y: number;
+  scale?: number;
+}) {
   return (
     <g
       transform={`translate(${x} ${y}) scale(${scale}) translate(-30.53 -4.53)`}
-      style={{ pointerEvents: "none", filter: "drop-shadow(0 0 10px rgba(103,232,249,0.42))" }}
+      style={{
+        pointerEvents: "none",
+        filter: "drop-shadow(0 0 10px rgba(103,232,249,0.42))",
+      }}
     >
       <path
         d="M24.76,22.64V12.4c0-3.18,2.59-5.77,5.77-5.77,1.44,0,2.82,.54,3.89,1.51,1.07,1,1.72,2.33,1.85,3.76l.87,10.08c2.12-1.88,3.39-4.59,3.39-7.48,0-5.51-4.49-10-10-10s-10,4.49-10,10c0,3.29,1.62,6.29,4.23,8.14Z"
@@ -395,17 +410,13 @@ function CannonDragHint({
 }) {
   void startAngle;
   const endpoint = polarToXY(CX, CY, hintAngle, BEAM_LEN);
-  const hintLabel = isTouchInput ? "Touch and Drag to aim" : "Click and Drag to aim";
+  const hintLabel = isTouchInput ? "Touch and Rotate" : "Click and Rotate";
   const hintFontSize = isMobile ? 19.5 : 13;
   const hintBoxWidth = isMobile ? 294 : 196;
   return (
     <g style={{ pointerEvents: "none" }}>
       <g transform={`translate(${CX}, ${CY})`}>
-        <CannonSprite
-          aimAngle={hintAngle}
-          dragging={false}
-          variant="ghost"
-        />
+        <CannonSprite aimAngle={hintAngle} dragging={false} variant="ghost" />
       </g>
       <FingerHintSprite x={endpoint.x} y={endpoint.y} />
       <g transform={`translate(${endpoint.x} ${endpoint.y + 52})`}>
@@ -2284,7 +2295,11 @@ export default function ArcadeAngleScreen() {
     if (sceneBusy) return;
     if (!svgRef.current) return;
     const { x, y } = toSVGPoint(svgRef.current, e.clientX, e.clientY);
-    if (showFireHint && canKeypadFire && isPointOnAimEndpoint(x, y, aimForBeam)) {
+    if (
+      showFireHint &&
+      canKeypadFire &&
+      isPointOnAimEndpoint(x, y, aimForBeam)
+    ) {
       e.preventDefault();
       doSubmit();
       return;
@@ -3132,75 +3147,75 @@ export default function ArcadeAngleScreen() {
 
             {/* Show angle measure whenever the visible arc has a non-zero sweep */}
             {showAngleOverlay && (
-                <LiveAngleLabel
-                  gazeAngle={aimForBeam}
-                  revealed={revealedAngle !== null}
-                  answerDeg={revealedAngle ?? currentQ.answer}
-                  baseAngle={baseAngle}
-                />
-              )}
+              <LiveAngleLabel
+                gazeAngle={aimForBeam}
+                revealed={revealedAngle !== null}
+                answerDeg={revealedAngle ?? currentQ.answer}
+                baseAngle={baseAngle}
+              />
+            )}
           </svg>
 
           {isMobileLandscape &&
             (Boolean(currentQ.promptLines && currentQ.subAnswers) ||
               !currentQ.promptLines ||
               showDevAnswer) && (
-            <div
-              className="shrink-0 z-20 py-2"
-              style={{
-                background: "rgba(2,6,23,0.7)",
-                borderTop: "1px solid rgba(56,189,248,0.12)",
-                minHeight: "3rem",
-                paddingLeft: "7rem",
-                paddingRight: "0.75rem",
-              }}
-            >
-              {currentQ.promptLines && currentQ.subAnswers ? (
-                <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
-                  {panelVisible &&
-                    currentQ.promptLines.map((line, i) => {
-                      const isDone = i < subStep;
-                      const isCurrent = i === subStep;
-                      return (
-                        <div
-                          key={i}
-                          className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}
-                        >
-                          <ColoredPrompt
-                            text={line}
-                            className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`}
-                          />
-                          <span className="text-slate-400">=</span>
-                          {isDone ? (
-                            <span className="text-green-400 font-bold w-8 text-right">
-                              {subAnswers[i]}°
-                            </span>
-                          ) : isCurrent ? (
-                            <span className="text-yellow-300 font-bold w-8 text-right">
-                              {subAnswers[i] || "?"}
-                            </span>
-                          ) : (
-                            <span className="w-8" />
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              ) : (
-                <div className="arcade-panel min-h-[3rem] px-3 py-2 text-sm leading-5 text-white font-bold">
-                  <ColoredPrompt
-                    text={displayPrompt}
-                    hideFirstChar={hideFirstPromptChar}
-                  />
-                </div>
-              )}
-              {showDevAnswer && (
-                <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
-                  {texts.generic.devAnswerPrefix} {currentQ.answer}°
-                </div>
-              )}
-            </div>
-          )}
+              <div
+                className="shrink-0 z-20 py-2"
+                style={{
+                  background: "rgba(2,6,23,0.7)",
+                  borderTop: "1px solid rgba(56,189,248,0.12)",
+                  minHeight: "3rem",
+                  paddingLeft: "7rem",
+                  paddingRight: "0.75rem",
+                }}
+              >
+                {currentQ.promptLines && currentQ.subAnswers ? (
+                  <div className="arcade-panel flex flex-col gap-1 px-2 py-1.5 text-[10px]">
+                    {panelVisible &&
+                      currentQ.promptLines.map((line, i) => {
+                        const isDone = i < subStep;
+                        const isCurrent = i === subStep;
+                        return (
+                          <div
+                            key={i}
+                            className={`flex items-center gap-1 transition-opacity ${i > subStep ? "opacity-30" : ""}`}
+                          >
+                            <ColoredPrompt
+                              text={line}
+                              className={`flex-1 leading-4 font-bold ${i === 2 ? "text-white" : "text-slate-300"}`}
+                            />
+                            <span className="text-slate-400">=</span>
+                            {isDone ? (
+                              <span className="text-green-400 font-bold w-8 text-right">
+                                {subAnswers[i]}°
+                              </span>
+                            ) : isCurrent ? (
+                              <span className="text-yellow-300 font-bold w-8 text-right">
+                                {subAnswers[i] || "?"}
+                              </span>
+                            ) : (
+                              <span className="w-8" />
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="arcade-panel min-h-[3rem] px-3 py-2 text-sm leading-5 text-white font-bold">
+                    <ColoredPrompt
+                      text={displayPrompt}
+                      hideFirstChar={hideFirstPromptChar}
+                    />
+                  </div>
+                )}
+                {showDevAnswer && (
+                  <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
+                    {texts.generic.devAnswerPrefix} {currentQ.answer}°
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {/* ── Landscape sidebar: controls + keypad (hidden in portrait) ── */}
@@ -4061,11 +4076,20 @@ export default function ArcadeAngleScreen() {
         style={{
           left: isMobileLandscape || isCompactViewport ? "0" : "1rem",
           right: isMobileLandscape || isCompactViewport ? "0" : "1rem",
-          width: isMobileLandscape || isCompactViewport ? "100vw" : "calc(100vw - 2rem)",
-          minWidth: isMobileLandscape || isCompactViewport ? "100vw" : "calc(100vw - 2rem)",
+          width:
+            isMobileLandscape || isCompactViewport
+              ? "100vw"
+              : "calc(100vw - 2rem)",
+          minWidth:
+            isMobileLandscape || isCompactViewport
+              ? "100vw"
+              : "calc(100vw - 2rem)",
           height: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           minHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
-          maxWidth: isMobileLandscape || isCompactViewport ? "100vw" : "calc(100vw - 2rem)",
+          maxWidth:
+            isMobileLandscape || isCompactViewport
+              ? "100vw"
+              : "calc(100vw - 2rem)",
           maxHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           display: "flex",
           flexDirection: "column",
