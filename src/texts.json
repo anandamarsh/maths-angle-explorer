@@ -17,7 +17,7 @@
       "tryAgain": "Try again!"
     },
     "hints": {
-      "dragCannonHead": "Rotate the cannon head to aim",
+      "dragCannonHead": "Rotate the blue ray to aim",
       "typeNumberToAim": "Type the angle on the keypad to aim"
     },
     "drawers": {
@@ -41,7 +41,7 @@
   "levels": {
     "1": {
       "prompts": {
-        "normal": "Rotate the canon head to aim, then fire.",
+        "normal": "Rotate the blue ray to aim, then fire.",
         "platinum": "Enter the angle to aim, then fire."
       },
       "angleTypes": {
