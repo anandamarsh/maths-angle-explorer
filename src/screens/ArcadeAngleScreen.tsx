@@ -3747,7 +3747,7 @@ export default function ArcadeAngleScreen() {
           <button
             onClick={handleCaptureScene}
             title="Capture scene"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+            className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               <path
@@ -3947,7 +3947,7 @@ export default function ArcadeAngleScreen() {
           <button
             onClick={handleCaptureScene}
             title="Capture scene"
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+            className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
               <path
