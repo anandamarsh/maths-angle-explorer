@@ -26,7 +26,6 @@ import {
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 import { formatText, texts } from "../texts";
-// @ts-expect-error — JS component
 import {
   SocialShare,
   SocialComments,
