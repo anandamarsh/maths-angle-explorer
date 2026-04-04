@@ -850,38 +850,23 @@ function LiveAngleLabel({
 /** Angle-type banner (ACUTE / OBTUSE / etc.) with pill background. */
 function AngleTypeLabel({ gazeAngle }: { gazeAngle: number }) {
   const { label, color } = getAngleType(gazeAngle);
-  const rectW = label.length * 11 + 34;
-  const rectH = 30;
-  const rx = rectH / 2;
-  const rectX = CX - rectW / 2;
-  const rectY = 8;
   return (
-    <g style={{ pointerEvents: "none" }}>
-      <rect
-        x={rectX}
-        y={rectY}
-        width={rectW}
-        height={rectH}
-        rx={rx}
-        fill="rgba(5,10,25,0.97)"
-        stroke={color}
-        strokeWidth={1.8}
-        style={{ filter: `drop-shadow(0 0 8px ${color}90)` }}
-      />
-      <text
-        x={CX}
-        y={rectY + rectH / 2}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={15}
-        fontWeight="900"
-        fontFamily="monospace"
-        fill={color}
-        style={{ letterSpacing: "0.08em" }}
-      >
-        {label}
-      </text>
-    </g>
+    <div
+      className="pointer-events-none absolute right-3 top-3 z-20 rounded-full px-5 py-2 text-center"
+      style={{
+        background: "rgba(5,10,25,0.97)",
+        border: `1.8px solid ${color}`,
+        filter: `drop-shadow(0 0 8px ${color}90)`,
+        color,
+        fontSize: "15px",
+        fontWeight: 900,
+        fontFamily: "monospace",
+        letterSpacing: "0.08em",
+        lineHeight: 1,
+      }}
+    >
+      {label}
+    </div>
   );
 }
 
@@ -3076,15 +3061,6 @@ export default function ArcadeAngleScreen() {
               const p = polarToXY(CX, CY, egg.angleDeg, EGG_RADIUS);
               return <KnownMarker key={i} x={p.x} y={p.y} label={egg.label} />;
             })}
-
-            {/* Angle type label while aiming (L1 only) */}
-            {isAiming &&
-              level === 1 &&
-              !isMonster &&
-              !isPlatinum &&
-              Math.abs(gazeAngle) > 0.5 && (
-                <AngleTypeLabel gazeAngle={gazeAngle} />
-              )}
             {/* Target crosshair — above banner, below beam */}
             {showSceneActors &&
               !(isFiring?.hit && shotT > 0.88) &&
@@ -3163,6 +3139,14 @@ export default function ArcadeAngleScreen() {
               />
             )}
           </svg>
+
+          {isAiming &&
+            level === 1 &&
+            !isMonster &&
+            !isPlatinum &&
+            Math.abs(gazeAngle) > 0.5 && (
+              <AngleTypeLabel gazeAngle={gazeAngle} />
+            )}
 
           {level === 2 && !isMonster && !isPlatinum && currentQ.setKind && (
             <SetTypeLabel label={currentQ.setKind} />
