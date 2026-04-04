@@ -17,6 +17,17 @@ const DEFAULT_DISCUSSIT_URL = import.meta.env.PROD
   : 'http://localhost:5001';
 const LOCAL_DISCUSSIT_URL = (import.meta.env.VITE_DISCUSSIT_URL ?? DEFAULT_DISCUSSIT_URL).replace(/\/$/, '');
 
+function getCommentsPageUrl() {
+  if (typeof window === 'undefined') return SHARE_URL;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('level');
+    return url.toString();
+  } catch {
+    return window.location.href;
+  }
+}
+
 /** Just the four share buttons — no heading. */
 export function SocialShare() {
   return (
@@ -39,7 +50,7 @@ export function SocialShare() {
 
 /** Just the Cusdis thread — no share buttons. */
 export function SocialComments() {
-  const pageUrl = typeof window !== 'undefined' ? window.location.href : SHARE_URL;
+  const pageUrl = getCommentsPageUrl();
   const iframeUrl = `${LOCAL_DISCUSSIT_URL}/?url=${encodeURIComponent(pageUrl)}&theme=dark`;
 
   return (
