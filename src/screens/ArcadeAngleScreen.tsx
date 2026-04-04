@@ -41,6 +41,12 @@ const IS_LOCALHOST_DEV =
     globalThis.location?.hostname ?? "",
   );
 
+function readInitialLevel(): 1 | 2 {
+  if (typeof window === "undefined") return 1;
+  const raw = new URLSearchParams(window.location.search).get("level");
+  return raw === "2" ? 2 : 1;
+}
+
 const MONSTER_ROUND_NAMES = texts.rounds.monster.names;
 const PLATINUM_ROUND_NAMES = texts.rounds.platinum.names;
 
@@ -1628,8 +1634,10 @@ function GoldenTarget() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ArcadeAngleScreen() {
-  const [level, setLevel] = useState<1 | 2>(1);
-  const [unlockedLevel, setUnlockedLevel] = useState<1 | 2>(1);
+  const initialLevelRef = useRef<1 | 2>(readInitialLevel());
+  const initialLevel = initialLevelRef.current;
+  const [level, setLevel] = useState<1 | 2>(initialLevel);
+  const [unlockedLevel, setUnlockedLevel] = useState<1 | 2>(initialLevel);
   const [screen, setScreen] = useState<"playing" | "won" | "gameover">(
     "playing",
   );
@@ -1652,7 +1660,7 @@ export default function ArcadeAngleScreen() {
     return window.innerWidth < 1024 && window.innerWidth > window.innerHeight;
   });
   const [currentQ, setCurrentQ] = useState<AngleQuestion>(() =>
-    makeQuestion(1),
+    makeQuestion(initialLevel),
   );
   const [eggsCollected, setEggsCollected] = useState(0);
   const [monsterEggs, setMonsterEggs] = useState(0);
