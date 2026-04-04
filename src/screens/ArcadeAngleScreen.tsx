@@ -1805,6 +1805,7 @@ export default function ArcadeAngleScreen() {
 
   useEffect(() => {
     if (
+      level !== 1 ||
       hasDiscoveredCannonDrag ||
       showMonsterAnnounce ||
       gamePhase !== "normal" ||
@@ -2287,6 +2288,7 @@ export default function ArcadeAngleScreen() {
       dragAngleRef.current = gazeAngleRef.current;
       setDragging(false);
       if (
+        level === 1 &&
         gamePhaseRef.current === "normal" &&
         !hasSeenFirstFireTutorial &&
         canFireRef.current
@@ -2323,7 +2325,7 @@ export default function ArcadeAngleScreen() {
     if (!isPointOnCannon(x, y, revealGaze) && !canDragFromRay) return;
     e.preventDefault();
     if (!hasDiscoveredCannonDrag) setHasDiscoveredCannonDrag(true);
-    if (gamePhase === "normal" && !hasSeenFirstFireTutorial) {
+    if (level === 1 && gamePhase === "normal" && !hasSeenFirstFireTutorial) {
       setFirstFireTutorialReady(false);
     }
     lastTickAngleRef.current = -999;
@@ -2545,7 +2547,11 @@ export default function ArcadeAngleScreen() {
   function handleKeypadChange(v: string) {
     const parsed = parseFloat(v);
     const hasLockedTypedAngle = !isNaN(parsed) && Math.abs(parsed) > 0;
-    if (gamePhase !== "normal" && typedAimTutorialStage !== "done") {
+    if (
+      level === 1 &&
+      gamePhase !== "normal" &&
+      typedAimTutorialStage !== "done"
+    ) {
       setTypedAimTutorialStage(hasLockedTypedAngle ? "fire" : "type");
     }
     if (currentQ.promptLines) {
@@ -2580,11 +2586,15 @@ export default function ArcadeAngleScreen() {
   // ── Submit / Fire ──────────────────────────────────────────────────────────
   function doSubmit() {
     if (sceneBusy || submitLockRef.current) return;
-    if (gamePhase === "normal" && !hasSeenFirstFireTutorial) {
+    if (level === 1 && gamePhase === "normal" && !hasSeenFirstFireTutorial) {
       setHasSeenFirstFireTutorial(true);
       setFirstFireTutorialReady(false);
     }
-    if (gamePhase !== "normal" && typedAimTutorialStage === "fire") {
+    if (
+      level === 1 &&
+      gamePhase !== "normal" &&
+      typedAimTutorialStage === "fire"
+    ) {
       setTypedAimTutorialStage("done");
     }
 
@@ -2755,6 +2765,7 @@ export default function ArcadeAngleScreen() {
 
   const parsedAnswer = parseFloat(answer.trim());
   const showCannonDragHint =
+    level === 1 &&
     tutorialHintVisible &&
     !hasDiscoveredCannonDrag &&
     !showMonsterAnnounce &&
@@ -2762,6 +2773,7 @@ export default function ArcadeAngleScreen() {
     introPhase === "ready" &&
     !sceneBusy;
   const showKeypadTypeHint =
+    level === 1 &&
     typedAimTutorialStage === "type" &&
     !showMonsterAnnounce &&
     gamePhase !== "normal" &&
@@ -2797,6 +2809,7 @@ export default function ArcadeAngleScreen() {
     ? !sceneBusy && !isNaN(parseFloat(subAnswers[subStep]))
     : canFire;
   const showFirstRoundFireHint =
+    level === 1 &&
     gamePhase === "normal" &&
     !showMonsterAnnounce &&
     introPhase === "ready" &&

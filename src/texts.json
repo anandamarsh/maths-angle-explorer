@@ -60,7 +60,7 @@
     },
     "2": {
       "prompts": {
-        "normal": "Rotate the canon to find the missing angle and fire.",
+        "normal": "Find the missing angle and fire.",
         "platinum": "Type in the missing angle and fire.",
         "blindShot": "Type in the missing angle and fire."
       },
