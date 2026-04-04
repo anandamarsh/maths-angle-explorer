@@ -3,27 +3,11 @@
 
 let ctx: AudioContext | null = null;
 let footToggle = false;
-const MUTE_STORAGE_KEY = import.meta.env.DEV
-  ? "maths-angle-explorer:muted:dev"
-  : "maths-angle-explorer:muted:prod";
 const SFX_GAIN = 2.2;
 const BG_GAIN = 0.25;
 
-function readStoredMute(): boolean | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(MUTE_STORAGE_KEY);
-  if (raw === "true") return true;
-  if (raw === "false") return false;
-  return null;
-}
-
-function persistMute(value: boolean) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(MUTE_STORAGE_KEY, String(value));
-}
-
 /** In dev, always start muted. In prod, default to on unless the user muted it. */
-let muted = import.meta.env.DEV ? true : (readStoredMute() ?? false);
+let muted = import.meta.env.DEV;
 
 function ac(): AudioContext {
   if (!ctx) ctx = new AudioContext();
@@ -66,7 +50,6 @@ function musicTone(freq: number, start: number, dur: number, vol = 0.08, type: O
 
 export function toggleMute(): boolean {
   muted = !muted;
-  if (!import.meta.env.DEV) persistMute(muted);
   if (muted) {
     if (bgTimer) clearTimeout(bgTimer);
     bgTimer = null;
