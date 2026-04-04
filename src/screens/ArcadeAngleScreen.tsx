@@ -1826,7 +1826,7 @@ export default function ArcadeAngleScreen() {
       () => setTutorialHintVisible(true),
       delayMs,
     );
-    const hintFrom = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
+    const hintFrom = 0;
     const targetDelta = shortestSignedAngleDelta(
       hintFrom,
       currentQ.hiddenAngleDeg,
@@ -3164,7 +3164,7 @@ export default function ArcadeAngleScreen() {
 
             {showSceneActors && showCannonDragHint && (
               <CannonDragHint
-                startAngle={level === 2 ? (currentQ.startAngleDeg ?? 0) : 0}
+                startAngle={0}
                 hintAngle={tutorialAngle}
                 isTouchInput={isTouchInput}
                 isMobile={isCompactViewport}
