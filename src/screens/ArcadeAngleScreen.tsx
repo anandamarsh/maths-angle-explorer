@@ -1668,7 +1668,7 @@ export default function ArcadeAngleScreen() {
     "normal",
   );
 
-  const [gazeAngle, setGazeAngle] = useState(0);
+  const [gazeAngle, setGazeAngle] = useState(() => currentQ.startAngleDeg ?? 0);
   const [dragging, setDragging] = useState(false);
 
   const [answer, setAnswer] = useState("");
@@ -1748,7 +1748,7 @@ export default function ArcadeAngleScreen() {
   const flashTimerRef = useRef<number | null>(null);
   const platinumRevealTimerRef = useRef<number | null>(null);
   const lastTickAngleRef = useRef(-999);
-  const gazeAngleRef = useRef(0); // always in sync with gazeAngle state
+  const gazeAngleRef = useRef(currentQ.startAngleDeg ?? 0); // always in sync with gazeAngle state
   const lastPointerAngleRef = useRef<number | null>(null); // raw [0,360) from last pointer event
   const dragAngleRef = useRef(0); // continuous unsnapped drag angle during active drag
   const gamePhaseRef = useRef<"normal" | "monster" | "platinum">("normal");
