@@ -848,7 +848,13 @@ function LiveAngleLabel({
 }
 
 /** Angle-type banner (ACUTE / OBTUSE / etc.) with pill background. */
-function AngleTypeLabel({ gazeAngle }: { gazeAngle: number }) {
+function AngleTypeLabel({
+  gazeAngle,
+  isDesktop,
+}: {
+  gazeAngle: number;
+  isDesktop: boolean;
+}) {
   const { label, color } = getAngleType(gazeAngle);
   return (
     <div
@@ -858,7 +864,7 @@ function AngleTypeLabel({ gazeAngle }: { gazeAngle: number }) {
         border: `1.8px solid ${color}`,
         filter: `drop-shadow(0 0 8px ${color}90)`,
         color,
-        fontSize: "15px",
+        fontSize: isDesktop ? "30px" : "15px",
         fontWeight: 900,
         fontFamily: "monospace",
         letterSpacing: "0.08em",
@@ -870,7 +876,13 @@ function AngleTypeLabel({ gazeAngle }: { gazeAngle: number }) {
   );
 }
 
-function SetTypeLabel({ label }: { label: string }) {
+function SetTypeLabel({
+  label,
+  isDesktop,
+}: {
+  label: string;
+  isDesktop: boolean;
+}) {
   const setKindKey = label as Level2SetKindKey;
   const setTexts = texts.levels["2"].setKinds[setKindKey];
   const color = label.includes("COMPLEMENTARY")
@@ -892,7 +904,7 @@ function SetTypeLabel({ label }: { label: string }) {
       <div
         style={{
           color,
-          fontSize: "12px",
+          fontSize: isDesktop ? "24px" : "12px",
           fontWeight: 900,
           fontFamily: "monospace",
           letterSpacing: "0.06em",
@@ -904,7 +916,7 @@ function SetTypeLabel({ label }: { label: string }) {
       <div
         style={{
           color,
-          fontSize: "9px",
+          fontSize: isDesktop ? "18px" : "9px",
           fontWeight: 900,
           fontFamily: "monospace",
           letterSpacing: "0.08em",
@@ -3145,11 +3157,17 @@ export default function ArcadeAngleScreen() {
             !isMonster &&
             !isPlatinum &&
             Math.abs(gazeAngle) > 0.5 && (
-              <AngleTypeLabel gazeAngle={gazeAngle} />
+              <AngleTypeLabel
+                gazeAngle={gazeAngle}
+                isDesktop={!isCompactViewport}
+              />
             )}
 
           {level === 2 && !isMonster && !isPlatinum && currentQ.setKind && (
-            <SetTypeLabel label={currentQ.setKind} />
+            <SetTypeLabel
+              label={currentQ.setKind}
+              isDesktop={!isCompactViewport}
+            />
           )}
 
           {isMobileLandscape &&
