@@ -35,6 +35,11 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const IS_DEV = import.meta.env.DEV;
+const IS_LOCALHOST_DEV =
+  IS_DEV &&
+  new Set(["localhost", "127.0.0.1", "::1"]).has(
+    globalThis.location?.hostname ?? "",
+  );
 
 const MONSTER_ROUND_NAMES = texts.rounds.monster.names;
 const PLATINUM_ROUND_NAMES = texts.rounds.platinum.names;
@@ -1918,6 +1923,7 @@ export default function ArcadeAngleScreen() {
   }
 
   async function handleCaptureScene() {
+    if (!IS_LOCALHOST_DEV) return;
     const svg = svgRef.current;
     if (!svg) return;
 
@@ -3792,7 +3798,7 @@ export default function ArcadeAngleScreen() {
           className="absolute z-[60] flex flex-col items-start gap-1.5"
           style={{ bottom: "1rem", left: "1rem" }}
         >
-          {IS_DEV && (
+          {IS_LOCALHOST_DEV && (
             <button
               onClick={handleCaptureScene}
               title="Capture scene"
@@ -3994,7 +4000,7 @@ export default function ArcadeAngleScreen() {
               />
             </svg>
           </button>
-          {IS_DEV && (
+          {IS_LOCALHOST_DEV && (
             <button
               onClick={handleCaptureScene}
               title="Capture scene"
