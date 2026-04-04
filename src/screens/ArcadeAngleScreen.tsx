@@ -895,56 +895,42 @@ function SetTypeLabel({ label }: { label: string }) {
       : "#38bdf8";
   const displayLabel = setTexts?.label ?? label;
   const sublabel = setTexts?.sublabel ?? "";
-  const textW = Math.max(
-    displayLabel.length * 9 + 28,
-    sublabel.length * 7 + 24,
-  );
-  const rectW = textW + 16;
-  const rectH = 40;
-  const rx = rectH / 2;
-  const rectX = CX - rectW / 2;
-  const rectY = 6;
   return (
-    <g style={{ pointerEvents: "none" }}>
-      <rect
-        x={rectX}
-        y={rectY}
-        width={rectW}
-        height={rectH}
-        rx={rx}
-        fill="rgba(5,10,25,0.97)"
-        stroke={color}
-        strokeWidth={1.8}
-        style={{ filter: `drop-shadow(0 0 8px ${color}90)` }}
-      />
-      <text
-        x={CX}
-        y={rectY + 14}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={12}
-        fontWeight="900"
-        fontFamily="monospace"
-        fill={color}
-        style={{ letterSpacing: "0.06em" }}
+    <div
+      className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-center rounded-full px-5 py-2 text-center"
+      style={{
+        background: "rgba(5,10,25,0.97)",
+        border: `1.8px solid ${color}`,
+        filter: `drop-shadow(0 0 8px ${color}90)`,
+      }}
+    >
+      <div
+        style={{
+          color,
+          fontSize: "12px",
+          fontWeight: 900,
+          fontFamily: "monospace",
+          letterSpacing: "0.06em",
+          lineHeight: 1.1,
+        }}
       >
         {displayLabel}
-      </text>
-      <text
-        x={CX}
-        y={rectY + 28}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={9}
-        fontWeight="900"
-        fontFamily="monospace"
-        fill={color}
-        opacity={0.95}
-        style={{ letterSpacing: "0.08em" }}
+      </div>
+      <div
+        style={{
+          color,
+          fontSize: "9px",
+          fontWeight: 900,
+          fontFamily: "monospace",
+          letterSpacing: "0.08em",
+          lineHeight: 1.1,
+          opacity: 0.95,
+          marginTop: "2px",
+        }}
       >
         {sublabel}
-      </text>
-    </g>
+      </div>
+    </div>
   );
 }
 
@@ -3099,10 +3085,6 @@ export default function ArcadeAngleScreen() {
               Math.abs(gazeAngle) > 0.5 && (
                 <AngleTypeLabel gazeAngle={gazeAngle} />
               )}
-            {level === 2 && !isMonster && !isPlatinum && currentQ.setKind && (
-              <SetTypeLabel label={currentQ.setKind} />
-            )}
-
             {/* Target crosshair — above banner, below beam */}
             {showSceneActors &&
               !(isFiring?.hit && shotT > 0.88) &&
@@ -3181,6 +3163,10 @@ export default function ArcadeAngleScreen() {
               />
             )}
           </svg>
+
+          {level === 2 && !isMonster && !isPlatinum && currentQ.setKind && (
+            <SetTypeLabel label={currentQ.setKind} />
+          )}
 
           {isMobileLandscape &&
             (Boolean(currentQ.promptLines && currentQ.subAnswers) ||
