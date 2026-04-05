@@ -34,6 +34,7 @@ import {
 import SessionReportModal from "../components/SessionReportModal";
 import {
   startSession,
+  continueSession,
   startQuestionTimer,
   logAttempt,
   buildSummary,
@@ -2511,10 +2512,14 @@ export default function ArcadeAngleScreen() {
     window.setTimeout(() => nextQuestion(level), 950);
   }
 
-  function beginNewRun(targetLevel?: 1 | 2) {
+  function beginNewRun(targetLevel?: 1 | 2, carry = false) {
     playButton();
     shuffleMusic();
-    startSession();
+    if (carry) {
+      continueSession();
+    } else {
+      startSession();
+    }
     setSessionSummary(null);
     const lv = targetLevel ?? level;
     submitLockRef.current = false;
@@ -3520,7 +3525,7 @@ export default function ArcadeAngleScreen() {
                     })}
                 </div>
               ) : (
-                <div className="arcade-panel min-h-[4.5rem] px-3 py-3 text-sm leading-6 text-white font-bold text-left">
+                <div className="arcade-panel px-3 py-2 text-xs leading-5 text-white font-bold text-left">
                   <ColoredPrompt
                     text={displayPrompt}
                     hideFirstChar={hideFirstPromptChar}
@@ -3774,7 +3779,7 @@ export default function ArcadeAngleScreen() {
           summary={sessionSummary}
           level={level}
           onClose={() => beginNewRun(level)}
-          onNextLevel={level < 2 ? () => beginNewRun(2) : undefined}
+          onNextLevel={level < 2 ? () => beginNewRun(2, true) : undefined}
         />
       )}
 

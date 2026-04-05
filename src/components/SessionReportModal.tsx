@@ -197,20 +197,21 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         />
 
         <div className="mt-6 flex flex-col items-center gap-3">
-          {level < 2 && onNextLevel && (
+          {level < 2 && onNextLevel ? (
             <button
               onClick={onNextLevel}
               className="arcade-button px-8 py-4 text-base md:text-lg"
             >
               Next Level
             </button>
+          ) : (
+            <button
+              onClick={onClose}
+              className="arcade-button px-8 py-4 text-base md:text-lg"
+            >
+              Play Again
+            </button>
           )}
-          <button
-            onClick={onClose}
-            className="arcade-button px-8 py-4 text-base md:text-lg"
-          >
-            Play Again
-          </button>
         </div>
       </div>
     </div>

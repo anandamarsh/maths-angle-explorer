@@ -91,6 +91,11 @@ export function buildSummary(opts: {
   };
 }
 
+/** Carry attempts forward into the next level without resetting. */
+export function continueSession() {
+  startQuestionTimer();
+}
+
 export function clearSession() {
   _attempts = [];
   _questionCounter = 0;
