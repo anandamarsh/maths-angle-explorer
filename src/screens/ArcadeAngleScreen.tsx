@@ -25,12 +25,20 @@ import {
   ensureAudioReady,
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
-import { formatText, texts } from "../texts";
+import { texts } from "../texts";
 import {
   SocialShare,
   SocialComments,
   openCommentsComposer,
 } from "../components/Social";
+import SessionReportModal from "../components/SessionReportModal";
+import {
+  startSession,
+  startQuestionTimer,
+  logAttempt,
+  buildSummary,
+  type SessionSummary,
+} from "../report/sessionLog";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1578,42 +1586,6 @@ function NumericKeypad({
   );
 }
 
-/** Golden target icon for win/gameover screens. */
-function GoldenTarget() {
-  return (
-    <svg
-      viewBox="0 0 40 40"
-      width="32"
-      height="32"
-      style={{
-        filter:
-          "drop-shadow(0 0 6px rgba(250,204,21,0.95)) drop-shadow(0 0 16px rgba(251,191,36,0.55))",
-      }}
-    >
-      <circle
-        cx="20"
-        cy="20"
-        r="17"
-        fill="none"
-        stroke="#facc15"
-        strokeWidth="3"
-      />
-      <circle
-        cx="20"
-        cy="20"
-        r="10"
-        fill="none"
-        stroke="#facc15"
-        strokeWidth="2"
-      />
-      <circle cx="20" cy="20" r="4" fill="#facc15" />
-      <line x1="2" y1="20" x2="10" y2="20" stroke="#facc15" strokeWidth="2" />
-      <line x1="30" y1="20" x2="38" y2="20" stroke="#facc15" strokeWidth="2" />
-      <line x1="20" y1="2" x2="20" y2="10" stroke="#facc15" strokeWidth="2" />
-      <line x1="20" y1="30" x2="20" y2="38" stroke="#facc15" strokeWidth="2" />
-    </svg>
-  );
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -1685,6 +1657,11 @@ export default function ArcadeAngleScreen() {
   const [tutorialHintVisible, setTutorialHintVisible] = useState(false);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
+  const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(() => {
+    startSession();
+    return null;
+  });
+
   const isFullScreenOverlayActive =
     showMonsterAnnounce || screen === "won" || screen === "gameover";
 
@@ -1743,6 +1720,7 @@ export default function ArcadeAngleScreen() {
   const earnPlatinumEggRef = useRef(() => {});
   const loseEggRef = useRef(() => {});
   const submitLockRef = useRef(false);
+  const lastTypedAnswerRef = useRef<number | null>(null);
 
   gamePhaseRef.current = gamePhase;
   currentQRef.current = currentQ;
@@ -2336,6 +2314,7 @@ export default function ArcadeAngleScreen() {
   }
 
   function nextQuestion(targetLevel = level) {
+    startQuestionTimer();
     const q = makeQuestion(targetLevel);
     submitLockRef.current = false;
     setCurrentQ(q);
@@ -2364,6 +2343,14 @@ export default function ArcadeAngleScreen() {
   }
 
   function earnEgg() {
+    logAttempt({
+      prompt: currentQRef.current.prompt,
+      level: level as 1 | 2 | 3,
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+      isCorrect: true,
+      gamePhase: "normal",
+    });
     const newEggs = eggsCollected + 1;
     if (newEggs === LEVEL_TARGET_COUNT) {
       setEggsCollected(LEVEL_TARGET_COUNT);
@@ -2377,6 +2364,14 @@ export default function ArcadeAngleScreen() {
   }
 
   function earnMonsterEgg() {
+    logAttempt({
+      prompt: currentQRef.current.prompt,
+      level: level as 1 | 2 | 3,
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+      isCorrect: true,
+      gamePhase: "monster",
+    });
     const newGolden = monsterEggs + 1;
     if (newGolden === LEVEL_TARGET_COUNT) {
       setMonsterEggs(LEVEL_TARGET_COUNT);
@@ -2391,6 +2386,14 @@ export default function ArcadeAngleScreen() {
   }
 
   function loseEgg() {
+    logAttempt({
+      prompt: currentQRef.current.prompt,
+      level: level as 1 | 2 | 3,
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+      isCorrect: false,
+      gamePhase: gamePhaseRef.current === "normal" ? "normal" : "monster",
+    });
     submitLockRef.current = false;
     playWrong();
     if (gamePhase === "monster" || gamePhase === "platinum") {
@@ -2443,15 +2446,41 @@ export default function ArcadeAngleScreen() {
   }
 
   function earnPlatinumEgg() {
+    logAttempt({
+      prompt: currentQRef.current.prompt,
+      level: level as 1 | 2 | 3,
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+      isCorrect: true,
+      gamePhase: "monster",
+    });
     const newPlat = monsterEggs + 1;
     if (newPlat === LEVEL_TARGET_COUNT) {
       setMonsterEggs(LEVEL_TARGET_COUNT);
       if (level === 2) {
         playGameComplete();
+        const summary = buildSummary({
+          playerName: "Explorer",
+          level: level as 1 | 2 | 3,
+          normalEggs: LEVEL_TARGET_COUNT,
+          monsterEggs: LEVEL_TARGET_COUNT,
+          levelCompleted: true,
+          monsterRoundCompleted: true,
+        });
+        setSessionSummary(summary);
         setScreen("gameover");
       } else {
         playMonsterVictory();
         if (!IS_DEV) setUnlockedLevel(() => 2);
+        const summary = buildSummary({
+          playerName: "Explorer",
+          level: level as 1 | 2 | 3,
+          normalEggs: LEVEL_TARGET_COUNT,
+          monsterEggs: LEVEL_TARGET_COUNT,
+          levelCompleted: true,
+          monsterRoundCompleted: true,
+        });
+        setSessionSummary(summary);
         setScreen("won");
       }
       return;
@@ -2465,6 +2494,8 @@ export default function ArcadeAngleScreen() {
   function beginNewRun(targetLevel?: 1 | 2) {
     playButton();
     shuffleMusic();
+    startSession();
+    setSessionSummary(null);
     const lv = targetLevel ?? level;
     submitLockRef.current = false;
     if (targetLevel) setLevel(targetLevel);
@@ -2616,6 +2647,7 @@ export default function ArcadeAngleScreen() {
           : typed;
       commitAimAngle(typedAim);
       submitLockRef.current = true;
+      lastTypedAnswerRef.current = typed;
       fireCannon(correct, typedAim);
       return;
     }
@@ -2636,6 +2668,7 @@ export default function ArcadeAngleScreen() {
               currentQ.totalContext,
             )
           : typedAngle;
+      lastTypedAnswerRef.current = typedAngle;
       submitLockRef.current = true;
       setPlatinumActorsVisible(true);
       setPlatinumRevealPending(true);
@@ -2688,6 +2721,7 @@ export default function ArcadeAngleScreen() {
     if (trimmed === "") {
       const correct =
         angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < ANGLE_HIT_TOL;
+      lastTypedAnswerRef.current = null; // aim-only shot
       submitLockRef.current = true;
       fireCannon(correct, gazeAngle);
     } else {
@@ -2705,6 +2739,7 @@ export default function ArcadeAngleScreen() {
             )
           : guess;
       commitAimAngle(guessAim);
+      lastTypedAnswerRef.current = guess;
       submitLockRef.current = true;
       fireCannon(correct, guessAim);
     }
@@ -3714,111 +3749,25 @@ export default function ArcadeAngleScreen() {
       )}
 
       {/* ── Won screen ── */}
-      {screen === "won" && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-6">
-          <div className="arcade-panel p-10 text-center">
-            {isMonster || isPlatinum ? (
-              <>
-                <div
-                  className="text-4xl font-black uppercase tracking-[0.18em] md:text-5xl"
-                  style={{ color: isPlatinum ? "#e2e8f0" : "#fde047" }}
-                >
-                  {formatText(
-                    texts.levels[String(level) as "1" | "2"].completion
-                      .finalTitle,
-                    { level },
-                  )}
-                </div>
-                <div
-                  className="mt-1 text-lg font-bold"
-                  style={{ color: isPlatinum ? "#94a3b8" : "#d8b4fe" }}
-                >
-                  {isPlatinum
-                    ? texts.rounds.platinum.victorySubtitle
-                    : texts.rounds.monster.victorySubtitle}
-                </div>
-                <div className="mt-2 flex items-center justify-center gap-2">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <GoldenTarget key={i} />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-4xl font-black uppercase tracking-[0.18em] text-emerald-400 md:text-5xl">
-                  {formatText(texts.levels["1"].completion.standardTitle, {
-                    level,
-                  })}
-                </div>
-                <div className="mt-2 text-xl text-yellow-300">
-                  {texts.levels["1"].completion.standardSubtitle}
-                </div>
-              </>
-            )}
-            <div className="mt-8 flex flex-col items-center gap-3">
-              {level < 2 && (
-                <button
-                  onClick={() => beginNewRun(2)}
-                  className="arcade-button px-8 py-4 text-base md:text-lg"
-                >
-                  {texts.generic.buttons.nextLevel}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {screen === "won" && sessionSummary && (
+        <SessionReportModal
+          summary={sessionSummary}
+          level={level}
+          onClose={() => beginNewRun(level)}
+          onNextLevel={level < 2 ? () => beginNewRun(2) : undefined}
+        />
       )}
 
-      {/* ── Game over (all 3 levels complete) ── */}
-      {screen === "gameover" && (
-        <div
-          className="absolute inset-0 z-[80] flex items-center justify-center"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(88,28,135,0.97) 0%, rgba(5,2,18,0.99) 80%)",
+      {/* ── Game over (all levels complete) ── */}
+      {screen === "gameover" && sessionSummary && (
+        <SessionReportModal
+          summary={sessionSummary}
+          level={level}
+          onClose={() => {
+            setUnlockedLevel(1);
+            beginNewRun(1);
           }}
-        >
-          <div
-            className="arcade-panel p-8 md:p-12 text-center mx-6 max-w-lg w-full"
-            style={{
-              boxShadow:
-                "0 0 40px rgba(251,191,36,0.35), 0 0 80px rgba(109,40,217,0.3)",
-            }}
-          >
-            <div className="flex justify-center gap-3 text-4xl mb-4">
-              🎯💥🎯
-            </div>
-            <div
-              className="text-3xl md:text-4xl font-black uppercase tracking-widest text-yellow-300"
-              style={{ textShadow: "0 0 24px rgba(250,204,21,0.8)" }}
-            >
-              {texts.generic.completeAllLevels.title}
-            </div>
-            <div className="mt-2 text-base md:text-lg text-purple-200 font-bold">
-              {formatText(texts.generic.completeAllLevels.subtitle, {
-                count: 2,
-              })}
-            </div>
-            <div className="flex justify-center gap-2 mt-5">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <GoldenTarget key={i} />
-              ))}
-            </div>
-            <button
-              onClick={() => {
-                setUnlockedLevel(1);
-                beginNewRun(1);
-              }}
-              className="arcade-button mt-8 px-10 py-4 text-lg font-black uppercase tracking-wider w-full"
-              style={{
-                boxShadow: "0 0 16px rgba(251,191,36,0.4), 0 6px 0 #78350f",
-                borderColor: "#fbbf24",
-              }}
-            >
-              {texts.generic.buttons.playAgain}
-            </button>
-          </div>
-        </div>
+        />
       )}
 
       {/* ── Share + Comments buttons — bottom-left ── */}
