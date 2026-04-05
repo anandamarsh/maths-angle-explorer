@@ -32,21 +32,24 @@
   "teachesLevels": [
     {
       "label": "Level 1: recognising and targeting acute, right, obtuse, straight and reflex angles by sight",
-      "yearLabel": "Years 3-4",
+      "stageLabel": "Stage 2 (Years 3-4)",
       "syllabusCode": "MA2-16MG",
-      "syllabusUrl": "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=29"
+      "syllabusUrl": "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=29",
+      "syllabusDescription": "Identifies, describes, compares and classifies angles."
     },
     {
       "label": "Level 2: missing angles in sector diagrams that sum to 90°, 180°, or 360°",
-      "yearLabel": "Years 5-6",
+      "stageLabel": "Stage 3 (Years 5-6)",
       "syllabusCode": "MA3-16MG",
-      "syllabusUrl": "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=40"
+      "syllabusUrl": "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=40",
+      "syllabusDescription": "Measures and constructs angles, and applies angle relationships to find unknown angles."
     },
     {
       "label": "Level 3 (coming soon): angle reasoning without visual hints using pure calculation questions",
-      "yearLabel": "Years 7-8",
+      "stageLabel": "Stage 4 (Years 7-8)",
       "syllabusCode": "MA4-18MG",
-      "syllabusUrl": "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=52"
+      "syllabusUrl": "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=52",
+      "syllabusDescription": "Identifies and uses angle relationships, including those related to transversals, to solve problems."
     }
   ],
   "githubUrl": "https://github.com/anandamarsh/maths-angle-explorer",
