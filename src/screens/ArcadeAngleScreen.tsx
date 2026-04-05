@@ -1674,6 +1674,7 @@ export default function ArcadeAngleScreen() {
   const [monsterRoundName, setMonsterRoundName] = useState("");
   const [showMonsterAnnounce, setShowMonsterAnnounce] = useState(false);
   const [hasDiscoveredCannonDrag, setHasDiscoveredCannonDrag] = useState(false);
+  const [cheatAnswerUnlocked, setCheatAnswerUnlocked] = useState(false);
   const [typedAimTutorialStage, setTypedAimTutorialStage] = useState<
     "type" | "fire" | "done"
   >("type");
@@ -2539,11 +2540,25 @@ export default function ArcadeAngleScreen() {
       setTypedAimTutorialStage(hasLockedTypedAngle ? "fire" : "type");
     }
     if (currentQ.promptLines) {
+      if (v.trim() === ANSWER_CHEAT_CODE) {
+        setCheatAnswerUnlocked(true);
+        setSubAnswers((prev) => {
+          const next = [...prev] as [string, string, string];
+          next[subStep] = "";
+          return next;
+        });
+        return;
+      }
       setSubAnswers((prev) => {
         const next = [...prev] as [string, string, string];
         next[subStep] = v;
         return next;
       });
+      return;
+    }
+    if (v.trim() === ANSWER_CHEAT_CODE) {
+      setCheatAnswerUnlocked(true);
+      setAnswer("");
       return;
     }
     setAnswer(v);
@@ -2737,7 +2752,7 @@ export default function ArcadeAngleScreen() {
   const hideFirstPromptChar = !currentQ.promptLines && typeIdx === 0;
   const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
   const showDevAnswer =
-    (IS_DEV || keypadValue.trim() === ANSWER_CHEAT_CODE) &&
+    (IS_DEV || cheatAnswerUnlocked) &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
