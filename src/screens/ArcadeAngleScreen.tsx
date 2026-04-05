@@ -4081,22 +4081,13 @@ export default function ArcadeAngleScreen() {
       <div
         className="fixed bottom-0 z-[2147483647] overflow-y-auto"
         style={{
-          left: isMobileLandscape || isCompactViewport ? "0" : "1rem",
-          right: isMobileLandscape || isCompactViewport ? "0" : "1rem",
-          width:
-            isMobileLandscape || isCompactViewport
-              ? "100vw"
-              : "calc(100vw - 2rem)",
-          minWidth:
-            isMobileLandscape || isCompactViewport
-              ? "100vw"
-              : "calc(100vw - 2rem)",
+          left: "0",
+          right: "0",
+          width: "100vw",
+          minWidth: "100vw",
           height: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           minHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
-          maxWidth:
-            isMobileLandscape || isCompactViewport
-              ? "100vw"
-              : "calc(100vw - 2rem)",
+          maxWidth: "100vw",
           maxHeight: isMobileLandscape || isCompactViewport ? "100dvh" : "70vh",
           display: "flex",
           flexDirection: "column",
