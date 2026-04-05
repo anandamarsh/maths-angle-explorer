@@ -35,6 +35,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const IS_DEV = import.meta.env.DEV;
+const ANSWER_CHEAT_CODE = "197879";
 const IS_LOCALHOST_DEV =
   IS_DEV &&
   new Set(["localhost", "127.0.0.1", "::1"]).has(
@@ -2584,6 +2585,7 @@ export default function ArcadeAngleScreen() {
     // Monster round single-step: typed value must be exact
     if (isMonster && !currentQ.promptLines) {
       playButton();
+      if (answer.trim() === ANSWER_CHEAT_CODE) return;
       const typed = parseFloat(answer.trim());
       if (isNaN(typed)) return;
       const correct = angleDiffDeg(typed, currentQ.answer) < TYPED_TOL;
@@ -2605,6 +2607,7 @@ export default function ArcadeAngleScreen() {
 
     // Platinum round: cannon rotates to typed value then fires (blind shot)
     if (gamePhase === "platinum" && !currentQ.promptLines) {
+      if (answer.trim() === ANSWER_CHEAT_CODE) return;
       const typedAngle = parseFloat(answer.trim());
       if (isNaN(typedAngle)) return;
       playButton();
@@ -2637,6 +2640,7 @@ export default function ArcadeAngleScreen() {
 
     if (currentQ.promptLines && currentQ.subAnswers) {
       // L3 multi-step
+      if (subAnswers[subStep].trim() === ANSWER_CHEAT_CODE) return;
       const g = parseFloat(subAnswers[subStep]);
       if (isNaN(g)) {
         showFlash(texts.generic.feedback.enterNumber, false);
@@ -2665,6 +2669,7 @@ export default function ArcadeAngleScreen() {
 
     // L1 / L2 single step
     const trimmed = answer.trim();
+    if (trimmed === ANSWER_CHEAT_CODE) return;
     if (trimmed === "") {
       const correct =
         angleDiffDeg(gazeAngle, currentQ.hiddenAngleDeg) < ANGLE_HIT_TOL;
@@ -2730,8 +2735,9 @@ export default function ArcadeAngleScreen() {
     ? promptText.slice(0, Math.max(typeIdx, 1))
     : promptText.slice(0, 1);
   const hideFirstPromptChar = !currentQ.promptLines && typeIdx === 0;
+  const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
   const showDevAnswer =
-    IS_DEV &&
+    (IS_DEV || keypadValue.trim() === ANSWER_CHEAT_CODE) &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
@@ -2787,7 +2793,6 @@ export default function ArcadeAngleScreen() {
     answer.trim() !== "" &&
     !isNaN(parsedAnswer);
   canFireRef.current = canFire;
-  const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
   const canKeypadFire = currentQ.promptLines
     ? !sceneBusy && !isNaN(parseFloat(subAnswers[subStep]))
     : canFire;
