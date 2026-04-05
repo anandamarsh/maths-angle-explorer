@@ -1,15 +1,23 @@
 // src/report/sessionLog.ts
 
+import type { AngleSector } from "../game/angles";
+
 export interface QuestionAttempt {
   questionNumber: number;
   prompt: string;
   level: 1 | 2 | 3;
-  correctAnswer: number;   // correct angle in degrees
+  correctAnswer: number;      // correct angle in degrees
   childAnswer: number | null; // typed angle (null if aim-only shot)
   isCorrect: boolean;
   timestamp: number;
   timeTakenMs: number;
-  gamePhase: "normal" | "monster";
+  gamePhase: "normal" | "monster" | "platinum";
+  // Level 2 sector data (for PDF diagram)
+  sectorArcs?: AngleSector[];
+  dividerAngles?: number[];
+  totalContext?: 90 | 180 | 360;
+  startAngleDeg?: number;
+  setKind?: "COMPLEMENTARY" | "SUPPLEMENTARY" | "COMPLETE";
 }
 
 export interface SessionSummary {

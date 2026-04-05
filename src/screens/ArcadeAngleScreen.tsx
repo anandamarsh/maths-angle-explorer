@@ -2350,6 +2350,11 @@ export default function ArcadeAngleScreen() {
       childAnswer: lastTypedAnswerRef.current,
       isCorrect: true,
       gamePhase: "normal",
+      sectorArcs: currentQRef.current.sectorArcs,
+      dividerAngles: currentQRef.current.dividerAngles,
+      totalContext: currentQRef.current.totalContext,
+      startAngleDeg: currentQRef.current.startAngleDeg,
+      setKind: currentQRef.current.setKind,
     });
     const newEggs = eggsCollected + 1;
     if (newEggs === LEVEL_TARGET_COUNT) {
@@ -2371,6 +2376,11 @@ export default function ArcadeAngleScreen() {
       childAnswer: lastTypedAnswerRef.current,
       isCorrect: true,
       gamePhase: "monster",
+      sectorArcs: currentQRef.current.sectorArcs,
+      dividerAngles: currentQRef.current.dividerAngles,
+      totalContext: currentQRef.current.totalContext,
+      startAngleDeg: currentQRef.current.startAngleDeg,
+      setKind: currentQRef.current.setKind,
     });
     const newGolden = monsterEggs + 1;
     if (newGolden === LEVEL_TARGET_COUNT) {
@@ -2392,7 +2402,12 @@ export default function ArcadeAngleScreen() {
       correctAnswer: currentQRef.current.answer,
       childAnswer: lastTypedAnswerRef.current,
       isCorrect: false,
-      gamePhase: gamePhaseRef.current === "normal" ? "normal" : "monster",
+      gamePhase: gamePhaseRef.current,
+      sectorArcs: currentQRef.current.sectorArcs,
+      dividerAngles: currentQRef.current.dividerAngles,
+      totalContext: currentQRef.current.totalContext,
+      startAngleDeg: currentQRef.current.startAngleDeg,
+      setKind: currentQRef.current.setKind,
     });
     submitLockRef.current = false;
     playWrong();
@@ -2452,7 +2467,12 @@ export default function ArcadeAngleScreen() {
       correctAnswer: currentQRef.current.answer,
       childAnswer: lastTypedAnswerRef.current,
       isCorrect: true,
-      gamePhase: "monster",
+      gamePhase: "platinum",
+      sectorArcs: currentQRef.current.sectorArcs,
+      dividerAngles: currentQRef.current.dividerAngles,
+      totalContext: currentQRef.current.totalContext,
+      startAngleDeg: currentQRef.current.startAngleDeg,
+      setKind: currentQRef.current.setKind,
     });
     const newPlat = monsterEggs + 1;
     if (newPlat === LEVEL_TARGET_COUNT) {

@@ -18,6 +18,43 @@ const COLORS = {
   textMuted: "#64748b",
 };
 
+// --- Curriculum metadata (mirrors manifest teachesLevels) ---
+
+const CURRICULUM_LEVELS = [
+  {
+    code: "MA2-16MG",
+    stageLabel: "Stage 2 (Years 3-4)",
+    syllabusUrl: "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=29",
+    description: "Identifies, describes, compares and classifies angles.",
+    levelDesc: "Level 1 - Recognising and targeting acute, right, obtuse, straight and reflex angles by sight",
+  },
+  {
+    code: "MA3-16MG",
+    stageLabel: "Stage 3 (Years 5-6)",
+    syllabusUrl: "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=40",
+    description: "Measures and constructs angles, and applies angle relationships to find unknown angles.",
+    levelDesc: "Level 2 - Missing angles in sector diagrams that sum to 90, 180, or 360 degrees",
+  },
+  {
+    code: "MA4-18MG",
+    stageLabel: "Stage 4 (Years 7-8)",
+    syllabusUrl: "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=52",
+    description: "Identifies and uses angle relationships, including those related to transversals, to solve problems.",
+    levelDesc: "Level 3 - Angle reasoning without visual hints using pure calculation questions",
+  },
+];
+
+// --- Text sanitiser ---
+
+function sanitize(text: string): string {
+  return text
+    .replace(/°/g, "\u00b0")
+    .replace(/\u2192/g, "->")
+    .replace(/\u2013/g, "-")
+    .replace(/\u2014/g, "-")
+    .replace(/[^\x00-\xFF]/g, "?");
+}
+
 // --- Helpers ---
 
 function formatDuration(ms: number): string {
@@ -95,7 +132,231 @@ function drawStar(doc: jsPDF, cx: number, cy: number, outerR: number, innerR: nu
   doc.lines(lines, verts[0][0], verts[0][1], [1, 1], "F", true);
 }
 
-// --- Angle indicator diagram ---
+// --- Level 1 angle diagram: vertex + two rays + arc + labels, centered in box ---
+
+function drawLevel1AngleDiagram(
+  doc: jsPDF,
+  attempt: QuestionAttempt,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  // Light background
+  doc.setFillColor("#f8fafc");
+  doc.roundedRect(x, y, width, height, 3, 3, "F");
+  doc.setDrawColor("#e2e8f0");
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x, y, width, height, 3, 3, "S");
+
+  const correctAngle = attempt.correctAnswer;
+  const userAngle = !attempt.isCorrect && attempt.childAnswer !== null ? attempt.childAnswer : null;
+
+  const correctRad = (correctAngle * Math.PI) / 180;
+  const cosA = Math.cos(correctRad);
+  const sinA = Math.sin(correctRad);
+
+  // Arc radius as fraction of ray length
+  const ARC_FRAC = 0.38;
+  // Correct label: just beyond arc at midpoint direction
+  const LABEL_FRAC = ARC_FRAC + 0.20;
+  // User (wrong) label: placed AT the tip of the user ray (beyond all arcs → never overlaps)
+  const USER_LABEL_TIP_FRAC = 1.12;
+
+  const midRad = (correctAngle / 2) * Math.PI / 180;
+
+  // --- Build normalized bounding box including all elements ---
+  const normPts: Array<[number, number]> = [
+    [0, 0],
+    [1, 0],                                                            // base ray tip
+    [cosA, -sinA],                                                     // correct ray tip
+    [LABEL_FRAC * Math.cos(midRad), -LABEL_FRAC * Math.sin(midRad)], // correct label
+  ];
+  for (let i = 0; i <= 8; i++) {
+    const a = (correctAngle * i / 8) * Math.PI / 180;
+    normPts.push([ARC_FRAC * Math.cos(a), -ARC_FRAC * Math.sin(a)]);
+  }
+
+  if (userAngle !== null) {
+    const uRad = userAngle * Math.PI / 180;
+    const cosU = Math.cos(uRad), sinU = Math.sin(uRad);
+    normPts.push([cosU, -sinU]);
+    // User label is placed at the tip of the user ray (slightly beyond)
+    normPts.push([USER_LABEL_TIP_FRAC * cosU, -USER_LABEL_TIP_FRAC * sinU]);
+    for (let i = 0; i <= 6; i++) {
+      const a = (userAngle * i / 6) * Math.PI / 180;
+      normPts.push([ARC_FRAC * 0.65 * Math.cos(a), -ARC_FRAC * 0.65 * Math.sin(a)]);
+    }
+  }
+
+  const allNX = normPts.map(p => p[0]);
+  const allNY = normPts.map(p => p[1]);
+  const minNX = Math.min(...allNX), maxNX = Math.max(...allNX);
+  const minNY = Math.min(...allNY), maxNY = Math.max(...allNY);
+  const spanX = Math.max(maxNX - minNX, 0.01);
+  const spanY = Math.max(maxNY - minNY, 0.01);
+
+  const fitPad = 8;
+  const fitW = width - 2 * fitPad;
+  const fitH = height - 2 * fitPad;
+  const L = Math.min(fitW / spanX, fitH / spanY, 26);
+
+  const bboxCX = (minNX + maxNX) / 2;
+  const bboxCY = (minNY + maxNY) / 2;
+  const vx = x + width / 2 - bboxCX * L;
+  const vy = y + height / 2 - bboxCY * L;
+
+  const arcR = ARC_FRAC * L;
+  const ARC_SEGS = 32;
+
+  function drawArc(fromDeg: number, toDeg: number, r: number, color: string, lw: number) {
+    doc.setDrawColor(color);
+    doc.setLineWidth(lw);
+    for (let i = 0; i < ARC_SEGS; i++) {
+      const a1 = (fromDeg + (toDeg - fromDeg) * (i / ARC_SEGS)) * Math.PI / 180;
+      const a2 = (fromDeg + (toDeg - fromDeg) * ((i + 1) / ARC_SEGS)) * Math.PI / 180;
+      doc.line(
+        vx + r * Math.cos(a1), vy - r * Math.sin(a1),
+        vx + r * Math.cos(a2), vy - r * Math.sin(a2),
+      );
+    }
+  }
+
+  // ~20% lighter than #334155: mix toward white by 20%
+  const DARK = "#5c6777";
+  const RED = "#ef4444";
+
+  if (userAngle !== null) {
+    drawArc(0, userAngle, arcR * 0.65, RED, 0.5);
+  }
+  drawArc(0, correctAngle, arcR, DARK, 0.8);
+
+  doc.setDrawColor(DARK);
+  doc.setLineWidth(0.9);
+  doc.line(vx, vy, vx + L, vy);
+
+  doc.setDrawColor(DARK);
+  doc.setLineWidth(0.9);
+  doc.line(vx, vy, vx + L * cosA, vy - L * sinA);
+
+  if (userAngle !== null) {
+    const uRad = userAngle * Math.PI / 180;
+    doc.setDrawColor(RED);
+    doc.setLineWidth(0.6);
+    doc.line(vx, vy, vx + L * Math.cos(uRad), vy - L * Math.sin(uRad));
+  }
+
+  doc.setFillColor(DARK);
+  doc.circle(vx, vy, 0.9, "F");
+
+  // Correct angle label — just beyond arc at midpoint direction
+  const lx = vx + LABEL_FRAC * L * Math.cos(midRad);
+  const ly = vy - LABEL_FRAC * L * Math.sin(midRad);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(DARK);
+  doc.text(`${correctAngle}\u00b0`, lx, ly, { align: "center" });
+
+  // Wrong answer label — at tip of user ray, never overlaps arcs or correct label
+  if (userAngle !== null) {
+    const uRad = userAngle * Math.PI / 180;
+    const ulx = vx + USER_LABEL_TIP_FRAC * L * Math.cos(uRad);
+    const uly = vy - USER_LABEL_TIP_FRAC * L * Math.sin(uRad);
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(RED);
+    doc.text(`${userAngle}\u00b0`, ulx, uly, { align: "center" });
+  }
+}
+
+// --- Level 2 sector diagram ---
+
+function drawLevel2SectorDiagram(
+  doc: jsPDF,
+  attempt: QuestionAttempt,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  // Always light background — consistent with Level 1 style
+  doc.setFillColor("#f8fafc");
+  doc.roundedRect(x, y, width, height, 3, 3, "F");
+  doc.setDrawColor("#e2e8f0");
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x, y, width, height, 3, 3, "S");
+
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const r = Math.min(width, height) * 0.32;
+
+  const sectorArcs = attempt.sectorArcs;
+
+  if (!sectorArcs || sectorArcs.length === 0) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor("#f59e0b");
+    doc.text(`${attempt.correctAnswer}\u00b0`, cx, cy + 1, { align: "center" });
+    return;
+  }
+
+  const ARC_SEGS = 20;
+  // Arc drawn at 72% of r; labels between arc and ray tips
+  const arcFrac = 0.72;
+  // Label at 88% of r — between arc (72%) and ray tips (100%), close to arc
+  const labelFrac = 0.88;
+
+  // Light theme colors (consistent across all phases)
+  const dividerColor = "#475569";
+  const knownArcColor = "#6b7280";
+  const missingArcColor = "#f59e0b";
+  const knownLabelColor = "#1e293b";
+  const missingLabelColor = "#d97706";
+
+  // Draw sector arcs and divider rays
+  for (const sector of sectorArcs) {
+    const isMissing = !!sector.missing;
+    const arcColor = isMissing ? missingArcColor : knownArcColor;
+    const arcR = r * arcFrac;
+
+    // Sector arc
+    doc.setDrawColor(arcColor);
+    doc.setLineWidth(isMissing ? 1.0 : 0.5);
+    for (let i = 0; i < ARC_SEGS; i++) {
+      const a1 = (sector.fromAngle + (sector.toAngle - sector.fromAngle) * (i / ARC_SEGS)) * Math.PI / 180;
+      const a2 = (sector.fromAngle + (sector.toAngle - sector.fromAngle) * ((i + 1) / ARC_SEGS)) * Math.PI / 180;
+      doc.line(
+        cx + arcR * Math.cos(a1), cy - arcR * Math.sin(a1),
+        cx + arcR * Math.cos(a2), cy - arcR * Math.sin(a2),
+      );
+    }
+
+    // Divider rays
+    doc.setDrawColor(dividerColor);
+    doc.setLineWidth(0.5);
+    const fromRad = (sector.fromAngle * Math.PI) / 180;
+    const toRad = (sector.toAngle * Math.PI) / 180;
+    doc.line(cx, cy, cx + r * Math.cos(fromRad), cy - r * Math.sin(fromRad));
+    doc.line(cx, cy, cx + r * Math.cos(toRad), cy - r * Math.sin(toRad));
+
+    // Label — placed between arc and ray tips (labelFrac = 0.88), at sector midpoint angle
+    const midAngle = (sector.fromAngle + sector.toAngle) / 2;
+    const midRad = (midAngle * Math.PI) / 180;
+    const lDist = r * labelFrac;
+    const lx = cx + lDist * Math.cos(midRad);
+    const ly = cy - lDist * Math.sin(midRad);
+    doc.setFontSize(5.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(isMissing ? missingLabelColor : knownLabelColor);
+    doc.text(sector.label ?? "", lx, ly, { align: "center" });
+  }
+
+  // Center dot
+  doc.setFillColor("#475569");
+  doc.circle(cx, cy, 0.5, "F");
+}
+
+// --- Diagram dispatcher ---
 
 function drawAngleDiagram(
   doc: jsPDF,
@@ -105,77 +366,10 @@ function drawAngleDiagram(
   width: number,
   height: number,
 ) {
-  // Dark background
-  doc.setFillColor("#0f172a");
-  doc.roundedRect(x, y, width, height, 3, 3, "F");
-  doc.setDrawColor("#334155");
-  doc.setLineWidth(0.3);
-  doc.roundedRect(x, y, width, height, 3, 3, "S");
-
-  const cx = x + width / 2;
-  const cy = y + height / 2 - 2;
-  const r = Math.min(width, height) * 0.35;
-
-  // Circle outline
-  doc.setDrawColor("#1e3a5f");
-  doc.setLineWidth(0.4);
-  doc.circle(cx, cy, r, "S");
-
-  // Zero reference line (east, dashed-style via short segments)
-  doc.setDrawColor("#475569");
-  doc.setLineWidth(0.3);
-  doc.line(cx, cy, cx + r, cy);
-
-  // Helper to draw a ray at an angle (maths convention: 0=east, CCW)
-  function drawRay(angleDeg: number, color: string, lineWidth: number, label: string, labelColor: string) {
-    const rad = (angleDeg * Math.PI) / 180;
-    const ex = cx + r * Math.cos(rad);
-    const ey = cy - r * Math.sin(rad); // SVG y-axis is flipped
-    doc.setDrawColor(color);
-    doc.setLineWidth(lineWidth);
-    doc.line(cx, cy, ex, ey);
-
-    // Arrowhead
-    const headLen = 1.5;
-    const angle1 = rad + (2.8);
-    const angle2 = rad - (2.8);
-    doc.line(ex, ey, ex + headLen * Math.cos(angle1), ey - headLen * Math.sin(angle1));
-    doc.line(ex, ey, ex + headLen * Math.cos(angle2), ey - headLen * Math.sin(angle2));
-
-    // Label outside circle
-    const labelR = r + 4;
-    const lx = cx + labelR * Math.cos(rad);
-    const ly = cy - labelR * Math.sin(rad);
-    doc.setFontSize(5.5);
-    doc.setTextColor(labelColor);
-    doc.text(label, lx, ly, { align: "center" });
-  }
-
-  // Draw correct angle ray (gold)
-  drawRay(attempt.correctAnswer, "#fbbf24", 0.8, `${attempt.correctAnswer}°`, "#fbbf24");
-
-  // Draw child's answer ray (if typed and different from correct)
-  if (attempt.childAnswer !== null) {
-    const diff = Math.abs(attempt.childAnswer - attempt.correctAnswer);
-    const isDifferent = diff > 1;
-    if (isDifferent) {
-      drawRay(attempt.childAnswer, attempt.isCorrect ? "#22c55e" : "#ef4444", 0.5,
-        `${attempt.childAnswer}°`, attempt.isCorrect ? "#22c55e" : "#ef4444");
-    }
-  }
-
-  // Center dot
-  doc.setFillColor("#94a3b8");
-  doc.circle(cx, cy, 0.8, "F");
-
-  // Legend below
-  const legendY = y + height - 4;
-  doc.setFontSize(4.5);
-  doc.setTextColor("#fbbf24");
-  doc.text("■ target", x + 4, legendY);
-  if (attempt.childAnswer !== null) {
-    doc.setTextColor(attempt.isCorrect ? "#22c55e" : "#ef4444");
-    doc.text("■ yours", x + 18, legendY);
+  if (attempt.level === 2 || attempt.level === 3) {
+    drawLevel2SectorDiagram(doc, attempt, x, y, width, height);
+  } else {
+    drawLevel1AngleDiagram(doc, attempt, x, y, width, height);
   }
 }
 
@@ -224,7 +418,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text(formatDate(summary.date), titleColX, line2Y);
+  doc.text(sanitize(formatDate(summary.date)), titleColX, line2Y);
   doc.text(
     `${formatTime(summary.startTime)} - ${formatTime(summary.endTime)}`,
     margin + contentW - iconPad, line2Y, { align: "right" }
@@ -235,18 +429,58 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setTextColor(COLORS.textDark);
   doc.text(`Session Report (Level ${summary.level})`, titleCX, line2Y, { align: "center" });
 
-  curY += bannerH + 10;
+  curY += bannerH + 14;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GAME DESCRIPTION
+  // NSW MATHEMATICS CURRICULUM
   // ═══════════════════════════════════════════════════════════════════════════
 
+  const curr = CURRICULUM_LEVELS[Math.min(summary.level - 1, CURRICULUM_LEVELS.length - 1)];
+  const currLineH = 4.8;
+  const GREEN = "#16a34a";
+  const CURR_BLUE = "#1e40af";
+
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  const pillText = curr.code;
+  const pillPadX = 3;
+  const pillH = 5;
+  const pillW = doc.getTextWidth(pillText) + pillPadX * 2;
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  const stageW = doc.getTextWidth(curr.stageLabel);
+  const descAvailW = contentW - pillW - 4 - stageW - 4;
+  const descWrapped = doc.splitTextToSize(sanitize(curr.description), descAvailW);
+
+  // Title
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Angles & Geometry", margin, curY);
-  curY += 5.5;
+  doc.text("NSW Mathematics Curriculum", margin, curY);
+  curY += 5.5 + 3.5;
 
+  // Pill + stage + description row
+  const pillTopY = curY - pillH + 1.5;
+  doc.setFillColor(GREEN);
+  doc.roundedRect(margin, pillTopY, pillW, pillH, 1.5, 1.5, "F");
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor("#ffffff");
+  doc.text(pillText, margin + pillPadX, curY);
+
+  const rowH = Math.max(pillH, descWrapped.length * currLineH) + 1;
+  doc.link(margin, pillTopY, contentW, rowH, { url: curr.syllabusUrl });
+
+  const stageX = margin + pillW + 4;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(CURR_BLUE);
+  doc.text(curr.stageLabel, stageX, curY);
+  doc.text(descWrapped, stageX + stageW + 4, curY);
+  curY += Math.max(pillH + 1, descWrapped.length * currLineH) + 3.5;
+
+  // Objective line — with extra gap below before the round lines
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
@@ -254,8 +488,44 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Aim the cannon at the correct angle and fire to hit the target.",
+    sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, "")),
     margin + doc.getTextWidth("Objective:") + 2, curY
+  );
+  curY += currLineH + 3;  // extra gap after Objective
+
+  // Blackout Round
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLORS.textDark);
+  doc.text("Blackout Round:", margin, curY);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(COLORS.textMuted);
+  doc.text(
+    "Earn 10 eggs by aiming the cannon at the correct angle and firing.",
+    margin + doc.getTextWidth("Blackout Round:") + 2, curY
+  );
+  curY += currLineH;
+
+  // Monster Round
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLORS.textDark);
+  doc.text("Monster Round:", margin, curY);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(COLORS.textMuted);
+  doc.text(
+    "Defend all 10 eggs against harder questions. Wrong answers lose an egg.",
+    margin + doc.getTextWidth("Monster Round:") + 2, curY
+  );
+  curY += currLineH;
+
+  // Platinum Round
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(COLORS.textDark);
+  doc.text("Platinum Round:", margin, curY);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(COLORS.textMuted);
+  doc.text(
+    "Type the angle and fire blind \u2014 the cannon is hidden. Maximum challenge!",
+    margin + doc.getTextWidth("Platinum Round:") + 2, curY
   );
   curY += 8;
 
@@ -266,7 +536,6 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   const boxW = (contentW - 8) / 3;
   const boxH = 18;
 
-  // Score - blue
   const scoreColor = "#1d4ed8";
   const scoreBg = "#eff6ff";
   doc.setFillColor(scoreBg);
@@ -283,7 +552,6 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setTextColor(scoreColor);
   doc.text(`${summary.correctCount} / ${summary.totalQuestions}`, margin + boxW / 2, curY + 13.5, { align: "center" });
 
-  // Accuracy - color coded
   const box2X = margin + boxW + 4;
   const accColor = summary.accuracy >= 80 ? "#16a34a" : summary.accuracy >= 50 ? "#f59e0b" : "#dc2626";
   const accBg = summary.accuracy >= 80 ? "#f0fdf4" : summary.accuracy >= 50 ? "#fffbeb" : "#fff5f5";
@@ -300,7 +568,6 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setTextColor(accColor);
   doc.text(`${summary.accuracy}%`, box2X + boxW / 2, curY + 13.5, { align: "center" });
 
-  // Time - purple
   const box3X = margin + (boxW + 4) * 2;
   doc.setFillColor("#faf5ff");
   doc.roundedRect(box3X, curY, boxW, boxH, 3, 3, "F");
@@ -335,9 +602,15 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
       if (!attempt.isCorrect) {
         doc.setFillColor("#ef4444");
         doc.setDrawColor("#dc2626");
-      } else {
+      } else if (attempt.gamePhase === "platinum") {
+        doc.setFillColor("#e2e8f0");
+        doc.setDrawColor("#94a3b8");
+      } else if (attempt.gamePhase === "monster") {
         doc.setFillColor("#facc15");
         doc.setDrawColor("#f59e0b");
+      } else {
+        doc.setFillColor("#d1d5db");
+        doc.setDrawColor("#9ca3af");
       }
       doc.ellipse(eggX, eggCY, eggRx, eggRy, "FD");
       eggX += eggStep;
@@ -348,7 +621,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   curY += 5;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // QUESTION CARDS with angle diagrams
+  // QUESTION CARDS
   // ═══════════════════════════════════════════════════════════════════════════
 
   const cardHeaderH = 10;
@@ -375,23 +648,19 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     const cardBorderColor = attempt.isCorrect ? COLORS.correctBorder : COLORS.wrongBorder;
     const cardBg = attempt.isCorrect ? COLORS.correctBg : COLORS.wrongBg;
 
-    // Card header background
+    // Card header
     doc.setFillColor(cardBg);
     doc.rect(cardLeft, curY, cardContentW, cardHeaderH, "F");
 
-    // Left colour stripe (full card height)
     const stripeH = cardHeaderH + cardBodyH;
     doc.setFillColor(cardBorderColor);
     doc.rect(cardLeft, curY, stripeW, stripeH, "F");
 
-    // Q number
-    const qLabel = `Q${attempt.questionNumber}`;
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(COLORS.textDark);
-    doc.text(qLabel, cardLeft + stripeW + 3, curY + 6.8);
+    doc.text(`Q${attempt.questionNumber}`, cardLeft + stripeW + 3, curY + 6.8);
 
-    // CORRECT / WRONG + time
     const timeStr = formatDuration(attempt.timeTakenMs);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
@@ -401,7 +670,6 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFont("helvetica", "bold");
     const icon = attempt.isCorrect ? "CORRECT" : "WRONG";
     const iconW = doc.getTextWidth(icon);
-
     const groupRight = pageW - margin - 4;
     const groupStart = groupRight - iconW - 3 - timeW2;
 
@@ -415,49 +683,47 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
 
     curY += cardHeaderH;
 
-    // Card body: angle diagram (left) + question text (right)
+    // Diagram
     const bodyPad = 4;
     const diagramX = cardLeft + stripeW + 4;
-
-    // Draw angle diagram
     drawAngleDiagram(doc, attempt, diagramX, curY + bodyPad, diagramW, diagramH);
 
-    // Question and answer text (right of diagram)
+    // Text area — NO prompt, just phase badge + answers
     const textX = diagramX + diagramW + 5;
-    const textW = cardRight - textX - 4;
-
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(COLORS.textDark);
-    const promptLines = doc.splitTextToSize(attempt.prompt, textW);
-    doc.text(promptLines, textX, curY + bodyPad + 4);
-
-    let textY = curY + bodyPad + 4 + promptLines.length * 4.5 + 3;
+    let textY = curY + bodyPad + 8;
 
     // Phase badge
-    if (attempt.gamePhase === "monster") {
+    if (attempt.gamePhase === "platinum") {
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor("#94a3b8");
+      doc.text("PLATINUM ROUND", textX, textY);
+      textY += 6;
+    } else if (attempt.gamePhase === "monster") {
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor("#a855f7");
-      doc.text("⚡ MONSTER ROUND", textX, textY);
-      textY += 5;
+      doc.text("MONSTER ROUND", textX, textY);
+      textY += 6;
     }
 
+    // Your answer
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(attempt.isCorrect ? COLORS.correctDark : COLORS.wrongBorder);
     const givenLabel = attempt.childAnswer !== null
-      ? `Your answer: ${attempt.childAnswer}°`
+      ? `Your answer: ${attempt.childAnswer}\u00b0`
       : "Your answer: (aimed)";
-    doc.text(givenLabel, textX, textY);
-    textY += 4.5;
+    doc.text(sanitize(givenLabel), textX, textY);
+    textY += 5;
 
+    // Correct angle
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(COLORS.textDark);
-    doc.text(`Correct angle: ${attempt.correctAnswer}°`, textX, textY);
+    doc.text(sanitize(`Correct angle: ${attempt.correctAnswer}\u00b0`), textX, textY);
 
     curY += cardBodyH;
 
-    // Separator
     doc.setDrawColor("#e2e8f0");
     doc.setLineWidth(0.3);
     doc.line(cardLeft, curY, cardRight, curY);
@@ -503,10 +769,12 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COLORS.textMuted);
-    doc.text("Tip: Look at the angle diagram — remember 90° is a right angle, 180° is a straight line.", pageW / 2, curY + 22, { align: "center" });
+    doc.text(
+      "Tip: Look at the angle diagram \u2014 remember 90\u00b0 is a right angle, 180\u00b0 is a straight line.",
+      pageW / 2, curY + 22, { align: "center" }
+    );
   }
 
-  // Footer
   doc.setFontSize(7);
   doc.setTextColor("#94a3b8");
   doc.text("Generated by Interactive Maths - Angle Explorer", pageW / 2, pageH - 8, { align: "center" });

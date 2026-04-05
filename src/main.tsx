@@ -9,6 +9,12 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
+if (!import.meta.env.PROD) {
+  import('./report/testPdfData').then(({ generateTestPdf }) => {
+    (window as unknown as Record<string, unknown>).__testGeneratePdf = generateTestPdf;
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
