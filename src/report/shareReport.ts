@@ -3,14 +3,40 @@
 import { generateSessionPdf } from "./generatePdf";
 import type { SessionSummary } from "./sessionLog";
 
+function getReportFileName(summary: SessionSummary): string {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const name = (summary.playerName || "explorer")
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+  return `angle-report-${name}-${stamp}.pdf`;
+}
+
+async function buildReportBlob(summary: SessionSummary): Promise<Blob> {
+  return generateSessionPdf(summary);
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to encode report."));
+    reader.onloadend = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Invalid report encoding."));
+        return;
+      }
+      const [, base64 = ""] = reader.result.split(",", 2);
+      resolve(base64);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function downloadReport(summary: SessionSummary): Promise<void> {
-  const blob = await generateSessionPdf(summary);
+  const blob = await buildReportBlob(summary);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const stamp = new Date().toISOString().slice(0, 10);
-  const name = (summary.playerName || "explorer").toLowerCase().replace(/\s+/g, "-");
-  a.download = `angle-report-${name}-${stamp}.pdf`;
+  a.download = getReportFileName(summary);
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -18,10 +44,8 @@ export async function downloadReport(summary: SessionSummary): Promise<void> {
 }
 
 export async function shareReport(summary: SessionSummary): Promise<boolean> {
-  const blob = await generateSessionPdf(summary);
-  const stamp = new Date().toISOString().slice(0, 10);
-  const name = (summary.playerName || "explorer").toLowerCase().replace(/\s+/g, "-");
-  const fileName = `angle-report-${name}-${stamp}.pdf`;
+  const blob = await buildReportBlob(summary);
+  const fileName = getReportFileName(summary);
   const file = new File([blob], fileName, { type: "application/pdf" });
 
   const nav = navigator as Navigator & {
@@ -50,6 +74,36 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
 
   await downloadReport(summary);
   return true;
+}
+
+export async function emailReport(
+  summary: SessionSummary,
+  email: string,
+): Promise<void> {
+  const blob = await buildReportBlob(summary);
+  const response = await fetch("/api/send-report", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: email.trim(),
+      pdfBase64: await blobToBase64(blob),
+      playerName: summary.playerName || "Explorer",
+      correctCount: summary.correctCount,
+      totalQuestions: summary.totalQuestions,
+      accuracy: summary.accuracy,
+      totalEggs: summary.normalEggs + summary.monsterEggs,
+      reportFileName: getReportFileName(summary),
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(payload?.error || "Failed to send report email.");
+  }
 }
 
 export function canNativeShare(): boolean {

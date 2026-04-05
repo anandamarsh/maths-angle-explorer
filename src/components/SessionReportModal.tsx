@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useIsMobileLandscape } from "../hooks/useMediaQuery";
 import type { SessionSummary } from "../report/sessionLog";
-import { downloadReport, shareReport } from "../report/shareReport";
+import { emailReport, shareReport } from "../report/shareReport";
 
 function LevelCompleteReportActions({
   summary,
@@ -14,6 +14,8 @@ function LevelCompleteReportActions({
 }) {
   const [generating, setGenerating] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
+  const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState(false);
   const totalEggs = summary.normalEggs + summary.monsterEggs;
   const canEmailReport = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareEmail.trim());
 
@@ -28,26 +30,20 @@ function LevelCompleteReportActions({
     }
   }
 
-  async function handleEmailDraft() {
+  async function handleEmailSend() {
     if (!canEmailReport || generating) return;
     setGenerating(true);
+    setEmailFeedback(null);
+    setEmailError(false);
     try {
-      await downloadReport(summary);
-      const subject = `${summary.playerName || "Explorer"}'s Angle Explorer Report`;
-      const body = [
-        "Hi,",
-        "",
-        "I've attached the latest Angle Explorer report.",
-        "",
-        `Score: ${summary.correctCount}/${summary.totalQuestions}`,
-        `Accuracy: ${summary.accuracy}%`,
-        `Eggs Collected: ${totalEggs}`,
-      ].join("\n");
-      window.location.href = `mailto:${encodeURIComponent(
-        shareEmail.trim(),
-      )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      await emailReport(summary, shareEmail);
+      setEmailFeedback(`Report sent to ${shareEmail.trim()}`);
     } catch (error) {
-      console.error("Email draft failed:", error);
+      console.error("Email send failed:", error);
+      setEmailError(true);
+      setEmailFeedback(
+        error instanceof Error ? error.message : "Failed to send report.",
+      );
     } finally {
       setGenerating(false);
     }
@@ -101,17 +97,23 @@ function LevelCompleteReportActions({
         <input
           type="email"
           value={shareEmail}
-          onChange={(event) => setShareEmail(event.target.value)}
+          onChange={(event) => {
+            setShareEmail(event.target.value);
+            if (emailFeedback) {
+              setEmailFeedback(null);
+              setEmailError(false);
+            }
+          }}
           placeholder="parent@email.com"
           className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />
         <button
           type="button"
-          onClick={handleEmailDraft}
+          onClick={handleEmailSend}
           disabled={!canEmailReport || generating}
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-400 text-slate-950 transition-opacity disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:opacity-100"
           aria-label="Email report"
-          title={canEmailReport ? "Download the report and open an email draft" : "Enter an email address"}
+          title={canEmailReport ? "Send the report by email" : "Enter an email address"}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2 11 13" />
@@ -119,6 +121,15 @@ function LevelCompleteReportActions({
           </svg>
         </button>
       </div>
+      {emailFeedback && (
+        <div
+          className={`mt-2 text-sm font-semibold ${
+            emailError ? "text-rose-300" : "text-emerald-300"
+          }`}
+        >
+          {emailFeedback}
+        </div>
+      )}
     </div>
   );
 }
