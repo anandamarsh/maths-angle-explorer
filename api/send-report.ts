@@ -83,7 +83,7 @@ export default async function handler(req: any, res: any) {
   const reportFileName = payload?.reportFileName || "angle-report.pdf";
   const scoreLine = `${payload?.correctCount ?? 0}/${payload?.totalQuestions ?? 0}`;
   const accuracy = `${payload?.accuracy ?? 0}%`;
-  const senderName = payload?.senderName || "SeeMaths Angle Explorer";
+  const senderName = payload?.senderName || "Angle Explorer";
   const gameName = payload?.gameName || "Angle Explorer";
   const siteUrl = payload?.siteUrl || "https://www.seemaths.com";
   const sessionTime = payload?.sessionTime || "Unknown time";
@@ -108,7 +108,7 @@ export default async function handler(req: any, res: any) {
     body: JSON.stringify({
       from: `${senderName} <${from}>`,
       to: [email],
-      subject: `SeeMaths ${gameName} Report`,
+      subject: `${gameName} Report`,
       html: `
         <p>Hi there,</p>
         <p>
