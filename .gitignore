@@ -4,3 +4,4 @@ dist
 .env.local
 .DS_Store
 .vercel
+test-results/.last-run.json
