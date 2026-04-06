@@ -1,6 +1,6 @@
 {
   "generic": {
-    "appTitle": "Interactive Maths",
+    "appTitle": "See the Maths you Do",
     "shellShareUrl": "https://interactive-maths.vercel.app/",
     "devAnswerPrefix": "Ans:",
     "buttons": {
