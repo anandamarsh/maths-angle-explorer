@@ -19,7 +19,7 @@ function LevelCompleteReportActions({
   const [shareEmail, setShareEmail] = useState("");
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
-  const totalEggs = summary.normalEggs + summary.monsterEggs;
+  const totalStars = summary.normalEggs + summary.monsterEggs;
   const canEmailReport = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareEmail.trim());
 
   // Expose controls for autopilot
@@ -92,10 +92,10 @@ function LevelCompleteReportActions({
           </div>
           <div className="rounded-2xl border border-fuchsia-300/20 bg-slate-800/70 px-3 py-3">
             <div className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-slate-400">
-              Eggs
+              Stars
             </div>
             <div className="mt-1 text-xl font-black text-fuchsia-300 md:text-2xl">
-              {totalEggs}
+              {totalStars}
             </div>
           </div>
         </div>
@@ -144,15 +144,14 @@ function LevelCompleteReportActions({
           </svg>
         </button>
       </div>
-      {emailFeedback && (
-        <div
-          className={`mt-2 text-sm font-semibold ${
-            emailError ? "text-rose-300" : "text-emerald-300"
-          }`}
-        >
-          {emailFeedback}
-        </div>
-      )}
+      <div
+        className={`mt-2 text-sm font-semibold ${
+          emailError ? "text-rose-300" : "text-emerald-300"
+        }`}
+        style={{ visibility: emailFeedback ? "visible" : "hidden" }}
+      >
+        {emailFeedback ?? "\u00a0"}
+      </div>
     </div>
   );
 }
@@ -192,38 +191,24 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         <div className="text-4xl font-black uppercase tracking-[0.18em] text-yellow-300 md:text-5xl">
           Level {level} Complete!
         </div>
-        <div className="mt-2 text-base font-bold text-purple-300 md:text-lg">
-          Platinum Round Crushed!
+        <div className={`mt-2 text-base font-bold md:text-lg ${level >= 2 ? "text-purple-300" : "text-yellow-300"}`}>
+          {level >= 2 ? "Platinum Round Crushed!" : "Monster Round Crushed!"}
         </div>
         <div className="mt-4 flex items-center justify-center gap-1">
-          {[0, 1, 2].map((i) => (
-            <svg
-              key={i}
-              viewBox="0 0 512 512"
-              width={isMobileLandscape ? "18" : "24"}
-              height={isMobileLandscape ? "18" : "24"}
-              style={{
-                filter:
-                  "drop-shadow(0 0 6px rgba(250,204,21,0.95)) drop-shadow(0 0 14px rgba(251,191,36,0.6))",
-              }}
-            >
-              <path
-                d="M256 16C166 16 76 196 76 316c0 90 60 180 180 180s180-90 180-180c0-120-90-300-180-300z"
-                fill="#facc15"
-                stroke="#fbbf24"
-                strokeWidth="18"
-              />
-              <ellipse
-                cx="190"
-                cy="150"
-                rx="35"
-                ry="60"
-                fill="#fef08a"
-                opacity="0.4"
-                transform="rotate(-20 190 150)"
-              />
-            </svg>
-          ))}
+          {[0, 1, 2].map((i) => {
+            const fill = level >= 2 ? "#e2e8f0" : "#facc15";
+            const stroke = level >= 2 ? "#94a3b8" : "#f59e0b";
+            const glow = level >= 2
+              ? "drop-shadow(0 0 6px rgba(226,232,240,0.9)) drop-shadow(0 0 14px rgba(148,163,184,0.5))"
+              : "drop-shadow(0 0 6px rgba(250,204,21,0.95)) drop-shadow(0 0 14px rgba(251,191,36,0.6))";
+            const d = "M 11.00 1.00 L 13.47 7.60 L 20.51 7.91 L 14.99 12.30 L 16.88 19.09 L 11.00 15.20 L 5.12 19.09 L 7.01 12.30 L 1.49 7.91 L 8.53 7.60 Z";
+            const sz = isMobileLandscape ? 18 : 24;
+            return (
+              <svg key={i} viewBox="0 0 22 22" width={sz} height={sz} style={{ filter: glow }}>
+                <path d={d} fill={fill} stroke={stroke} strokeWidth="0.8" strokeLinejoin="round" />
+              </svg>
+            );
+          })}
         </div>
 
         <LevelCompleteReportActions

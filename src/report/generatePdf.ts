@@ -321,7 +321,7 @@ function drawLevel2SectorDiagram(
 
     // Sector arc
     doc.setDrawColor(arcColor);
-    doc.setLineWidth(isMissing ? 1.0 : 0.5);
+    doc.setLineWidth(0.5);
     for (let i = 0; i < ARC_SEGS; i++) {
       const a1 = (sector.fromAngle + (sector.toAngle - sector.fromAngle) * (i / ARC_SEGS)) * Math.PI / 180;
       const a2 = (sector.fromAngle + (sector.toAngle - sector.fromAngle) * ((i + 1) / ARC_SEGS)) * Math.PI / 180;
@@ -500,7 +500,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Earn 10 eggs by aiming the cannon at the correct angle and firing.",
+    "Earn 10 stars by aiming the cannon at the correct angle and firing.",
     margin + doc.getTextWidth("Blackout Round:") + 2, curY
   );
   curY += currLineH;
@@ -512,7 +512,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Defend all 10 eggs against harder questions. Wrong answers lose an egg.",
+    "Defend all 10 stars against harder questions. Wrong answers lose a star.",
     margin + doc.getTextWidth("Monster Round:") + 2, curY
   );
   curY += currLineH;
@@ -585,37 +585,35 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   curY += boxH + 7;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ATTEMPT EGGS ROW
+  // ATTEMPT STARS ROW
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const eggRx = 2.2, eggRy = 3, eggStep = 6;
-  const maxPerRow = Math.floor(contentW / eggStep);
-  const eggRowH = eggRy * 2 + 3;
+  const starStep = 6;
+  const starOuterR = 2.5, starInnerR = 1.1;
+  const maxPerRow = Math.floor(contentW / starStep);
+  const starRowH = starOuterR * 2 + 3;
 
   for (let rowStart = 0; rowStart < summary.attempts.length; rowStart += maxPerRow) {
     const rowAttempts = summary.attempts.slice(rowStart, rowStart + maxPerRow);
-    const rowWidth = rowAttempts.length * eggStep;
-    let eggX = margin + (contentW - rowWidth) / 2 + eggStep / 2;
-    const eggCY = curY + eggRy;
+    const rowWidth = rowAttempts.length * starStep;
+    let starX = margin + (contentW - rowWidth) / 2 + starStep / 2;
+    const starCY = curY + starOuterR;
 
     for (const attempt of rowAttempts) {
+      let color: string;
       if (!attempt.isCorrect) {
-        doc.setFillColor("#ef4444");
-        doc.setDrawColor("#dc2626");
+        color = "#ef4444";
       } else if (attempt.gamePhase === "platinum") {
-        doc.setFillColor("#e2e8f0");
-        doc.setDrawColor("#94a3b8");
+        color = "#94a3b8";
       } else if (attempt.gamePhase === "monster") {
-        doc.setFillColor("#facc15");
-        doc.setDrawColor("#f59e0b");
+        color = "#facc15";
       } else {
-        doc.setFillColor("#d1d5db");
-        doc.setDrawColor("#9ca3af");
+        color = "#d1d5db";
       }
-      doc.ellipse(eggX, eggCY, eggRx, eggRy, "FD");
-      eggX += eggStep;
+      drawStar(doc, starX, starCY, starOuterR, starInnerR, color);
+      starX += starStep;
     }
-    curY += eggRowH;
+    curY += starRowH;
   }
 
   curY += 5;

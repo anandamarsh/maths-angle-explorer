@@ -49,7 +49,7 @@ import {
 
 const IS_DEV = import.meta.env.DEV;
 const ANSWER_CHEAT_CODE = "197879";
-const AUTOPILOT_EMAIL = (import.meta.env.VITE_AUTOPILOT_EMAIL as string | undefined) ?? "";
+const AUTOPILOT_EMAIL = (import.meta.env.VITE_AUTOPILOT_EMAIL as string | undefined) ?? "amarsh.anand@gmail.com";
 const IS_LOCALHOST_DEV =
   IS_DEV &&
   new Set(["localhost", "127.0.0.1", "::1"]).has(
@@ -265,13 +265,22 @@ function isPointOnCannon(svgX: number, svgY: number, aimAngle: number) {
   return onBase || onBarrel;
 }
 
+function clampedBeamEndpoint(aimAngle: number) {
+  const raw = polarToXY(CX, CY, aimAngle, BEAM_LEN);
+  const inset = TARGET_SPRITE_RADIUS + TARGET_EDGE_MARGIN;
+  return {
+    x: Math.min(Math.max(raw.x, inset), W - inset),
+    y: Math.min(Math.max(raw.y, inset), H - inset),
+  };
+}
+
 function isPointOnAimEndpoint(svgX: number, svgY: number, aimAngle: number) {
-  const endpoint = polarToXY(CX, CY, aimAngle, BEAM_LEN);
+  const endpoint = clampedBeamEndpoint(aimAngle);
   return pointInCircle(svgX, svgY, endpoint.x, endpoint.y, 16);
 }
 
 function isPointOnAimRay(svgX: number, svgY: number, aimAngle: number) {
-  const rayEnd = polarToXY(CX, CY, aimAngle, BEAM_LEN);
+  const rayEnd = clampedBeamEndpoint(aimAngle);
   return pointToSegmentDistance(svgX, svgY, CX, CY, rayEnd.x, rayEnd.y) <= 18;
 }
 
@@ -1042,7 +1051,7 @@ function GazeBeamDrag({
   arcRadiusOverride?: number;
   dottedRay?: boolean;
 }) {
-  const ep = polarToXY(CX, CY, gazeAngle, BEAM_LEN);
+  const ep = clampedBeamEndpoint(gazeAngle);
   const beamColor = "#38bdf8";
   const displaySweep = gazeAngle - baseAngle;
 
@@ -1191,7 +1200,7 @@ function L1Scene() {
         <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
       ))}
       <path
-        d={`M0 ${H} Q60 236 120 254 Q160 214 200 240 Q250 206 300 236 Q340 210 380 232 Q420 198 460 220 L480 ${H} Z`}
+        d={`M0 ${H} C30 305 80 252 140 252 C185 252 222 224 268 228 C300 231 350 212 400 220 C430 225 455 208 480 215 L480 ${H} Z`}
         fill="rgba(30,58,95,0.35)"
       />
     </g>
@@ -2010,6 +2019,7 @@ export default function ArcadeAngleScreen() {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isAutopilotRef.current) return;
       if (sceneBusyRef.current) return;
       const tag = (document.activeElement as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
@@ -2094,7 +2104,12 @@ export default function ArcadeAngleScreen() {
       setTypeIdx(999);
       return;
     } // L3: show all at once
-    const text = currentQ.prompt;
+    const text = getInstructionPrompt(level, gamePhase);
+    if (isAutopilotRef.current) {
+      // Skip animation so autopilot never waits on a throttled setInterval
+      setTypeIdx(text.length);
+      return;
+    }
     setTypeIdx(0);
     let i = 0;
     const iv = window.setInterval(() => {
@@ -2104,7 +2119,7 @@ export default function ArcadeAngleScreen() {
       if (i >= text.length) window.clearInterval(iv);
     }, 22);
     return () => window.clearInterval(iv);
-  }, [panelVisible, currentQ.id]);
+  }, [panelVisible, currentQ.id, gamePhase]);
 
   // ── Shot animation ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -2920,7 +2935,7 @@ export default function ArcadeAngleScreen() {
   const autopilotPhase =
     screen === "won" || screen === "gameover"
       ? "levelComplete" as const
-      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null)
+      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null || typeIdx < getInstructionPrompt(level, gamePhase).length)
         ? "feedback" as const
         : "aiming" as const;
 
@@ -2945,6 +2960,8 @@ export default function ArcadeAngleScreen() {
       if (isAutopilot) {
         deactivateAutopilot();
       } else {
+        // Eagerly mark as active so the bubble-phase onKeyDown ignores the trigger digit
+        isAutopilotRef.current = true;
         // Clear the keypad — digits 19808 were added before the final 1 triggered the code
         handleKeypadChange("");
         // Dismiss tutorial permanently for this session
@@ -3035,24 +3052,12 @@ export default function ArcadeAngleScreen() {
               style={
                 isPlatinum
                   ? {
-                      background:
-                        "linear-gradient(135deg, rgba(71,85,105,0.85) 0%, rgba(100,116,139,0.9) 50%, rgba(71,85,105,0.85) 100%)",
-                      color: "#e2e8f0",
-                      border: "2px solid #94a3b8",
-                      boxShadow:
-                        "0 0 12px rgba(148,163,184,0.6), 0 0 28px rgba(148,163,184,0.3)",
-                      textShadow: "0 0 10px rgba(226,232,240,0.9)",
-                      animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
+                      background: "#a78bfa",
+                      color: "#1e0050",
                     }
                   : {
-                      background:
-                        "linear-gradient(135deg, rgba(161,122,6,0.85) 0%, rgba(202,138,4,0.9) 50%, rgba(161,122,6,0.85) 100%)",
-                      color: "#fef08a",
-                      border: "2px solid #fbbf24",
-                      boxShadow:
-                        "0 0 12px rgba(251,191,36,0.6), 0 0 28px rgba(234,179,8,0.35)",
-                      textShadow: "0 0 10px rgba(250,204,21,0.9)",
-                      animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
+                      background: "#fbbf24",
+                      color: "#1c0a00",
                     }
               }
             >

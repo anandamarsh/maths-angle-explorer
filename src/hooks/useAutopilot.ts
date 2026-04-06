@@ -313,5 +313,6 @@ export function useAutopilot({
 
   useEffect(() => () => clearTimers(), []);
 
+
   return { isActive, activate, deactivate, phantomPos };
 }
