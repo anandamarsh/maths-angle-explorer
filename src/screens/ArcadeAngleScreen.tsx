@@ -32,6 +32,10 @@ import {
   openCommentsComposer,
 } from "../components/Social";
 import SessionReportModal from "../components/SessionReportModal";
+import { useCheatCodes } from "../hooks/useCheatCodes";
+import { useAutopilot, type AutopilotCallbacks, type ModalAutopilotControls } from "../hooks/useAutopilot";
+import PhantomHand from "../components/PhantomHand";
+import AutopilotIcon from "../components/AutopilotIcon";
 import {
   startSession,
   continueSession,
@@ -45,6 +49,7 @@ import {
 
 const IS_DEV = import.meta.env.DEV;
 const ANSWER_CHEAT_CODE = "197879";
+const AUTOPILOT_EMAIL = (import.meta.env.VITE_AUTOPILOT_EMAIL as string | undefined) ?? "";
 const IS_LOCALHOST_DEV =
   IS_DEV &&
   new Set(["localhost", "127.0.0.1", "::1"]).has(
@@ -1484,6 +1489,7 @@ function NumericKeypad({
               <button
                 key={btn}
                 onClick={() => press(btn)}
+                data-autopilot-key={/[0-9]/.test(btn) ? btn : btn === "±" ? "±" : undefined}
                 className={/[0-9]/.test(btn) ? digit : op}
                 style={
                   glowKeys.includes(btn)
@@ -1519,7 +1525,7 @@ function NumericKeypad({
         ))}
         {/* Zero + Fire */}
         <div className="flex gap-0.5 mt-0.5 relative">
-          <button onClick={() => press("0")} className={`${digit} flex-[2]`}>
+          <button onClick={() => press("0")} data-autopilot-key="0" className={`${digit} flex-[2]`}>
             0
           </button>
           <button
@@ -1530,6 +1536,7 @@ function NumericKeypad({
             onPointerCancel={() => setFirePressed(false)}
             onPointerLeave={() => setFirePressed(false)}
             disabled={!canFireProp}
+            data-autopilot-key="submit"
             className={`${base} flex-[2] arcade-button disabled:opacity-40 disabled:cursor-not-allowed`}
             style={emphasizeFire && canFireProp ? { opacity: 0 } : undefined}
           >
@@ -1843,6 +1850,8 @@ export default function ArcadeAngleScreen() {
   ]);
 
   const canFireRef = useRef(false);
+  const autopilotCallbacksRef = useRef<AutopilotCallbacks | null>(null);
+  const autopilotEmailModalRef = useRef<ModalAutopilotControls | null>(null);
 
   function handleAudioToggle() {
     const nextMuted = toggleMute();
@@ -2886,6 +2895,46 @@ export default function ArcadeAngleScreen() {
   handleKeypadChangeRef.current = handleKeypadChange;
   doSubmitRef.current = doSubmit;
 
+  autopilotCallbacksRef.current = {
+    commitAimAngle,
+    setCalcValue: handleKeypadChange,
+    submitAnswer: () => doSubmitRef.current(),
+    goNextLevel: () => beginNewRun(level === 1 ? 2 : level, level > 1),
+    playAgain: () => beginNewRun(level),
+    emailModalControls: autopilotEmailModalRef,
+  };
+
+  const autopilotPhase =
+    screen === "won" || screen === "gameover"
+      ? "levelComplete" as const
+      : (sceneBusy || showMonsterAnnounce)
+        ? "feedback" as const
+        : "aiming" as const;
+
+  const autopilotGameState = {
+    phase: autopilotPhase,
+    correctAnswer: currentQ.answer,
+    currentGazeAngle: gazeAngle,
+    level,
+    levelCount: 2,
+  };
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } = useAutopilot({
+    gameState: autopilotGameState,
+    callbacksRef: autopilotCallbacksRef,
+    svgRef,
+    autopilotEmail: AUTOPILOT_EMAIL,
+  });
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useCheatCodes({
+    "198081": () => {
+      if (isAutopilot) deactivateAutopilot();
+      else activateAutopilot();
+    },
+  });
+
   return (
     <div
       className="flex flex-col landscape:flex-row h-svh w-screen overflow-hidden font-arcade relative"
@@ -3028,6 +3077,9 @@ export default function ArcadeAngleScreen() {
           className="flex flex-row gap-1.5 shrink-0"
           style={{ marginTop: "6px" }}
         >
+          {isAutopilot && (
+            <AutopilotIcon onClick={deactivateAutopilot} />
+          )}
           <button
             onClick={resetCurrentQuestion}
             title={texts.generic.buttons.reset}
@@ -3322,6 +3374,9 @@ export default function ArcadeAngleScreen() {
         >
           {/* Buttons + level select */}
           <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5">
+            {isAutopilot && (
+              <AutopilotIcon onClick={deactivateAutopilot} />
+            )}
             <div className="flex flex-row gap-1.5">
               <button
                 onClick={resetCurrentQuestion}
@@ -3780,6 +3835,7 @@ export default function ArcadeAngleScreen() {
           level={level}
           onClose={() => beginNewRun(level)}
           onNextLevel={level < 2 ? () => beginNewRun(2, true) : undefined}
+          autopilotControlsRef={autopilotEmailModalRef}
         />
       )}
 
@@ -3792,6 +3848,7 @@ export default function ArcadeAngleScreen() {
             setUnlockedLevel(1);
             beginNewRun(1);
           }}
+          autopilotControlsRef={autopilotEmailModalRef}
         />
       )}
 
@@ -4160,6 +4217,7 @@ export default function ArcadeAngleScreen() {
           <SocialComments />
         </div>
       </div>
+      <PhantomHand pos={phantomPos} />
     </div>
   );
 }

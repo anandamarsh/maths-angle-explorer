@@ -1,16 +1,19 @@
 // src/components/SessionReportModal.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useIsMobileLandscape } from "../hooks/useMediaQuery";
 import type { SessionSummary } from "../report/sessionLog";
+import type { ModalAutopilotControls } from "../hooks/useAutopilot";
 import { emailReport, shareReport } from "../report/shareReport";
 
 function LevelCompleteReportActions({
   summary,
   isMobileLandscape,
+  autopilotControlsRef,
 }: {
   summary: SessionSummary;
   isMobileLandscape: boolean;
+  autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }) {
   const [generating, setGenerating] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
@@ -18,6 +21,24 @@ function LevelCompleteReportActions({
   const [emailError, setEmailError] = useState(false);
   const totalEggs = summary.normalEggs + summary.monsterEggs;
   const canEmailReport = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareEmail.trim());
+
+  // Expose controls for autopilot
+  useEffect(() => {
+    if (!autopilotControlsRef) return;
+    autopilotControlsRef.current = {
+      appendChar: (ch: string) => setShareEmail(prev => prev + ch),
+      setEmail: (v: string) => setShareEmail(v),
+      triggerSend: () => {
+        const email = shareEmail.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+        handleEmailSend();
+      },
+    };
+    return () => {
+      if (autopilotControlsRef) autopilotControlsRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autopilotControlsRef, shareEmail]);
 
   async function handleShare() {
     setGenerating(true);
@@ -105,12 +126,14 @@ function LevelCompleteReportActions({
             }
           }}
           placeholder="parent@email.com"
+          data-autopilot-key="email-input"
           className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />
         <button
           type="button"
           onClick={handleEmailSend}
           disabled={!canEmailReport || generating}
+          data-autopilot-key="email-send"
           className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-400 text-slate-950 transition-opacity disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:opacity-100"
           aria-label="Email report"
           title={canEmailReport ? "Send the report by email" : "Enter an email address"}
@@ -139,9 +162,10 @@ interface Props {
   level: number;
   onClose: () => void;
   onNextLevel?: () => void;
+  autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }
 
-export default function SessionReportModal({ summary, level, onClose, onNextLevel }: Props) {
+export default function SessionReportModal({ summary, level, onClose, onNextLevel, autopilotControlsRef }: Props) {
   const isMobileLandscape = useIsMobileLandscape();
 
   return (
@@ -205,12 +229,14 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         <LevelCompleteReportActions
           summary={summary}
           isMobileLandscape={isMobileLandscape}
+          autopilotControlsRef={autopilotControlsRef}
         />
 
         <div className="mt-6 flex flex-col items-center gap-3">
           {level < 2 && onNextLevel ? (
             <button
               onClick={onNextLevel}
+              data-autopilot-key="next-level"
               className="arcade-button px-8 py-4 text-base md:text-lg"
             >
               Next Level
@@ -218,6 +244,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
           ) : (
             <button
               onClick={onClose}
+              data-autopilot-key="next-level"
               className="arcade-button px-8 py-4 text-base md:text-lg"
             >
               Play Again
