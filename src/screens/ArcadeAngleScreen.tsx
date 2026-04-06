@@ -2930,8 +2930,19 @@ export default function ArcadeAngleScreen() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useCheatCodes({
     "198081": () => {
-      if (isAutopilot) deactivateAutopilot();
-      else activateAutopilot();
+      if (isAutopilot) {
+        deactivateAutopilot();
+      } else {
+        // Clear the keypad — digits 19808 were added before the final 1 triggered the code
+        handleKeypadChange("");
+        // Dismiss tutorial permanently for this session
+        setHasDiscoveredCannonDrag(true);
+        setHasSeenFirstFireTutorial(true);
+        setTutorialHintVisible(false);
+        setTypedAimTutorialStage("done");
+        setFirstFireTutorialReady(false);
+        activateAutopilot();
+      }
     },
   });
 
