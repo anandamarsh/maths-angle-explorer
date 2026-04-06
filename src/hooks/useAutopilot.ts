@@ -33,7 +33,7 @@ function getKeyRect(key: string): DOMRect | null {
 export interface ModalAutopilotControls {
   appendChar: (ch: string) => void;
   setEmail: (v: string) => void;
-  triggerSend: () => void;
+  triggerSend: () => Promise<void>;
 }
 
 export interface AutopilotCallbacks {
@@ -117,52 +117,49 @@ export function useAutopilot({
   }
 
   function scheduleTyping(targetAngle: number, startDelay: number) {
-    // For L2, the answer is the delta from startAngle — but correctAnswer is already the delta
-    // The keypad shows the typed number (not the absolute angle for L2)
-    // We use correctAnswer directly as what to type
-    const { correctAnswer } = stateRef.current;
-    // If targeting a wrong angle, compute the corresponding typed value
-    // Actually, we already chose the targetAngle above. For typing, we should type
-    // what matches the targetAngle as typed answer.
-    // For simplicity, type the rounded integer of the targetAngle
-    // (for L1: same as angle; for L2: same as correctAnswer delta if correct, or offset if wrong)
-    void correctAnswer; // used via targetAngle
-
-    // Clear keypad display before typing (human behaviour)
-    callbacksRef.current?.setCalcValue("");
-
+    const isNeg = targetAngle < 0;
     const digits = String(Math.round(Math.abs(targetAngle))).split("");
     let delay = startDelay;
 
-    // Move hand toward keypad area first
+    // Move hand toward first key
     after(delay - 300, () => {
-      const rect = getKeyRect(digits[0]);
+      const firstKey = isNeg ? "±" : digits[0];
+      const rect = getKeyRect(firstKey);
       if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
     });
 
-    // Handle negative sign for L1 if needed
-    if (targetAngle < 0) {
+    // Clear display just before typing starts (timed, not synchronous)
+    after(delay - 100, () => {
+      callbacksRef.current?.setCalcValue("");
+    });
+
+    // Negative sign — set value to "-0" directly
+    if (isNeg) {
       after(delay, () => {
         const el = document.querySelector<HTMLElement>('[data-autopilot-key="±"]');
         if (el) {
           const rect = el.getBoundingClientRect();
           clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
-          el.click();
         }
+        callbacksRef.current?.setCalcValue("-0");
       });
       delay += rand(T.KEY_BETWEEN);
     }
 
+    // Digits — set the full accumulated value directly (no el.click stale closure)
+    let built = "";
     for (const d of digits) {
+      built = built === "" ? d : built + d;
       const td = delay;
+      const typedValue = isNeg ? `-${built}` : built;
       const digit = d;
       after(td, () => {
         const el = document.querySelector<HTMLElement>(`[data-autopilot-key="${digit}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
           clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
-          el.click();
         }
+        callbacksRef.current?.setCalcValue(typedValue);
       });
       delay += rand(T.KEY_BETWEEN);
     }
@@ -239,41 +236,37 @@ export function useAutopilot({
     after(delay, () => {
       const rect = getKeyRect("email-send");
       if (rect) clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      window.setTimeout(() => {
+      // Await the send, then wait 2 s, then proceed
+      window.setTimeout(async () => {
         if (!isActiveRef.current) return;
-        callbacksRef.current?.emailModalControls?.current?.triggerSend?.();
+        try {
+          await (callbacksRef.current?.emailModalControls?.current?.triggerSend?.() ?? Promise.resolve());
+        } catch { /* email errors don't block progression */ }
+        await new Promise<void>(r => window.setTimeout(r, 2000));
+        if (!isActiveRef.current) return;
         setPhantomPos(null);
-      }, 140);
-    });
-
-    delay += rand(T.END_PAUSE);
-    after(delay - 400, () => {
-      const { level, levelCount } = stateRef.current;
-      if (level < levelCount) {
-        const rect = getKeyRect("next-level");
-        if (rect) moveHand(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      }
-    });
-    after(delay, () => {
-      const { level, levelCount } = stateRef.current;
-      if (level < levelCount) {
-        const el = document.querySelector<HTMLElement>('[data-autopilot-key="next-level"]');
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
-          window.setTimeout(() => {
+        const { level, levelCount } = stateRef.current;
+        if (level < levelCount) {
+          const el = document.querySelector<HTMLElement>('[data-autopilot-key="next-level"]');
+          if (el) {
+            const rect2 = el.getBoundingClientRect();
+            moveHand(rect2.left + rect2.width / 2, rect2.top + rect2.height / 2);
+            await new Promise<void>(r => window.setTimeout(r, 400));
+            if (!isActiveRef.current) return;
+            clickAt(rect2.left + rect2.width / 2, rect2.top + rect2.height / 2);
+            await new Promise<void>(r => window.setTimeout(r, 140));
             if (!isActiveRef.current) return;
             el.click();
             setPhantomPos(null);
-          }, 140);
+          } else {
+            callbacksRef.current?.goNextLevel();
+          }
         } else {
-          callbacksRef.current?.goNextLevel();
+          isActiveRef.current = false;
+          setIsActive(false);
+          callbacksRef.current?.onAutopilotComplete?.();
         }
-      } else {
-        isActiveRef.current = false;
-        setIsActive(false);
-        callbacksRef.current?.onAutopilotComplete?.();
-      }
+      }, 140);
     });
   }
 

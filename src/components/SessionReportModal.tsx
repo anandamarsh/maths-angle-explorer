@@ -30,8 +30,8 @@ function LevelCompleteReportActions({
       setEmail: (v: string) => setShareEmail(v),
       triggerSend: () => {
         const email = shareEmail.trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
-        handleEmailSend();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Promise.resolve();
+        return handleEmailSend();
       },
     };
     return () => {
