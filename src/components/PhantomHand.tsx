@@ -14,7 +14,7 @@ export default function PhantomHand({ pos }: Props) {
       style={{
         left: pos.x,
         top: pos.y,
-        transform: "translate(-28px, -8px)",
+        transform: "translate(-27.5px, -4px)",
         transition: "left 140ms ease-out, top 140ms ease-out",
         filter: "drop-shadow(0 0 10px rgba(34,197,94,0.8))",
       }}

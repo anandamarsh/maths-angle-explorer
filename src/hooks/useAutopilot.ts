@@ -43,16 +43,25 @@ function getKeyRect(key: string): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
+// Use the SVG's own CTM so viewBox letterboxing / transforms are accounted for.
+// This is the same approach as ArcadeAngleScreen's toSVGPoint (inverse direction).
 function angleToScreenXY(angleDeg: number, svgEl: SVGSVGElement): { x: number; y: number } {
-  const rect = svgEl.getBoundingClientRect();
   const rad = (angleDeg * Math.PI) / 180;
   const svgX = CX + BEAM_LEN * Math.cos(rad);
-  const svgY = CY - BEAM_LEN * Math.sin(rad); // SVG y-axis inverted
-  const scaleX = rect.width / SVG_W;
-  const scaleY = rect.height / SVG_H;
+  const svgY = CY - BEAM_LEN * Math.sin(rad); // math convention → SVG y-axis
+  const ctm = svgEl.getScreenCTM();
+  if (ctm) {
+    const pt = svgEl.createSVGPoint();
+    pt.x = svgX;
+    pt.y = svgY;
+    const screen = pt.matrixTransform(ctm);
+    return { x: screen.x, y: screen.y };
+  }
+  // Fallback (no CTM): naive rect scaling
+  const rect = svgEl.getBoundingClientRect();
   return {
-    x: rect.left + svgX * scaleX,
-    y: rect.top + svgY * scaleY,
+    x: rect.left + svgX * (rect.width / SVG_W),
+    y: rect.top + svgY * (rect.height / SVG_H),
   };
 }
 
@@ -178,6 +187,10 @@ export function useAutopilot({
     // For simplicity, type the rounded integer of the targetAngle
     // (for L1: same as angle; for L2: same as correctAnswer delta if correct, or offset if wrong)
     void correctAnswer; // used via targetAngle
+
+    // Clear keypad display before typing (human behaviour)
+    callbacksRef.current?.setCalcValue("");
+
     const digits = String(Math.round(Math.abs(targetAngle))).split("");
     let delay = startDelay;
 
