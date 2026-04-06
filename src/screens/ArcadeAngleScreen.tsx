@@ -3058,7 +3058,7 @@ export default function ArcadeAngleScreen() {
           )}
 
           <div className="flex items-center gap-1.5">
-            {Array.from({ length: LEVEL_TARGET_COUNT }, (_, i) => i).map(
+            {Array.from({ length: isAutopilot ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT }, (_, i) => i).map(
               (i) => {
                 const collected =
                   isMonster || isPlatinum ? i < monsterEggs : i < eggsCollected;
@@ -3533,7 +3533,7 @@ export default function ArcadeAngleScreen() {
 
           {/* Stars */}
           <div className="shrink-0 grid grid-cols-5 gap-1 justify-center justify-items-center pb-1">
-            {Array.from({ length: LEVEL_TARGET_COUNT }, (_, i) => i).map(
+            {Array.from({ length: isAutopilot ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT }, (_, i) => i).map(
               (i) => {
                 const collected =
                   isMonster || isPlatinum ? i < monsterEggs : i < eggsCollected;
