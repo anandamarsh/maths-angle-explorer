@@ -61,6 +61,7 @@ export default async function handler(req: any, res: any) {
         curriculumCode?: string;
         curriculumDescription?: string;
         curriculumUrl?: string;
+        curriculumIndexUrl?: string;
         reportFileName?: string;
       }
     | null;
@@ -93,6 +94,9 @@ export default async function handler(req: any, res: any) {
   const curriculumDescription =
     payload?.curriculumDescription || "No curriculum description supplied.";
   const curriculumUrl = payload?.curriculumUrl || "https://www.seemaths.com";
+  const curriculumIndexUrl =
+    payload?.curriculumIndexUrl ||
+    "https://www.educationstandards.nsw.edu.au/wps/portal/nesa/k-10/learning-areas/mathematics/mathematics-k-10";
   const curriculumText = `${curriculumCode} - ${curriculumDescription}`;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
@@ -110,12 +114,12 @@ export default async function handler(req: any, res: any) {
         <p>
           A player played at
           <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
-          at <strong>${escapeHtml(sessionTime)}</strong> on ${escapeHtml(sessionDate)} for
+          at <strong>${escapeHtml(sessionTime)}</strong> on <strong>${escapeHtml(sessionDate)}</strong> for
           <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong>
           and had an accuracy of <strong>${escapeHtml(accuracy)}</strong>.
         </p>
         <p>
-          This game is equivalent to <strong>${escapeHtml(stageLabel)}</strong> on topic
+          This game is equivalent to <a href="${escapeHtml(curriculumIndexUrl)}"><strong>${escapeHtml(stageLabel)}</strong></a> on topic
           <a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumText)}</strong></a>.
         </p>
         <p>
