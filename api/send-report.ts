@@ -44,14 +44,22 @@ export default async function handler(req: any, res: any) {
   }
 
   const payload = normalizeBody(req.body) as
-    | {
+      | {
         email?: string;
         pdfBase64?: string;
         playerName?: string;
         correctCount?: number;
         totalQuestions?: number;
         accuracy?: number;
-        totalEggs?: number;
+        senderName?: string;
+        gameName?: string;
+        siteUrl?: string;
+        sessionTime?: string;
+        sessionDate?: string;
+        durationText?: string;
+        stageLabel?: string;
+        curriculumCode?: string;
+        curriculumDescription?: string;
         reportFileName?: string;
       }
     | null;
@@ -73,7 +81,16 @@ export default async function handler(req: any, res: any) {
   const reportFileName = payload?.reportFileName || "angle-report.pdf";
   const scoreLine = `${payload?.correctCount ?? 0}/${payload?.totalQuestions ?? 0}`;
   const accuracy = `${payload?.accuracy ?? 0}%`;
-  const eggs = `${payload?.totalEggs ?? 0}`;
+  const senderName = payload?.senderName || "SeeMaths Angle Explorer";
+  const gameName = payload?.gameName || "Angle Explorer";
+  const siteUrl = payload?.siteUrl || "https://www.seemaths.com";
+  const sessionTime = payload?.sessionTime || "Unknown time";
+  const sessionDate = payload?.sessionDate || "Unknown date";
+  const durationText = payload?.durationText || "an unknown duration";
+  const stageLabel = payload?.stageLabel || "NSW Curriculum";
+  const curriculumCode = payload?.curriculumCode || "N/A";
+  const curriculumDescription =
+    payload?.curriculumDescription || "No curriculum description supplied.";
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -82,18 +99,26 @@ export default async function handler(req: any, res: any) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from,
+      from: `${senderName} <${from}>`,
       to: [email],
-      subject: `${playerName}'s Angle Explorer Report`,
+      subject: `${playerName}'s ${gameName} Report`,
       html: `
-        <p>Hi,</p>
-        <p>The latest Angle Explorer session report is attached.</p>
-        <ul>
-          <li><strong>Player:</strong> ${escapeHtml(playerName)}</li>
-          <li><strong>Score:</strong> ${escapeHtml(scoreLine)}</li>
-          <li><strong>Accuracy:</strong> ${escapeHtml(accuracy)}</li>
-          <li><strong>Eggs Collected:</strong> ${escapeHtml(eggs)}</li>
-        </ul>
+        <p>Hi there,</p>
+        <p>
+          A player played at
+          <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
+          at ${escapeHtml(sessionTime)} on ${escapeHtml(sessionDate)} for
+          ${escapeHtml(durationText)}. They scored ${escapeHtml(scoreLine)}
+          and had an accuracy of ${escapeHtml(accuracy)}.
+        </p>
+        <p>
+          This game is equivalent to ${escapeHtml(stageLabel)} on topic
+          ${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}
+        </p>
+        <p>
+          Regards,<br />
+          <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
+        </p>
       `,
       attachments: [
         {
