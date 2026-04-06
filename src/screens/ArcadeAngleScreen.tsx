@@ -115,6 +115,7 @@ const SHOT_TRAVEL_MS = Math.round(
 const SAFE_AREA_BOTTOM_PAD = "calc(env(safe-area-inset-bottom, 0px) + 8px)";
 const MIN_AIM_RADIUS = 40;
 const LEVEL_TARGET_COUNT = texts.rounds.targetCount;
+const AUTOPILOT_STAGE_TARGET = 5; // questions per stage when autopilot is running
 const SHELL_SHARE_URL = texts.generic.shellShareUrl;
 const ANGLE_HIT_TOL = 7.5; // drag/snap tolerance
 const TYPED_TOL = 0.55; // typed answer must be exact (allows ±0.5 for decimal rounding)
@@ -1852,6 +1853,7 @@ export default function ArcadeAngleScreen() {
   const canFireRef = useRef(false);
   const autopilotCallbacksRef = useRef<AutopilotCallbacks | null>(null);
   const autopilotEmailModalRef = useRef<ModalAutopilotControls | null>(null);
+  const isAutopilotRef = useRef(false);
 
   function handleAudioToggle() {
     const nextMuted = toggleMute();
@@ -2367,8 +2369,9 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newEggs = eggsCollected + 1;
-    if (newEggs === LEVEL_TARGET_COUNT) {
-      setEggsCollected(LEVEL_TARGET_COUNT);
+    const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
+    if (newEggs === stageTarget) {
+      setEggsCollected(stageTarget);
       window.setTimeout(() => startMonsterRound(), 950);
       return;
     }
@@ -2393,8 +2396,9 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newGolden = monsterEggs + 1;
-    if (newGolden === LEVEL_TARGET_COUNT) {
-      setMonsterEggs(LEVEL_TARGET_COUNT);
+    const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
+    if (newGolden === stageTarget) {
+      setMonsterEggs(stageTarget);
       window.setTimeout(() => startPlatinumRound(), 950);
       return;
     }
@@ -2485,8 +2489,9 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newPlat = monsterEggs + 1;
-    if (newPlat === LEVEL_TARGET_COUNT) {
-      setMonsterEggs(LEVEL_TARGET_COUNT);
+    const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
+    if (newPlat === stageTarget) {
+      setMonsterEggs(stageTarget);
       if (level === 2) {
         playGameComplete();
         const summary = buildSummary({
@@ -2923,6 +2928,7 @@ export default function ArcadeAngleScreen() {
     callbacksRef: autopilotCallbacksRef,
     autopilotEmail: AUTOPILOT_EMAIL,
   });
+  isAutopilotRef.current = isAutopilot;
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useCheatCodes({
