@@ -2648,6 +2648,14 @@ export default function ArcadeAngleScreen() {
           );
         }
         setGazeAngle(clamped);
+        // Play tick sound matching drag-handler logic
+        const tickInterval = level === 2 ? 5 : TICK_INTERVAL;
+        const tickAngle = level === 2 ? Math.max(0, clamped - (currentQ.startAngleDeg ?? 0)) : clamped;
+        if (Math.abs(tickAngle - lastTickAngleRef.current) >= tickInterval) {
+          lastTickAngleRef.current = tickAngle;
+          const tickSoundAngle = level === 2 ? (tickAngle / Math.max(currentQ.answer, 1)) * 360 : tickAngle;
+          playAngleTick(tickSoundAngle);
+        }
       }
     }
   }
@@ -2902,6 +2910,7 @@ export default function ArcadeAngleScreen() {
 
   autopilotCallbacksRef.current = {
     setCalcValue: handleKeypadChange,
+    playKeyPress: playKeyClick,
     submitAnswer: () => doSubmitRef.current(),
     goNextLevel: () => beginNewRun(level === 1 ? 2 : level, level > 1),
     playAgain: () => beginNewRun(level),

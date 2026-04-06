@@ -38,6 +38,7 @@ export interface ModalAutopilotControls {
 
 export interface AutopilotCallbacks {
   setCalcValue: (v: string) => void;
+  playKeyPress: () => void;
   submitAnswer: () => void;
   goNextLevel: () => void;
   playAgain: () => void;
@@ -141,6 +142,7 @@ export function useAutopilot({
           const rect = el.getBoundingClientRect();
           clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
+        callbacksRef.current?.playKeyPress();
         callbacksRef.current?.setCalcValue("-0");
       });
       delay += rand(T.KEY_BETWEEN);
@@ -159,6 +161,7 @@ export function useAutopilot({
           const rect = el.getBoundingClientRect();
           clickAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
+        callbacksRef.current?.playKeyPress();
         callbacksRef.current?.setCalcValue(typedValue);
       });
       delay += rand(T.KEY_BETWEEN);
