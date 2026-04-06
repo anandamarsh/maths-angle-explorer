@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
       html: `
         <p>Hi there,</p>
         <p>
-          A player played at
+          A player played <strong>${escapeHtml(gameName)}</strong> at
           <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
           at <strong>${escapeHtml(sessionTime)}</strong> on <strong>${escapeHtml(sessionDate)}</strong> for
           <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong>
