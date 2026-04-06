@@ -1654,6 +1654,10 @@ export default function ArcadeAngleScreen() {
   const [subStep, setSubStep] = useState(0);
 
   const [calcRoundKey, setCalcRoundKey] = useState(0);
+  const [autopilotMode, setAutopilotMode] = useState<
+    "continuous" | "single-question"
+  >("continuous");
+  const [demoRetryPending, setDemoRetryPending] = useState(false);
 
   const [soundMuted, setSoundMuted] = useState(() => isMuted());
   const [flash, setFlash] = useState<{
@@ -1673,6 +1677,7 @@ export default function ArcadeAngleScreen() {
   const [firstFireTutorialReady, setFirstFireTutorialReady] = useState(false);
   const [tutorialAngle, setTutorialAngle] = useState(0);
   const [tutorialHintVisible, setTutorialHintVisible] = useState(false);
+  const [openingTutorialEnabled, setOpeningTutorialEnabled] = useState(true);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(() => {
@@ -1680,20 +1685,18 @@ export default function ArcadeAngleScreen() {
     return null;
   });
 
-  const isFullScreenOverlayActive =
-    showMonsterAnnounce || screen === "won" || screen === "gameover";
-
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) return;
     window.parent.postMessage(
       {
         type: "interactive-maths:overlay-active",
-        active:
-          showShareDrawer || showCommentsDrawer || isFullScreenOverlayActive,
+        // Only drawers should suppress shell chrome. Inter-round screens must
+        // leave the parent home button available when embedded in an iframe.
+        active: showShareDrawer || showCommentsDrawer,
       },
       "*",
     );
-  }, [isFullScreenOverlayActive, showCommentsDrawer, showShareDrawer]);
+  }, [showCommentsDrawer, showShareDrawer]);
 
   // Intro / deploy animation
   type IntroPhase = "origin" | "deploying" | "ready";
@@ -1738,6 +1741,7 @@ export default function ArcadeAngleScreen() {
   const earnPlatinumEggRef = useRef(() => {});
   const loseEggRef = useRef(() => {});
   const submitLockRef = useRef(false);
+  const singleQuestionDemoRef = useRef(false);
   const lastTypedAnswerRef = useRef<number | null>(null);
 
   gamePhaseRef.current = gamePhase;
@@ -1785,8 +1789,14 @@ export default function ArcadeAngleScreen() {
   }, []);
 
   useEffect(() => {
+    const isOpeningTutorialQuestion =
+      openingTutorialEnabled &&
+      gamePhase === "normal" &&
+      eggsCollected === 0 &&
+      monsterEggs === 0;
     if (
       level !== 1 ||
+      !isOpeningTutorialQuestion ||
       hasDiscoveredCannonDrag ||
       showMonsterAnnounce ||
       gamePhase !== "normal" ||
@@ -1855,6 +1865,9 @@ export default function ArcadeAngleScreen() {
     hasDiscoveredCannonDrag,
     introPhase,
     level,
+    openingTutorialEnabled,
+    eggsCollected,
+    monsterEggs,
     sceneBusy,
     showMonsterAnnounce,
   ]);
@@ -2149,10 +2162,17 @@ export default function ArcadeAngleScreen() {
         setExplosion({ x: fhPt.x, y: fhPt.y });
         window.setTimeout(() => {
           setExplosion(null);
-          if (gamePhaseRef.current === "platinum") earnPlatinumEggRef.current();
-          else if (gamePhaseRef.current === "monster")
+          if (singleQuestionDemoRef.current) {
+            singleQuestionDemoRef.current = false;
+            showIconFlash(true);
+            window.setTimeout(() => setDemoRetryPending(true), 950);
+          } else if (gamePhaseRef.current === "platinum") {
+            earnPlatinumEggRef.current();
+          } else if (gamePhaseRef.current === "monster") {
             earnMonsterEggRef.current();
-          else earnEggRef.current();
+          } else {
+            earnEggRef.current();
+          }
         }, HIT_RESOLVE_MS);
       } else {
         loseEggRef.current();
@@ -2384,6 +2404,9 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newEggs = eggsCollected + 1;
+    if (eggsCollected === 0) {
+      setOpeningTutorialEnabled(false);
+    }
     const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
     if (newEggs === stageTarget) {
       setEggsCollected(stageTarget);
@@ -2586,6 +2609,7 @@ export default function ArcadeAngleScreen() {
     setAnswer("");
     setSubAnswers(["", "", ""]);
     setSubStep(0);
+    setRevealedAngle(null);
     setGazeAngle(currentQRef.current.startAngleDeg ?? 0);
     setIsFiring(null);
     setExplosion(null);
@@ -2615,6 +2639,7 @@ export default function ArcadeAngleScreen() {
   }
 
   function handleKeypadChange(v: string) {
+    if (demoRetryPending) return;
     const parsed = parseFloat(v);
     const hasLockedTypedAngle = !isNaN(parsed) && Math.abs(parsed) > 0;
     if (
@@ -2677,6 +2702,7 @@ export default function ArcadeAngleScreen() {
 
   // ── Submit / Fire ──────────────────────────────────────────────────────────
   function doSubmit() {
+    if (demoRetryPending) return;
     if (sceneBusy || submitLockRef.current) return;
     if (level === 1 && gamePhase === "normal" && !hasSeenFirstFireTutorial) {
       setHasSeenFirstFireTutorial(true);
@@ -2865,8 +2891,14 @@ export default function ArcadeAngleScreen() {
       spinAnim !== null);
 
   const parsedAnswer = parseFloat(answer.trim());
+  const isOpeningTutorialQuestion =
+    openingTutorialEnabled &&
+    gamePhase === "normal" &&
+    eggsCollected === 0 &&
+    monsterEggs === 0;
   const showCannonDragHint =
     level === 1 &&
+    isOpeningTutorialQuestion &&
     tutorialHintVisible &&
     !hasDiscoveredCannonDrag &&
     !showMonsterAnnounce &&
@@ -2875,6 +2907,7 @@ export default function ArcadeAngleScreen() {
     !sceneBusy;
   const showKeypadTypeHint =
     level === 1 &&
+    isOpeningTutorialQuestion &&
     typedAimTutorialStage === "type" &&
     !showMonsterAnnounce &&
     gamePhase !== "normal" &&
@@ -2910,6 +2943,7 @@ export default function ArcadeAngleScreen() {
     : canFire;
   const showFirstRoundFireHint =
     level === 1 &&
+    isOpeningTutorialQuestion &&
     gamePhase === "normal" &&
     !showMonsterAnnounce &&
     introPhase === "ready" &&
@@ -2946,20 +2980,79 @@ export default function ArcadeAngleScreen() {
     levelCount: 2,
   };
 
+  function clearSingleQuestionDemo() {
+    singleQuestionDemoRef.current = false;
+  }
+
+  function cancelAutopilotMode() {
+    clearSingleQuestionDemo();
+    deactivateAutopilot();
+  }
+
+  function spendSingleQuestionDemoPoint() {
+    if (gamePhase === "monster" || gamePhase === "platinum") {
+      setMonsterEggs((value) => Math.max(0, value - 1));
+      return;
+    }
+    setEggsCollected((value) => Math.max(0, value - 1));
+  }
+
+  function runSingleQuestionDemo() {
+    clearSingleQuestionDemo();
+    if (isAutopilot) {
+      deactivateAutopilot();
+    }
+    spendSingleQuestionDemoPoint();
+    singleQuestionDemoRef.current = true;
+    setAutopilotMode("single-question");
+    isAutopilotRef.current = false;
+    handleKeypadChange("");
+    setHasDiscoveredCannonDrag(true);
+    setHasSeenFirstFireTutorial(true);
+    setTutorialHintVisible(false);
+    setTypedAimTutorialStage("done");
+    setFirstFireTutorialReady(false);
+    activateAutopilot();
+  }
+
+  function handleDemoTryAgain() {
+    setDemoRetryPending(false);
+    resetCurrentQuestion();
+  }
+
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } = useAutopilot({
+    mode: autopilotMode,
     gameState: autopilotGameState,
     callbacksRef: autopilotCallbacksRef,
     autopilotEmail: AUTOPILOT_EMAIL,
   });
-  isAutopilotRef.current = isAutopilot;
+  const isRobotVisibleActive = isAutopilot;
+  const handleRobotButtonClick = isRobotVisibleActive
+    ? cancelAutopilotMode
+    : runSingleQuestionDemo;
+  const robotTitle = isRobotVisibleActive
+    ? autopilotMode === "continuous"
+      ? "Autopilot ON — click to stop"
+      : "Show how to solve this question — click to stop"
+    : "Show how to solve this question";
+  const robotAriaLabel = isRobotVisibleActive
+    ? autopilotMode === "continuous"
+      ? "Autopilot active — click to cancel"
+      : "Question demo active — click to cancel"
+    : "Show how to solve this question";
+  isAutopilotRef.current = isAutopilot && autopilotMode === "continuous";
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useCheatCodes({
     "198081": () => {
-      if (isAutopilot) {
-        deactivateAutopilot();
+      if (demoRetryPending) return;
+      if (isAutopilot && autopilotMode === "continuous") {
+        cancelAutopilotMode();
       } else {
+        clearSingleQuestionDemo();
+        if (isAutopilot) deactivateAutopilot();
+        setAutopilotMode("continuous");
         // Eagerly mark as active so the bubble-phase onKeyDown ignores the trigger digit
         isAutopilotRef.current = true;
         // Clear the keypad — digits 19808 were added before the final 1 triggered the code
@@ -3105,9 +3198,12 @@ export default function ArcadeAngleScreen() {
           className="flex flex-row gap-1.5 shrink-0"
           style={{ marginTop: "6px" }}
         >
-          {isAutopilot && (
-            <AutopilotIcon onClick={deactivateAutopilot} />
-          )}
+          <AutopilotIcon
+            onClick={handleRobotButtonClick}
+            active={isRobotVisibleActive}
+            title={robotTitle}
+            ariaLabel={robotAriaLabel}
+          />
           <button
             onClick={resetCurrentQuestion}
             title={texts.generic.buttons.reset}
@@ -3402,9 +3498,12 @@ export default function ArcadeAngleScreen() {
         >
           {/* Buttons + level select */}
           <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5">
-            {isAutopilot && (
-              <AutopilotIcon onClick={deactivateAutopilot} />
-            )}
+            <AutopilotIcon
+              onClick={handleRobotButtonClick}
+              active={isRobotVisibleActive}
+              title={robotTitle}
+              ariaLabel={robotAriaLabel}
+            />
             <div className="flex flex-row gap-1.5">
               <button
                 onClick={resetCurrentQuestion}
@@ -4112,6 +4211,22 @@ export default function ArcadeAngleScreen() {
               </svg>
             </button>
           )}
+        </div>
+      )}
+
+      {demoRetryPending && (
+        <div className="absolute inset-0 z-[85]">
+          <div className="absolute inset-0 pointer-events-auto" />
+          <div className="absolute left-1/2 top-6 -translate-x-1/2">
+            <button
+              type="button"
+              onClick={handleDemoTryAgain}
+              className="arcade-button inline-flex px-8 py-4 text-base md:text-lg"
+              style={{ borderColor: "#fbbf24" }}
+            >
+              Try on your own
+            </button>
+          </div>
         </div>
       )}
 

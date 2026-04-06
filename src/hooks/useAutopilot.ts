@@ -63,12 +63,14 @@ interface UseAutopilotArgs {
   gameState: AutopilotGameState;
   callbacksRef: React.RefObject<AutopilotCallbacks | null>;
   autopilotEmail: string;
+  mode?: "continuous" | "single-question";
 }
 
 export function useAutopilot({
   gameState,
   callbacksRef,
   autopilotEmail,
+  mode = "continuous",
 }: UseAutopilotArgs) {
   const [isActive, setIsActive] = useState(false);
   const [phantomPos, setPhantomPos] = useState<PhantomPos | null>(null);
@@ -184,6 +186,11 @@ export function useAutopilot({
         if (!isActiveRef.current) return;
         callbacksRef.current?.submitAnswer();
         setPhantomPos(null);
+        if (mode === "single-question") {
+          isActiveRef.current = false;
+          setIsActive(false);
+          callbacksRef.current?.onAutopilotComplete?.();
+        }
       }, 140);
     });
   }

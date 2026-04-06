@@ -1,24 +1,36 @@
 interface Props {
   onClick: () => void;
+  active?: boolean;
+  title?: string;
+  ariaLabel?: string;
 }
 
-export default function AutopilotIcon({ onClick }: Props) {
-  const blue = "#67e8f9";
+export default function AutopilotIcon({
+  onClick,
+  active = true,
+  title = "Autopilot ON — click to stop",
+  ariaLabel = "Autopilot active — click to cancel",
+}: Props) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title="Autopilot ON — click to stop"
-      aria-label="Autopilot active — click to cancel"
-      className="h-10 w-10 shrink-0 rounded-lg"
+      title={title}
+      aria-label={ariaLabel}
+      className="h-10 w-10 shrink-0 rounded-full"
       style={{
-        border: `2px solid ${blue}`,
-        background: blue,
-        animation: "autopilot-blink 2s ease-in-out infinite",
-        boxShadow: "0 0 10px rgba(103,232,249,0.35)",
+        border: "1px solid rgba(255,255,255,0.32)",
+        background:
+          "radial-gradient(circle at 30% 28%, #ecfeff 0%, #67e8f9 28%, #22d3ee 64%, #0891b2 100%)",
+        animation: active ? "autopilot-blink 2s ease-in-out infinite" : undefined,
+        boxShadow: active
+          ? "0 0 0 2px rgba(125,211,252,0.25), 0 10px 22px rgba(8,145,178,0.35), inset 0 1px 0 rgba(255,255,255,0.65)"
+          : "0 0 0 1px rgba(125,211,252,0.18), 0 8px 18px rgba(8,145,178,0.2), inset 0 1px 0 rgba(255,255,255,0.55)",
+        opacity: active ? 1 : 0.96,
+        transform: active ? "translateY(0)" : "translateY(1px)",
       }}
     >
-      <svg viewBox="0 0 24 24" className="h-full w-full p-1.5" fill="none">
+      <svg viewBox="0 0 24 24" className="h-full w-full p-[0.34rem]" fill="none">
         <line x1="12" y1="2" x2="12" y2="5" stroke="#082f49" strokeWidth="1.8" strokeLinecap="round" />
         <circle cx="12" cy="1.5" r="1.2" fill="#082f49" />
         <rect x="4" y="5" width="16" height="12" rx="2.5" stroke="#082f49" strokeWidth="1.8" fill="rgba(8,47,73,0.06)" />
