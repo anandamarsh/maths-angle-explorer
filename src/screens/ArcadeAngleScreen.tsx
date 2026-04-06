@@ -2911,7 +2911,7 @@ export default function ArcadeAngleScreen() {
   const autopilotPhase =
     screen === "won" || screen === "gameover"
       ? "levelComplete" as const
-      : (sceneBusy || showMonsterAnnounce)
+      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null)
         ? "feedback" as const
         : "aiming" as const;
 

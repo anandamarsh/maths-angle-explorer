@@ -294,6 +294,7 @@ export function useAutopilot({
         scheduleAim();
         break;
       case "feedback":
+        setPhantomPos(null);
         break;
       case "levelComplete":
         scheduleLevelEnd();
