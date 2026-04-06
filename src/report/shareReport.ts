@@ -11,18 +11,24 @@ const CURRICULUM_BY_LEVEL = {
     stageLabel: "Stage 2 (Years 3-4) NSW Curriculum",
     code: "MA2-16MG",
     description: "Identifies, describes, compares and classifies angles.",
+    syllabusUrl:
+      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=29",
   },
   2: {
     stageLabel: "Stage 3 (Years 5-6) NSW Curriculum",
     code: "MA3-16MG",
     description:
       "Measures and constructs angles, and applies angle relationships to find unknown angles.",
+    syllabusUrl:
+      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=40",
   },
   3: {
     stageLabel: "Stage 4 (Years 7-8) NSW Curriculum",
     code: "MA4-18MG",
     description:
       "Identifies and uses angle relationships, including those related to transversals, to solve problems.",
+    syllabusUrl:
+      "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=52",
   },
 } as const;
 
@@ -75,6 +81,7 @@ function getEmailMetadata(summary: SessionSummary) {
     stageLabel: curriculum.stageLabel,
     curriculumCode: curriculum.code,
     curriculumDescription: curriculum.description,
+    curriculumUrl: curriculum.syllabusUrl,
   };
 }
 

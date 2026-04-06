@@ -60,6 +60,7 @@ export default async function handler(req: any, res: any) {
         stageLabel?: string;
         curriculumCode?: string;
         curriculumDescription?: string;
+        curriculumUrl?: string;
         reportFileName?: string;
       }
     | null;
@@ -91,6 +92,8 @@ export default async function handler(req: any, res: any) {
   const curriculumCode = payload?.curriculumCode || "N/A";
   const curriculumDescription =
     payload?.curriculumDescription || "No curriculum description supplied.";
+  const curriculumUrl = payload?.curriculumUrl || "https://www.seemaths.com";
+  const curriculumText = `${curriculumCode} - ${curriculumDescription}`;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -101,22 +104,23 @@ export default async function handler(req: any, res: any) {
     body: JSON.stringify({
       from: `${senderName} <${from}>`,
       to: [email],
-      subject: `${playerName}'s ${gameName} Report`,
+      subject: `SeeMaths ${gameName} Report`,
       html: `
         <p>Hi there,</p>
         <p>
           A player played at
           <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
-          at ${escapeHtml(sessionTime)} on ${escapeHtml(sessionDate)} for
-          ${escapeHtml(durationText)}. They scored ${escapeHtml(scoreLine)}
-          and had an accuracy of ${escapeHtml(accuracy)}.
+          at <strong>${escapeHtml(sessionTime)}</strong> on ${escapeHtml(sessionDate)} for
+          <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong>
+          and had an accuracy of <strong>${escapeHtml(accuracy)}</strong>.
         </p>
         <p>
-          This game is equivalent to ${escapeHtml(stageLabel)} on topic
-          ${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}
+          This game is equivalent to <strong>${escapeHtml(stageLabel)}</strong> on topic
+          <a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumText)}</strong></a>.
         </p>
         <p>
           Regards,<br />
+          ${escapeHtml(gameName)}<br />
           <a href="${escapeHtml(siteUrl)}">SeeMaths</a>
         </p>
       `,
