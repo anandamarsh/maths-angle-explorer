@@ -1,38 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// SVG constants (match ArcadeAngleScreen)
-const SVG_W = 480;
-const SVG_H = 340;
-const CX = 240;
-const CY = 170;
-const BEAM_LEN = 150;
-const AIM_STEPS = 40;
-
 export type AutopilotGamePhase = "aiming" | "feedback" | "levelComplete";
 
 const T = {
-  AIM_FIRST:    [500, 900]   as [number, number],
-  AIM_DURATION: [900, 1500]  as [number, number],
-  READ_DELAY:   [600, 1100]  as [number, number],
-  KEY_BETWEEN:  [320, 600]   as [number, number],
-  PRE_SUBMIT:   [400, 700]   as [number, number],
-  EMAIL_CLICK:  [2000, 3200] as [number, number],
-  EMAIL_CHAR:   [8, 15]      as [number, number],
-  SEND_PAUSE:   [700, 1100]  as [number, number],
-  END_PAUSE:    [3600, 5000] as [number, number],
+  AIM_FIRST:   [500, 900]   as [number, number],
+  KEY_BETWEEN: [320, 600]   as [number, number],
+  PRE_SUBMIT:  [400, 700]   as [number, number],
+  EMAIL_CLICK: [2000, 3200] as [number, number],
+  EMAIL_CHAR:  [8, 15]      as [number, number],
+  SEND_PAUSE:  [700, 1100]  as [number, number],
+  END_PAUSE:   [3600, 5000] as [number, number],
 } as const;
 
 const WRONG_ANSWER_RATE = 0.2;
+const MAX_WRONG_PER_STAGE = 2;
 
 function rand([lo, hi]: [number, number]): number {
   return Math.round(lo + Math.random() * (hi - lo));
 }
 
-function easeOutCubic(t: number): number {
-  return 1 - (1 - t) ** 3;
-}
-
-function wrongAngle(correct: number): number {
+function wrongAnswer(correct: number): number {
   const offsets = [-30, -20, 15, 20, 30, -15];
   const offset = offsets[Math.floor(Math.random() * offsets.length)];
   return correct + offset;
@@ -43,28 +30,6 @@ function getKeyRect(key: string): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
-// Use the SVG's own CTM so viewBox letterboxing / transforms are accounted for.
-// This is the same approach as ArcadeAngleScreen's toSVGPoint (inverse direction).
-function angleToScreenXY(angleDeg: number, svgEl: SVGSVGElement): { x: number; y: number } {
-  const rad = (angleDeg * Math.PI) / 180;
-  const svgX = CX + BEAM_LEN * Math.cos(rad);
-  const svgY = CY - BEAM_LEN * Math.sin(rad); // math convention → SVG y-axis
-  const ctm = svgEl.getScreenCTM();
-  if (ctm) {
-    const pt = svgEl.createSVGPoint();
-    pt.x = svgX;
-    pt.y = svgY;
-    const screen = pt.matrixTransform(ctm);
-    return { x: screen.x, y: screen.y };
-  }
-  // Fallback (no CTM): naive rect scaling
-  const rect = svgEl.getBoundingClientRect();
-  return {
-    x: rect.left + svgX * (rect.width / SVG_W),
-    y: rect.top + svgY * (rect.height / SVG_H),
-  };
-}
-
 export interface ModalAutopilotControls {
   appendChar: (ch: string) => void;
   setEmail: (v: string) => void;
@@ -72,7 +37,6 @@ export interface ModalAutopilotControls {
 }
 
 export interface AutopilotCallbacks {
-  commitAimAngle: (angle: number) => void;
   setCalcValue: (v: string) => void;
   submitAnswer: () => void;
   goNextLevel: () => void;
@@ -90,7 +54,6 @@ export interface PhantomPos {
 interface AutopilotGameState {
   phase: AutopilotGamePhase;
   correctAnswer: number;
-  currentGazeAngle: number;
   level: number;
   levelCount: number;
 }
@@ -98,14 +61,12 @@ interface AutopilotGameState {
 interface UseAutopilotArgs {
   gameState: AutopilotGameState;
   callbacksRef: React.RefObject<AutopilotCallbacks | null>;
-  svgRef: React.RefObject<SVGSVGElement | null>;
   autopilotEmail: string;
 }
 
 export function useAutopilot({
   gameState,
   callbacksRef,
-  svgRef,
   autopilotEmail,
 }: UseAutopilotArgs) {
   const [isActive, setIsActive] = useState(false);
@@ -115,6 +76,7 @@ export function useAutopilot({
   const timersRef = useRef<number[]>([]);
   const stateRef = useRef(gameState);
   stateRef.current = gameState;
+  const wrongCountRef = useRef(0);
 
   function clearTimers() {
     for (const t of timersRef.current) window.clearTimeout(t);
@@ -141,39 +103,17 @@ export function useAutopilot({
     }, 130);
   }
 
-  // ── Cannon rotation animation ─────────────────────────────────────────────
+  // ── Type answer directly on keypad ────────────────────────────────────────
 
   function scheduleAim() {
-    const { correctAnswer, currentGazeAngle } = stateRef.current;
-    const isWrong = Math.random() < WRONG_ANSWER_RATE;
-    const targetAngle = isWrong ? wrongAngle(correctAnswer) : correctAnswer;
-    const aimDuration = rand(T.AIM_DURATION);
-    const startAngle = currentGazeAngle;
+    const { correctAnswer } = stateRef.current;
+    const canGoWrong = wrongCountRef.current < MAX_WRONG_PER_STAGE;
+    const isWrong = canGoWrong && Math.random() < WRONG_ANSWER_RATE;
+    if (isWrong) wrongCountRef.current += 1;
+    const targetAngle = isWrong ? wrongAnswer(correctAnswer) : correctAnswer;
 
-    let delay = rand(T.AIM_FIRST);
-
-    // Animate cannon from current angle to target over AIM_STEPS increments
-    for (let i = 1; i <= AIM_STEPS; i++) {
-      const stepDelay = delay + (i / AIM_STEPS) * aimDuration;
-      const stepI = i;
-      after(stepDelay, () => {
-        const progress = stepI / AIM_STEPS;
-        const eased = easeOutCubic(progress);
-        const angle = startAngle + (targetAngle - startAngle) * eased;
-        callbacksRef.current?.commitAimAngle(angle);
-        // Move phantom hand to beam endpoint
-        const svgEl = svgRef.current;
-        if (svgEl) {
-          const pos = angleToScreenXY(angle, svgEl);
-          moveHand(pos.x, pos.y);
-        }
-      });
-    }
-
-    delay += aimDuration + rand(T.READ_DELAY);
-
-    // Now type the answer in the keypad
-    scheduleTyping(targetAngle, delay);
+    // Wait a brief "thinking" pause then go straight to typing
+    scheduleTyping(targetAngle, rand(T.AIM_FIRST));
   }
 
   function scheduleTyping(targetAngle: number, startDelay: number) {
@@ -249,6 +189,7 @@ export function useAutopilot({
   }
 
   function scheduleLevelEnd() {
+    wrongCountRef.current = 0; // reset wrong count for the next stage
     const email = autopilotEmail;
     if (!email) {
       // No email configured — just wait and go to next level

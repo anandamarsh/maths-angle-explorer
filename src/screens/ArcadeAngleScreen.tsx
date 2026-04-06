@@ -2896,7 +2896,6 @@ export default function ArcadeAngleScreen() {
   doSubmitRef.current = doSubmit;
 
   autopilotCallbacksRef.current = {
-    commitAimAngle,
     setCalcValue: handleKeypadChange,
     submitAnswer: () => doSubmitRef.current(),
     goNextLevel: () => beginNewRun(level === 1 ? 2 : level, level > 1),
@@ -2914,7 +2913,6 @@ export default function ArcadeAngleScreen() {
   const autopilotGameState = {
     phase: autopilotPhase,
     correctAnswer: currentQ.answer,
-    currentGazeAngle: gazeAngle,
     level,
     levelCount: 2,
   };
@@ -2923,7 +2921,6 @@ export default function ArcadeAngleScreen() {
   const { isActive: isAutopilot, activate: activateAutopilot, deactivate: deactivateAutopilot, phantomPos } = useAutopilot({
     gameState: autopilotGameState,
     callbacksRef: autopilotCallbacksRef,
-    svgRef,
     autopilotEmail: AUTOPILOT_EMAIL,
   });
 
