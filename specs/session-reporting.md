@@ -182,6 +182,11 @@ const CURRICULUM_BY_LEVEL = {
 };
 ```
 
+All curriculum labels/descriptions used for email and PDF must come from locale-aware
+translation keys. The English constants above describe the default content only; Chinese
+and Hindi report output must localize the stage label, curriculum description, and level
+objective text.
+
 ### Functions
 
 ```ts
@@ -199,9 +204,10 @@ export function canNativeShare(): boolean
 // Returns true if navigator.canShare({ files: [pdf] }) is supported.
 ```
 
-Note: `shareReport` and `emailReport` do **not** accept a `TFunction` parameter
-yet (unlike the template). When i18n is added, `generateSessionPdf(summary, t)` will
-accept a locale-aware translation function. See `specs/i18n.md`.
+`shareReport` and `emailReport` both accept the active locale and must pass localized
+strings/HTML into the email endpoint. `generateSessionPdf(summary, t, locale)` must use
+the same locale for every visible string in the PDF, including curriculum/stage/objective
+content.
 
 ---
 
@@ -228,11 +234,21 @@ accept a locale-aware translation function. See `specs/i18n.md`.
   stageLabel, curriculumCode, curriculumDescription,
   curriculumUrl, curriculumIndexUrl,
   reportFileName,
+  emailSubject, emailGreeting, emailBody, emailBodyHtml,
+  emailCurriculum, emailCurriculumHtml, emailRegards,
 }
 ```
 
-The endpoint builds the email HTML itself (not pre-built by frontend).
-Sends via Resend API with PDF attachment.
+The endpoint builds the final email HTML. The frontend may send pre-localized plain-text
+and/or HTML strings; when localized HTML is provided, the endpoint should preserve the
+same Ripple Touch-style formatting:
+- body sentence with inline `SeeMaths` link
+- bold game name, time, date, duration, score, and accuracy
+- curriculum sentence with bold linked stage and bold linked curriculum text
+- `{playerName} played ...` when a name exists, otherwise `A player played ...`
+
+Both `api/send-report.ts` and the local Vite `/api/send-report` middleware must stay in
+sync so local preview matches Vercel.
 
 ---
 
@@ -275,5 +291,6 @@ interface ModalAutopilotControls {
 - Accuracy: `accuracy%`
 - Stars collected: `normalEggs` stars
 - Share Report button
+  - Must not resize when label changes to `Creating...`
 - Email input + Send button
 - Next Level / Play Again buttons

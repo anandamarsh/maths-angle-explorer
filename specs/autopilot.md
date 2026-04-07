@@ -11,7 +11,8 @@
 
 Plays the game autonomously — typing angle answers on the keypad, sending the email
 report, and proceeding to the next level — in a loop. Simulates human-like timing with
-randomised delays. Deliberately misses ~20% of answers.
+randomised delays. Continuous autopilot deliberately misses ~20% of answers; the
+single-question robot demo always shows the correct answer.
 
 Key difference from template: **Angle Explorer has no canvas tap phase**. The game
 goes straight to typing (there is no ripple/tap interaction). The autopilot skips
@@ -25,7 +26,7 @@ Two modes:
 
 ## Activation
 
-- Cheat code `198081` (keyboard) → toggles continuous autopilot on/off
+- Cheat code `198081` (hardware keyboard or on-screen keypad digits) → toggles continuous autopilot on/off
 - Cheat code `197879` → shows and submits correct answer once (not full autopilot)
 - Robot button click (autopilot inactive) → starts `"single-question"` mode
 - Robot button click (autopilot active) → stops autopilot
@@ -67,6 +68,11 @@ function wrongAnswer(correct: number): number {
 
 `wrongCountRef` tracks wrong answers in the current stage and resets in `scheduleLevelEnd`.
 Once `MAX_WRONG_PER_STAGE` is reached, the autopilot always answers correctly.
+
+Important:
+- Wrong-answer injection applies only to `"continuous"` mode.
+- `"single-question"` mode must always type the correct answer because it is the
+  child-facing "show me how to solve this" action.
 
 ---
 
@@ -161,7 +167,7 @@ Called when `phase === "aiming"`:
 ```ts
 function scheduleAim() {
   const { correctAnswer } = stateRef.current;
-  const canGoWrong = wrongCountRef.current < MAX_WRONG_PER_STAGE;
+  const canGoWrong = mode === "continuous" && wrongCountRef.current < MAX_WRONG_PER_STAGE;
   const isWrong = canGoWrong && Math.random() < WRONG_ANSWER_RATE;
   if (isWrong) wrongCountRef.current += 1;
   const targetAngle = isWrong ? wrongAnswer(correctAnswer) : correctAnswer;
