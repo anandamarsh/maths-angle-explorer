@@ -19,7 +19,9 @@ function LevelCompleteReportActions({
   const t = useT();
   const { locale } = useLocale();
   const [generating, setGenerating] = useState(false);
-  const [shareEmail, setShareEmail] = useState("");
+  const [shareEmail, setShareEmail] = useState(() => {
+    try { return localStorage.getItem("reportEmail") || ""; } catch { return ""; }
+  });
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const totalStars = summary.normalEggs + summary.monsterEggs;
@@ -29,8 +31,15 @@ function LevelCompleteReportActions({
   useEffect(() => {
     if (!autopilotControlsRef) return;
     autopilotControlsRef.current = {
-      appendChar: (ch: string) => setShareEmail(prev => prev + ch),
-      setEmail: (v: string) => setShareEmail(v),
+      appendChar: (ch: string) => setShareEmail(prev => {
+        const v = prev + ch;
+        try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
+        return v;
+      }),
+      setEmail: (v: string) => {
+        setShareEmail(v);
+        try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
+      },
       triggerSend: () => {
         const email = shareEmail.trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Promise.resolve();
@@ -122,7 +131,9 @@ function LevelCompleteReportActions({
           type="email"
           value={shareEmail}
           onChange={(event) => {
-            setShareEmail(event.target.value);
+            const v = event.target.value;
+            setShareEmail(v);
+            try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
             if (emailFeedback) {
               setEmailFeedback(null);
               setEmailError(false);
