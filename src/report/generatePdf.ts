@@ -2,7 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import type { SessionSummary, QuestionAttempt } from "./sessionLog";
-import type { TFunction } from "../i18n/types";
+import type { TFunction, TranslationKey } from "../i18n/types";
 
 // --- Color palette ---
 
@@ -24,26 +24,32 @@ const COLORS = {
 const CURRICULUM_LEVELS = [
   {
     code: "MA2-16MG",
-    stageLabel: "Stage 2 (Years 3-4)",
+    stageKey: "pdf.curriculum.stage2",
     syllabusUrl: "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=29",
-    description: "Identifies, describes, compares and classifies angles.",
-    levelDesc: "Level 1 - Recognising and targeting acute, right, obtuse, straight and reflex angles by sight",
+    descriptionKey: "pdf.curriculum.desc2",
+    levelDescKey: "pdf.curriculum.levelDesc1",
   },
   {
     code: "MA3-16MG",
-    stageLabel: "Stage 3 (Years 5-6)",
+    stageKey: "pdf.curriculum.stage3",
     syllabusUrl: "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=40",
-    description: "Measures and constructs angles, and applies angle relationships to find unknown angles.",
-    levelDesc: "Level 2 - Missing angles in sector diagrams that sum to 90, 180, or 360 degrees",
+    descriptionKey: "pdf.curriculum.desc3",
+    levelDescKey: "pdf.curriculum.levelDesc2",
   },
   {
     code: "MA4-18MG",
-    stageLabel: "Stage 4 (Years 7-8)",
+    stageKey: "pdf.curriculum.stage4",
     syllabusUrl: "https://www.educationstandards.nsw.edu.au/wps/wcm/connect/ffb1e831-46fc-4db6-975c-7be286334e74/stage-statements-and-outcomes-programming-tool-k-10-landscape.pdf?CVID=&MOD=AJPERES#page=52",
-    description: "Identifies and uses angle relationships, including those related to transversals, to solve problems.",
-    levelDesc: "Level 3 - Angle reasoning without visual hints using pure calculation questions",
+    descriptionKey: "pdf.curriculum.desc4",
+    levelDescKey: "pdf.curriculum.levelDesc3",
   },
-];
+] as const satisfies ReadonlyArray<{
+  code: string;
+  stageKey: TranslationKey;
+  syllabusUrl: string;
+  descriptionKey: TranslationKey;
+  levelDescKey: TranslationKey;
+}>;
 
 // --- Unicode font loading ---
 
@@ -489,6 +495,9 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   // ═══════════════════════════════════════════════════════════════════════════
 
   const curr = CURRICULUM_LEVELS[Math.min(summary.level - 1, CURRICULUM_LEVELS.length - 1)];
+  const currStageLabel = t(curr.stageKey);
+  const currDescription = t(curr.descriptionKey);
+  const currLevelDesc = t(curr.levelDescKey);
   const currLineH = 4.8;
   const GREEN = "#16a34a";
   const CURR_BLUE = "#1e40af";
@@ -501,10 +510,10 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   const pillW = doc.getTextWidth(pillText) + pillPadX * 2;
 
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  const stageW = doc.getTextWidth(curr.stageLabel);
+  doc.setFont(mainFont, "normal");
+  const stageW = doc.getTextWidth(sanitize(currStageLabel, useUnicode));
   const descAvailW = contentW - pillW - 4 - stageW - 4;
-  const descWrapped = doc.splitTextToSize(sanitize(curr.description, useUnicode), descAvailW);
+  const descWrapped = doc.splitTextToSize(sanitize(currDescription, useUnicode), descAvailW);
 
   // Title
   doc.setFontSize(9);
@@ -527,9 +536,9 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
 
   const stageX = margin + pillW + 4;
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(CURR_BLUE);
-  doc.text(curr.stageLabel, stageX, curY);
+  doc.text(sanitize(currStageLabel, useUnicode), stageX, curY);
   doc.text(descWrapped, stageX + stageW + 4, curY);
   curY += Math.max(pillH + 1, descWrapped.length * currLineH) + 3.5;
 
@@ -540,9 +549,10 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   doc.text(t("pdf.objective"), margin, curY);
   const objLabelW = doc.getTextWidth(t("pdf.objective")); // measure with mainFont while it's still active
   doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, ""), false),
+    sanitize(currLevelDesc, useUnicode),
     margin + objLabelW + 2, curY
   );
   curY += currLineH + 3;  // extra gap after Objective

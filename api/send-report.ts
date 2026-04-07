@@ -67,7 +67,9 @@ export default async function handler(req: any, res: any) {
         emailSubject?: string;
         emailGreeting?: string;
         emailBody?: string;
+        emailBodyHtml?: string;
         emailCurriculum?: string;
+        emailCurriculumHtml?: string;
         emailRegards?: string;
       }
     | null;
@@ -88,6 +90,7 @@ export default async function handler(req: any, res: any) {
   const reportFileName = payload?.reportFileName || "angle-report.pdf";
   const scoreLine = `${payload?.correctCount ?? 0}/${payload?.totalQuestions ?? 0}`;
   const accuracy = `${payload?.accuracy ?? 0}%`;
+  const playerName = payload?.playerName?.trim() || "";
   const senderName = payload?.senderName || "Angle Explorer";
   const gameName = payload?.gameName || "Angle Explorer";
   const siteUrl = payload?.siteUrl || "https://www.seemaths.com";
@@ -102,25 +105,15 @@ export default async function handler(req: any, res: any) {
     payload?.curriculumIndexUrl ||
     "https://www.educationstandards.nsw.edu.au/wps/portal/nesa/k-10/learning-areas/mathematics/mathematics-k-10";
 
-  // Use pre-translated strings if available, otherwise fall back to English defaults
   const subject = payload?.emailSubject || `${gameName} Report`;
   const greeting = payload?.emailGreeting || "Hi there,";
-  const bodyText = payload?.emailBody ||
-    `A player played ${gameName} at SeeMaths at ${sessionTime} on ${sessionDate} for ${durationText}. They scored ${scoreLine} and had an accuracy of ${accuracy}.`;
-  const curriculumText = payload?.emailCurriculum ||
-    `This game is equivalent to ${stageLabel} on topic ${curriculumCode} - ${curriculumDescription}.`;
   const regards = payload?.emailRegards || "Regards,";
-
-  const hasTranslatedStrings = !!payload?.emailBody;
-
-  // Body paragraph: translated text + SeeMaths link
-  const formattedBody = hasTranslatedStrings
-    ? `<p>${escapeHtml(bodyText)}</p><p><a href="${escapeHtml(siteUrl)}">SeeMaths</a></p>`
-    : `<p>A player played <strong>${escapeHtml(gameName)}</strong> at <a href="${escapeHtml(siteUrl)}">SeeMaths</a> at <strong>${escapeHtml(sessionTime)}</strong> on <strong>${escapeHtml(sessionDate)}</strong> for <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong> and had an accuracy of <strong>${escapeHtml(accuracy)}</strong>.</p>`;
-
-  // Curriculum paragraph: translated text + hyperlinked stage + hyperlinked code/description
-  const formattedCurriculum = hasTranslatedStrings
-    ? `<p>${escapeHtml(curriculumText)}</p><p><a href="${escapeHtml(curriculumIndexUrl)}">${escapeHtml(stageLabel)}</a><br /><a href="${escapeHtml(curriculumUrl)}">${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</a></p>`
+  const playerLabel = playerName ? `${escapeHtml(playerName)} played` : "A player played";
+  const formattedBody = payload?.emailBodyHtml
+    ? `<p>${payload.emailBodyHtml}</p>`
+    : `<p>${playerLabel} <strong>${escapeHtml(gameName)}</strong> at <a href="${escapeHtml(siteUrl)}">SeeMaths</a> at <strong>${escapeHtml(sessionTime)}</strong> on <strong>${escapeHtml(sessionDate)}</strong> for <strong>${escapeHtml(durationText)}</strong>. They scored <strong>${escapeHtml(scoreLine)}</strong> and had an accuracy of <strong>${escapeHtml(accuracy)}</strong>.</p>`;
+  const formattedCurriculum = payload?.emailCurriculumHtml
+    ? `<p>${payload.emailCurriculumHtml}</p>`
     : `<p>This game is equivalent to <a href="${escapeHtml(curriculumIndexUrl)}"><strong>${escapeHtml(stageLabel)}</strong></a> on topic <a href="${escapeHtml(curriculumUrl)}"><strong>${escapeHtml(curriculumCode)} - ${escapeHtml(curriculumDescription)}</strong></a>.</p>`;
 
   const resendResponse = await fetch("https://api.resend.com/emails", {

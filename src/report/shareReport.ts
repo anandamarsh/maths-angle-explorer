@@ -74,6 +74,15 @@ function formatDurationMinutes(startTime: number, endTime: number): string {
   return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildEmailStrings(summary: SessionSummary, t: TFunction) {
   const curriculum = CURRICULUM_BY_LEVEL[Math.min(summary.level, 3) as 1 | 2 | 3];
   const scoreLine = `${summary.correctCount}/${summary.totalQuestions}`;
@@ -82,6 +91,16 @@ function buildEmailStrings(summary: SessionSummary, t: TFunction) {
   const sessionDate = formatSessionDate(summary.startTime);
   const durationText = formatDurationMinutes(summary.startTime, summary.endTime);
   const curriculumText = `${curriculum.code} - ${curriculum.description}`;
+  const playerName = escapeHtml(summary.playerName || t("email.defaultPlayerName"));
+  const siteLink = `<a href="${escapeHtml(SITE_URL)}">SeeMaths</a>`;
+  const gameStrong = `<strong>${escapeHtml(GAME_NAME)}</strong>`;
+  const timeStrong = `<strong>${escapeHtml(sessionTime)}</strong>`;
+  const dateStrong = `<strong>${escapeHtml(sessionDate)}</strong>`;
+  const durationStrong = `<strong>${escapeHtml(durationText)}</strong>`;
+  const scoreStrong = `<strong>${escapeHtml(scoreLine)}</strong>`;
+  const accuracyStrong = `<strong>${escapeHtml(accuracy)}</strong>`;
+  const stageLink = `<a href="${escapeHtml(CURRICULUM_INDEX_URL)}"><strong>${escapeHtml(curriculum.stageLabel)}</strong></a>`;
+  const curriculumLink = `<a href="${escapeHtml(curriculum.syllabusUrl)}"><strong>${escapeHtml(curriculumText)}</strong></a>`;
 
   return {
     emailSubject: t("email.subject"),
@@ -95,9 +114,23 @@ function buildEmailStrings(summary: SessionSummary, t: TFunction) {
       score: scoreLine,
       accuracy,
     }),
+    emailBodyHtml: t("email.bodyIntro", {
+      name: playerName,
+      game: gameStrong,
+      site: siteLink,
+      time: timeStrong,
+      date: dateStrong,
+      duration: durationStrong,
+      score: scoreStrong,
+      accuracy: accuracyStrong,
+    }),
     emailCurriculum: t("email.curriculumIntro", {
       stage: curriculum.stageLabel,
       curriculum: curriculumText,
+    }),
+    emailCurriculumHtml: t("email.curriculumIntro", {
+      stage: stageLink,
+      curriculum: curriculumLink,
     }),
     emailRegards: t("email.regards"),
   };

@@ -95,6 +95,7 @@ function localApiPlugin(env: Record<string, string>): Plugin {
               const reportFile   = payload.reportFileName || 'angle-report.pdf';
               const score        = `${payload.correctCount ?? 0}/${payload.totalQuestions ?? 0}`;
               const accuracy     = `${payload.accuracy ?? 0}%`;
+              const playerName   = (payload.playerName || '').trim();
               const sessionTime  = payload.sessionTime  || '';
               const sessionDate  = payload.sessionDate  || '';
               const durationText = payload.durationText || '';
@@ -105,16 +106,14 @@ function localApiPlugin(env: Record<string, string>): Plugin {
               const currIndexUrl = payload.curriculumIndexUrl || siteUrl;
               const subject      = payload.emailSubject || `${gameName} Report`;
               const greeting     = payload.emailGreeting || 'Hi there,';
-              const bodyText     = payload.emailBody || `A player played ${gameName} at ${sessionTime} on ${sessionDate} for ${durationText}. Score: ${score}, accuracy: ${accuracy}.`;
-              const currText     = payload.emailCurriculum || `This game is equivalent to ${stageLabel} on topic ${currCode} - ${currDesc}.`;
               const regards      = payload.emailRegards || 'Regards,';
-              const hasTranslated = !!payload.emailBody;
-              const formattedBody = hasTranslated
-                ? `<p>${bodyText}</p><p><a href="${siteUrl}">SeeMaths</a></p>`
-                : `<p>A player played <strong>${gameName}</strong> at <a href="${siteUrl}">SeeMaths</a> at <strong>${sessionTime}</strong> on <strong>${sessionDate}</strong> for <strong>${durationText}</strong>. Score: <strong>${score}</strong>, accuracy: <strong>${accuracy}</strong>.</p>`;
-              const formattedCurr = hasTranslated
-                ? `<p>${currText}</p><p><a href="${currIndexUrl}">${stageLabel}</a><br/><a href="${currUrl}">${currCode} - ${currDesc}</a></p>`
-                : `<p>Topic: <a href="${currIndexUrl}"><strong>${stageLabel}</strong></a> — <a href="${currUrl}"><strong>${currCode} - ${currDesc}</strong></a></p>`;
+              const playerLabel  = playerName ? `${playerName} played` : 'A player played';
+              const formattedBody = payload.emailBodyHtml
+                ? `<p>${payload.emailBodyHtml}</p>`
+                : `<p>${playerLabel} <strong>${gameName}</strong> at <a href="${siteUrl}">SeeMaths</a> at <strong>${sessionTime}</strong> on <strong>${sessionDate}</strong> for <strong>${durationText}</strong>. They scored <strong>${score}</strong> and had an accuracy of <strong>${accuracy}</strong>.</p>`;
+              const formattedCurr = payload.emailCurriculumHtml
+                ? `<p>${payload.emailCurriculumHtml}</p>`
+                : `<p>This game is equivalent to <a href="${currIndexUrl}"><strong>${stageLabel}</strong></a> on topic <a href="${currUrl}"><strong>${currCode} - ${currDesc}</strong></a>.</p>`;
               const r = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
