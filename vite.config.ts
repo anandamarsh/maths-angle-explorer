@@ -103,19 +103,21 @@ function localApiPlugin(env: Record<string, string>): Plugin {
               const currDesc     = payload.curriculumDescription || '';
               const currUrl      = payload.curriculumUrl || siteUrl;
               const currIndexUrl = payload.curriculumIndexUrl || siteUrl;
+              const emailSubject = payload.emailSubject || `${gameName} Report`;
+              const emailHtml = payload.emailHtml || `<p>Hi there,</p>
+<p>A player played <strong>${gameName}</strong> at <a href="${siteUrl}">SeeMaths</a>
+at <strong>${sessionTime}</strong> on <strong>${sessionDate}</strong> for
+<strong>${durationText}</strong>. Score: <strong>${score}</strong>, accuracy: <strong>${accuracy}</strong>.</p>
+<p>Topic: <a href="${currIndexUrl}">${stageLabel}</a> — <a href="${currUrl}">${currCode} ${currDesc}</a></p>
+<p>Regards,<br/>${senderName}</p>`;
               const r = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   from: `${senderName} <${from}>`,
                   to: [email],
-                  subject: `${gameName} Report`,
-                  html: `<p>Hi there,</p>
-<p>A player played <strong>${gameName}</strong> at <a href="${siteUrl}">SeeMaths</a>
-at <strong>${sessionTime}</strong> on <strong>${sessionDate}</strong> for
-<strong>${durationText}</strong>. Score: <strong>${score}</strong>, accuracy: <strong>${accuracy}</strong>.</p>
-<p>Topic: <a href="${currIndexUrl}">${stageLabel}</a> — <a href="${currUrl}">${currCode} ${currDesc}</a></p>
-<p>Regards,<br/>${senderName}</p>`,
+                  subject: emailSubject,
+                  html: emailHtml,
                   attachments: [{ filename: reportFile, content: pdfBase64 }],
                 }),
               });

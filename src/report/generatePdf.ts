@@ -460,7 +460,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
 
   doc.setTextColor(COLORS.textDark);
   doc.setFontSize(17);
-  doc.setFont(mainFont, "bold");
+  doc.setFont("helvetica", "bold");
   doc.text("Angle Explorer", titleCX, curY + 11, { align: "center" });
 
   const line2Y = curY + 21;
@@ -490,14 +490,14 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   const CURR_BLUE = "#1e40af";
 
   doc.setFontSize(7.5);
-  doc.setFont(mainFont, "bold");
+  doc.setFont("helvetica", "bold");
   const pillText = curr.code;
   const pillPadX = 3;
   const pillH = 5;
   const pillW = doc.getTextWidth(pillText) + pillPadX * 2;
 
   doc.setFontSize(8);
-  doc.setFont(mainFont, "normal");
+  doc.setFont("helvetica", "normal");
   const stageW = doc.getTextWidth(curr.stageLabel);
   const descAvailW = contentW - pillW - 4 - stageW - 4;
   const descWrapped = doc.splitTextToSize(sanitize(curr.description, useUnicode), descAvailW);
@@ -514,7 +514,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   doc.setFillColor(GREEN);
   doc.roundedRect(margin, pillTopY, pillW, pillH, 1.5, 1.5, "F");
   doc.setFontSize(7.5);
-  doc.setFont(mainFont, "bold");
+  doc.setFont("helvetica", "bold");
   doc.setTextColor("#ffffff");
   doc.text(pillText, margin + pillPadX, curY);
 
@@ -523,7 +523,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
 
   const stageX = margin + pillW + 4;
   doc.setFontSize(8);
-  doc.setFont(mainFont, "normal");
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(CURR_BLUE);
   doc.text(curr.stageLabel, stageX, curY);
   doc.text(descWrapped, stageX + stageW + 4, curY);
@@ -534,11 +534,12 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.objective"), margin, curY);
-  doc.setFont(mainFont, "normal");
+  const objLabelW = doc.getTextWidth(t("pdf.objective")); // measure with mainFont while it's still active
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, ""), useUnicode),
-    margin + doc.getTextWidth(t("pdf.objective")) + 2, curY
+    sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, ""), false),
+    margin + objLabelW + 2, curY
   );
   curY += currLineH + 3;  // extra gap after Objective
 
