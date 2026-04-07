@@ -3512,14 +3512,22 @@ export default function ArcadeAngleScreen() {
           }}
         >
           {/* Buttons + level select */}
-          <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5">
-            <AutopilotIcon
-              onClick={handleRobotButtonClick}
-              active={isRobotVisibleActive}
-              title={robotTitle}
-              ariaLabel={robotAriaLabel}
-            />
-            <div className="flex flex-row gap-1.5">
+          <div
+            className={`shrink-0 py-1.5 ${isMobileLandscape ? "px-1" : "px-2"} ${isMobileLandscape ? "flex flex-col gap-1" : "flex flex-wrap items-center gap-1.5"}`}
+          >
+            <div
+              className={
+                isMobileLandscape
+                  ? "grid grid-cols-4 justify-items-center gap-0.5"
+                  : "contents"
+              }
+            >
+              <AutopilotIcon
+                onClick={handleRobotButtonClick}
+                active={isRobotVisibleActive}
+                title={robotTitle}
+                ariaLabel={robotAriaLabel}
+              />
               <button
                 onClick={resetCurrentQuestion}
                 title={t("toolbar.restart")}
@@ -3612,7 +3620,7 @@ export default function ArcadeAngleScreen() {
               </button>
               <LanguageSwitcher />
             </div>
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${isMobileLandscape ? "justify-center" : ""}`}>
               {([1, 2] as const).map((lv) => {
                 const locked = !IS_DEV && lv > unlockedLevel && lv > level;
                 return (
