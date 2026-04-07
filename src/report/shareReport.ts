@@ -74,16 +74,7 @@ function formatDurationMinutes(startTime: number, endTime: number): string {
   return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function buildEmailHtml(summary: SessionSummary, t: TFunction): string {
+function buildEmailStrings(summary: SessionSummary, t: TFunction) {
   const curriculum = CURRICULUM_BY_LEVEL[Math.min(summary.level, 3) as 1 | 2 | 3];
   const scoreLine = `${summary.correctCount}/${summary.totalQuestions}`;
   const accuracy = `${summary.accuracy}%`;
@@ -92,9 +83,10 @@ function buildEmailHtml(summary: SessionSummary, t: TFunction): string {
   const durationText = formatDurationMinutes(summary.startTime, summary.endTime);
   const curriculumText = `${curriculum.code} - ${curriculum.description}`;
 
-  const greeting = escapeHtml(t("email.greeting"));
-  const body = escapeHtml(
-    t("email.bodyIntro", {
+  return {
+    emailSubject: t("email.subject"),
+    emailGreeting: t("email.greeting"),
+    emailBody: t("email.bodyIntro", {
       game: GAME_NAME,
       time: sessionTime,
       date: sessionDate,
@@ -102,21 +94,12 @@ function buildEmailHtml(summary: SessionSummary, t: TFunction): string {
       score: scoreLine,
       accuracy,
     }),
-  );
-  const curriculumLine = escapeHtml(
-    t("email.curriculumIntro", {
+    emailCurriculum: t("email.curriculumIntro", {
       stage: curriculum.stageLabel,
       curriculum: curriculumText,
     }),
-  );
-  const regards = escapeHtml(t("email.regards"));
-
-  return `
-    <p>${greeting}</p>
-    <p>${body}</p>
-    <p>${curriculumLine} <a href="${escapeHtml(curriculum.syllabusUrl)}">${escapeHtml(curriculum.code)}</a></p>
-    <p>${regards}<br />${escapeHtml(GAME_NAME)}<br /><a href="${escapeHtml(SITE_URL)}">${escapeHtml(SITE_URL)}</a></p>
-  `;
+    emailRegards: t("email.regards"),
+  };
 }
 
 function getEmailMetadata(summary: SessionSummary) {
@@ -210,8 +193,7 @@ export async function emailReport(
 ): Promise<void> {
   const t = getT(locale);
   const blob = await buildReportBlob(summary, t, locale);
-  const emailSubject = t("email.subject");
-  const emailHtml = buildEmailHtml(summary, t);
+  const emailStrings = buildEmailStrings(summary, t);
 
   const response = await fetch("/api/send-report", {
     method: "POST",
@@ -227,8 +209,7 @@ export async function emailReport(
       accuracy: summary.accuracy,
       ...getEmailMetadata(summary),
       reportFileName: getReportFileName(summary),
-      emailSubject,
-      emailHtml,
+      ...emailStrings,
     }),
   });
 

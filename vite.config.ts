@@ -103,21 +103,26 @@ function localApiPlugin(env: Record<string, string>): Plugin {
               const currDesc     = payload.curriculumDescription || '';
               const currUrl      = payload.curriculumUrl || siteUrl;
               const currIndexUrl = payload.curriculumIndexUrl || siteUrl;
-              const emailSubject = payload.emailSubject || `${gameName} Report`;
-              const emailHtml = payload.emailHtml || `<p>Hi there,</p>
-<p>A player played <strong>${gameName}</strong> at <a href="${siteUrl}">SeeMaths</a>
-at <strong>${sessionTime}</strong> on <strong>${sessionDate}</strong> for
-<strong>${durationText}</strong>. Score: <strong>${score}</strong>, accuracy: <strong>${accuracy}</strong>.</p>
-<p>Topic: <a href="${currIndexUrl}">${stageLabel}</a> — <a href="${currUrl}">${currCode} ${currDesc}</a></p>
-<p>Regards,<br/>${senderName}</p>`;
+              const subject      = payload.emailSubject || `${gameName} Report`;
+              const greeting     = payload.emailGreeting || 'Hi there,';
+              const bodyText     = payload.emailBody || `A player played ${gameName} at ${sessionTime} on ${sessionDate} for ${durationText}. Score: ${score}, accuracy: ${accuracy}.`;
+              const currText     = payload.emailCurriculum || `This game is equivalent to ${stageLabel} on topic ${currCode} - ${currDesc}.`;
+              const regards      = payload.emailRegards || 'Regards,';
+              const hasTranslated = !!payload.emailBody;
+              const formattedBody = hasTranslated
+                ? `<p>${bodyText}</p><p><a href="${siteUrl}">SeeMaths</a></p>`
+                : `<p>A player played <strong>${gameName}</strong> at <a href="${siteUrl}">SeeMaths</a> at <strong>${sessionTime}</strong> on <strong>${sessionDate}</strong> for <strong>${durationText}</strong>. Score: <strong>${score}</strong>, accuracy: <strong>${accuracy}</strong>.</p>`;
+              const formattedCurr = hasTranslated
+                ? `<p>${currText}</p><p><a href="${currIndexUrl}">${stageLabel}</a><br/><a href="${currUrl}">${currCode} - ${currDesc}</a></p>`
+                : `<p>Topic: <a href="${currIndexUrl}"><strong>${stageLabel}</strong></a> — <a href="${currUrl}"><strong>${currCode} - ${currDesc}</strong></a></p>`;
               const r = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   from: `${senderName} <${from}>`,
                   to: [email],
-                  subject: emailSubject,
-                  html: emailHtml,
+                  subject,
+                  html: `<p>${greeting}</p>${formattedBody}${formattedCurr}<p>${regards}<br/>${gameName}<br/><a href="${siteUrl}">SeeMaths</a></p>`,
                   attachments: [{ filename: reportFile, content: pdfBase64 }],
                 }),
               });
