@@ -26,11 +26,13 @@ import {
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 import { texts } from "../texts";
+import { useT, useLocale, type TFunction } from "../i18n";
 import {
   SocialShare,
   SocialComments,
   openCommentsComposer,
 } from "../components/Social";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 import SessionReportModal from "../components/SessionReportModal";
 import { useCheatCodes } from "../hooks/useCheatCodes";
 import { useAutopilot, type AutopilotCallbacks, type ModalAutopilotControls } from "../hooks/useAutopilot";
@@ -121,7 +123,7 @@ const ANGLE_HIT_TOL = 7.5; // drag/snap tolerance
 const TYPED_TOL = 0.55; // typed answer must be exact (allows ±0.5 for decimal rounding)
 const TICK_INTERVAL = 10;
 
-type Level2SetKindKey = keyof (typeof texts.levels)["2"]["setKinds"];
+type Level2SetKindKey = "COMPLEMENTARY" | "SUPPLEMENTARY" | "COMPLETE";
 
 function easeOutCubic(t: number): number {
   return 1 - (1 - t) ** 3;
@@ -164,28 +166,27 @@ function snapAngleValue(
 function getInstructionPrompt(
   level: 1 | 2,
   gamePhase: "normal" | "monster" | "platinum",
+  t: TFunction,
 ) {
-  return gamePhase === "normal"
-    ? texts.levels[String(level) as "1" | "2"].prompts.normal
-    : texts.levels[String(level) as "1" | "2"].prompts.platinum;
+  if (gamePhase === "normal") {
+    return t(level === 1 ? "level1.promptNormal" : "level2.promptNormal");
+  }
+  return t(level === 1 ? "level1.promptPlatinum" : "level2.promptPlatinum");
 }
 
-function getAngleType(deg: number): { label: string; color: string } {
+function getAngleType(deg: number, t: TFunction): { label: string; color: string } {
   const a = ((deg % 360) + 360) % 360; // normalise to [0, 360) so -90 → 270 (REFLEX)
   if (a < 0.5 || a > 359.5)
-    return { label: texts.levels["1"].angleTypes.ZERO, color: "#64748b" };
+    return { label: t("level1.angleZero"), color: "#64748b" };
   if (Math.abs(a - 90) < 2)
-    return {
-      label: texts.levels["1"].angleTypes.RIGHT_ANGLE,
-      color: "#22c55e",
-    };
+    return { label: t("level1.angleRight"), color: "#22c55e" };
   if (Math.abs(a - 180) < 2)
-    return { label: texts.levels["1"].angleTypes.STRAIGHT, color: "#a78bfa" };
+    return { label: t("level1.angleStraight"), color: "#a78bfa" };
   if (a > 180)
-    return { label: texts.levels["1"].angleTypes.REFLEX, color: "#f97316" };
+    return { label: t("level1.angleReflex"), color: "#f97316" };
   if (a < 90)
-    return { label: texts.levels["1"].angleTypes.ACUTE, color: "#38bdf8" };
-  return { label: texts.levels["1"].angleTypes.OBTUSE, color: "#c084fc" };
+    return { label: t("level1.angleAcute"), color: "#38bdf8" };
+  return { label: t("level1.angleObtuse"), color: "#c084fc" };
 }
 
 function toSVGPoint(svg: SVGSVGElement, clientX: number, clientY: number) {
@@ -880,7 +881,8 @@ function AngleTypeLabel({
   gazeAngle: number;
   isDesktop: boolean;
 }) {
-  const { label, color } = getAngleType(gazeAngle);
+  const t = useT();
+  const { label, color } = getAngleType(gazeAngle, t);
   return (
     <div
       className="pointer-events-none absolute right-3 top-3 z-20 rounded-full px-5 py-2 text-center"
@@ -901,6 +903,12 @@ function AngleTypeLabel({
   );
 }
 
+const SET_LABEL_KEYS: Record<Level2SetKindKey, { label: "level2.complementaryLabel" | "level2.supplementaryLabel" | "level2.completeLabel"; sub: "level2.complementarySub" | "level2.supplementarySub" | "level2.completeSub" }> = {
+  COMPLEMENTARY: { label: "level2.complementaryLabel", sub: "level2.complementarySub" },
+  SUPPLEMENTARY: { label: "level2.supplementaryLabel", sub: "level2.supplementarySub" },
+  COMPLETE: { label: "level2.completeLabel", sub: "level2.completeSub" },
+};
+
 function SetTypeLabel({
   label,
   isDesktop,
@@ -908,15 +916,16 @@ function SetTypeLabel({
   label: string;
   isDesktop: boolean;
 }) {
+  const t = useT();
   const setKindKey = label as Level2SetKindKey;
-  const setTexts = texts.levels["2"].setKinds[setKindKey];
+  const keys = SET_LABEL_KEYS[setKindKey];
   const color = label.includes("COMPLEMENTARY")
     ? "#22c55e"
     : label.includes("SUPPLEMENTARY")
       ? "#f97316"
       : "#38bdf8";
-  const displayLabel = setTexts?.label ?? label;
-  const sublabel = setTexts?.sublabel ?? "";
+  const displayLabel = keys ? t(keys.label) : label;
+  const sublabel = keys ? t(keys.sub) : "";
   return (
     <div
       className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-center rounded-full px-5 py-2 text-center"
@@ -1608,6 +1617,8 @@ function NumericKeypad({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ArcadeAngleScreen() {
+  const t = useT();
+  const { locale } = useLocale();
   const initialLevelRef = useRef<1 | 2>(readInitialLevel());
   const initialLevel = initialLevelRef.current;
   const [level, setLevel] = useState<1 | 2>(initialLevel);
@@ -1905,7 +1916,7 @@ export default function ArcadeAngleScreen() {
       standalone?: boolean;
     };
     const shareData: ShareData = {
-      title: document.title || texts.generic.appTitle,
+      title: document.title || "Angle Explorer",
       text: texts.generic.social.shareTitle,
       url: SHELL_SHARE_URL,
     };
@@ -2117,7 +2128,7 @@ export default function ArcadeAngleScreen() {
       setTypeIdx(999);
       return;
     } // L3: show all at once
-    const text = getInstructionPrompt(level, gamePhase);
+    const text = getInstructionPrompt(level, gamePhase, t);
     if (isAutopilotRef.current) {
       // Skip animation so autopilot never waits on a throttled setInterval
       setTypeIdx(text.length);
@@ -2132,7 +2143,7 @@ export default function ArcadeAngleScreen() {
       if (i >= text.length) window.clearInterval(iv);
     }, 22);
     return () => window.clearInterval(iv);
-  }, [panelVisible, currentQ.id, gamePhase]);
+  }, [panelVisible, currentQ.id, gamePhase, locale]);
 
   // ── Shot animation ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -2779,7 +2790,7 @@ export default function ArcadeAngleScreen() {
       if (subAnswers[subStep].trim() === ANSWER_CHEAT_CODE) return;
       const g = parseFloat(subAnswers[subStep]);
       if (isNaN(g)) {
-        showFlash(texts.generic.feedback.enterNumber, false);
+        showFlash(t("game.enterNumber"), false);
         return;
       }
       const ok = Math.abs(g - currentQ.subAnswers[subStep]) < 0.6;
@@ -2788,7 +2799,7 @@ export default function ArcadeAngleScreen() {
           setSubStep((s) => s + 1);
         } else {
           playWrong();
-          showFlash(texts.generic.feedback.tryAgain, false);
+          showFlash(t("game.tryAgain"), false);
           setSubAnswers((prev) => {
             const next = [...prev] as [string, string, string];
             next[subStep] = "";
@@ -2867,8 +2878,8 @@ export default function ArcadeAngleScreen() {
   );
   const promptText =
     isPlatinum && !showSceneActors && level === 2
-      ? texts.levels["2"].prompts.blindShot
-      : getInstructionPrompt(level, gamePhase);
+      ? t("level2.promptBlindShot")
+      : getInstructionPrompt(level, gamePhase, t);
   const displayPrompt = panelVisible
     ? promptText.slice(0, Math.max(typeIdx, 1))
     : promptText.slice(0, 1);
@@ -2969,7 +2980,7 @@ export default function ArcadeAngleScreen() {
   const autopilotPhase =
     screen === "won" || screen === "gameover"
       ? "levelComplete" as const
-      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null || typeIdx < getInstructionPrompt(level, gamePhase).length)
+      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null || typeIdx < getInstructionPrompt(level, gamePhase, t).length)
         ? "feedback" as const
         : "aiming" as const;
 
@@ -3033,12 +3044,12 @@ export default function ArcadeAngleScreen() {
     : runSingleQuestionDemo;
   const robotTitle = isRobotVisibleActive
     ? autopilotMode === "continuous"
-      ? "Autopilot ON — click to stop"
+      ? t("autopilot.clickToStop")
       : "Show how to solve this question — click to stop"
     : "Show how to solve this question";
   const robotAriaLabel = isRobotVisibleActive
     ? autopilotMode === "continuous"
-      ? "Autopilot active — click to cancel"
+      ? t("autopilot.ariaCancel")
       : "Question demo active — click to cancel"
     : "Show how to solve this question";
   isAutopilotRef.current = isAutopilot && autopilotMode === "continuous";
@@ -3206,7 +3217,7 @@ export default function ArcadeAngleScreen() {
           />
           <button
             onClick={resetCurrentQuestion}
-            title={texts.generic.buttons.reset}
+            title={t("toolbar.restart")}
             className="arcade-button w-10 h-10 flex items-center justify-center p-2"
           >
             <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -3235,7 +3246,7 @@ export default function ArcadeAngleScreen() {
           </button>
           <button
             onClick={handleAudioToggle}
-            title={texts.generic.buttons.mute}
+            title={t("toolbar.mute")}
             className="arcade-button w-10 h-10 flex items-center justify-center p-2"
             style={
               soundMuted
@@ -3295,6 +3306,7 @@ export default function ArcadeAngleScreen() {
               )}
             </svg>
           </button>
+          <LanguageSwitcher />
         </div>
       </div>
 
@@ -3507,7 +3519,7 @@ export default function ArcadeAngleScreen() {
             <div className="flex flex-row gap-1.5">
               <button
                 onClick={resetCurrentQuestion}
-                title={texts.generic.buttons.reset}
+                title={t("toolbar.restart")}
                 className="arcade-button w-10 h-10 flex items-center justify-center p-2"
               >
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
@@ -3536,7 +3548,7 @@ export default function ArcadeAngleScreen() {
               </button>
               <button
                 onClick={handleAudioToggle}
-                title={texts.generic.buttons.mute}
+                title={t("toolbar.mute")}
                 className="arcade-button w-10 h-10 flex items-center justify-center p-2"
                 style={
                   soundMuted
@@ -3595,6 +3607,7 @@ export default function ArcadeAngleScreen() {
                   )}
                 </svg>
               </button>
+              <LanguageSwitcher />
             </div>
             <div className="flex items-center gap-1">
               {([1, 2] as const).map((lv) => {
@@ -4012,7 +4025,7 @@ export default function ArcadeAngleScreen() {
           <div className="flex flex-row gap-1.5">
             <button
               onClick={handleShare}
-              title={texts.generic.buttons.share}
+              title={t("toolbar.share")}
               className="arcade-button w-10 h-10 flex items-center justify-center p-2"
               style={
                 showShareDrawer
@@ -4073,7 +4086,7 @@ export default function ArcadeAngleScreen() {
                 setShowCommentsDrawer((s) => !s);
                 setShowShareDrawer(false);
               }}
-              title={texts.generic.buttons.comments}
+              title={t("toolbar.comments")}
               className="arcade-button w-10 h-10 flex items-center justify-center p-2"
               style={
                 showCommentsDrawer
@@ -4104,7 +4117,7 @@ export default function ArcadeAngleScreen() {
         >
           <button
             onClick={handleShare}
-            title={texts.generic.buttons.share}
+            title={t("toolbar.share")}
             className="arcade-button w-10 h-10 flex items-center justify-center p-2"
             style={
               showShareDrawer
@@ -4165,7 +4178,7 @@ export default function ArcadeAngleScreen() {
               setShowCommentsDrawer((s) => !s);
               setShowShareDrawer(false);
             }}
-            title={texts.generic.buttons.comments}
+            title={t("toolbar.comments")}
             className="arcade-button w-10 h-10 flex items-center justify-center p-2"
             style={
               showCommentsDrawer
@@ -4224,7 +4237,7 @@ export default function ArcadeAngleScreen() {
               className="arcade-button inline-flex px-8 py-4 text-base md:text-lg"
               style={{ borderColor: "#fbbf24" }}
             >
-              Try on your own
+              {t("game.tryOnYourOwn")}
             </button>
           </div>
         </div>
@@ -4264,7 +4277,7 @@ export default function ArcadeAngleScreen() {
           style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
         >
           <div className="text-sm font-black uppercase tracking-widest text-cyan-300">
-            {texts.generic.drawers.shareHeading}
+            {t("social.shareHeading")}
           </div>
           <button
             onClick={() => setShowShareDrawer(false)}
@@ -4332,7 +4345,7 @@ export default function ArcadeAngleScreen() {
                 whiteSpace: "nowrap",
               }}
             >
-              Add Comment
+              {t("toolbar.addComment")}
             </button>
           </div>
           <div className="flex items-center gap-3">

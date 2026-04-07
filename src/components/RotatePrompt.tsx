@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { texts } from "../texts";
+import { useT } from "../i18n";
 
 function usePortraitMobile() {
   const isTouchDevice =
@@ -26,6 +26,7 @@ function usePortraitMobile() {
 
 export default function RotatePrompt() {
   const show = usePortraitMobile();
+  const t = useT();
 
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) return;
@@ -112,10 +113,10 @@ export default function RotatePrompt() {
             letterSpacing: "0.02em",
           }}
         >
-          {texts.generic.rotatePrompt.title}
+          {t("rotate.heading")}
         </p>
         <p style={{ fontSize: "1rem", color: "#818cf8", lineHeight: 1.5 }}>
-          {texts.generic.rotatePrompt.subtitle}
+          {t("rotate.subtext")}
         </p>
       </div>
 

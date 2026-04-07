@@ -4,14 +4,71 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-// Serves the /api/send-report endpoint locally using the same Resend call
-// as the Vercel function (api/send-report.ts), reading RESEND_API_KEY and
-// EMAIL_FROM from .env.local via Vite's loadEnv.
+// Serves /api/send-report and /api/translate locally during development.
 function localApiPlugin(env: Record<string, string>): Plugin {
   return {
     name: 'local-api',
     apply: 'serve',
     configureServer(server) {
+      // POST /api/translate — proxy to OpenAI for on-demand translation
+      server.middlewares.use(
+        '/api/translate',
+        (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          if (req.method !== 'POST') { next(); return; }
+          const chunks: Buffer[] = [];
+          req.on('data', (c: Buffer) => chunks.push(c));
+          req.on('end', async () => {
+            const reply = (status: number, body: unknown) => {
+              res.writeHead(status, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(body));
+            };
+            try {
+              const payload = JSON.parse(Buffer.concat(chunks).toString()) as {
+                targetLang?: string;
+                strings?: Record<string, string>;
+              };
+              const apiKey = env.OPENAI_API_KEY;
+              if (!apiKey) { reply(500, { error: 'Translation service not configured.' }); return; }
+              const { targetLang, strings } = payload;
+              if (!targetLang || !strings) { reply(400, { error: 'targetLang and strings are required.' }); return; }
+              const systemPrompt = [
+                'You are a precise translator for an educational maths game called "Angle Explorer".',
+                'Rules:',
+                '1. Preserve all {placeholder} tokens exactly as-is (e.g. {count}, {level}, {email}).',
+                '2. Do not translate URLs.',
+                '3. Do not translate brand names: SeeMaths, Angle Explorer, Interactive Maths, DiscussIt.',
+                '4. Keep angle type names in the target language mathematics convention.',
+                '5. Return ONLY valid JSON: {"translations": {<key>: <translated_value>}, "langCode": "<ISO 639-1 code>"}',
+              ].join('\n');
+              const r = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'gpt-4o-mini',
+                  temperature: 0.3,
+                  response_format: { type: 'json_object' },
+                  messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Translate the following JSON strings to ${targetLang}:\n${JSON.stringify(strings, null, 2)}` },
+                  ],
+                }),
+              });
+              if (!r.ok) { reply(502, { error: 'Translation failed.' }); return; }
+              const data = await r.json() as { choices: Array<{ message: { content: string } }> };
+              const parsed = JSON.parse(data.choices[0]?.message?.content ?? '{}') as {
+                translations?: Record<string, string>;
+                langCode?: string;
+              };
+              if (!parsed.translations || !parsed.langCode) { reply(502, { error: 'Invalid translation response.' }); return; }
+              reply(200, { translations: parsed.translations, langCode: parsed.langCode });
+            } catch (err) {
+              console.error('[local-api/translate]', err);
+              reply(500, { error: String(err) });
+            }
+          });
+        },
+      );
+
       server.middlewares.use(
         '/api/send-report',
         (req: IncomingMessage, res: ServerResponse, next: () => void) => {
