@@ -129,7 +129,17 @@ function LevelCompleteReportActions({
             cursor: generating ? "not-allowed" : "pointer",
           }}
         >
-          {generating ? t("report.creating") : t("report.shareReport")}
+          <span className="grid">
+            <span className="invisible col-start-1 row-start-1">
+              {t("report.shareReport")}
+            </span>
+            <span className="invisible col-start-1 row-start-1">
+              {t("report.creating")}
+            </span>
+            <span className="col-start-1 row-start-1">
+              {generating ? t("report.creating") : t("report.shareReport")}
+            </span>
+          </span>
         </button>
         <input
           type="text"

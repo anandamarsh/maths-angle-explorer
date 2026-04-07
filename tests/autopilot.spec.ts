@@ -15,6 +15,12 @@ function robotIcon(page: Page) {
   return page.getByLabel(ROBOT_ARIA).first();
 }
 
+async function typeCheatOnKeypad(page: Page) {
+  for (const digit of "198081") {
+    await page.getByRole("button", { name: digit }).first().click();
+  }
+}
+
 test.describe("Autopilot feature", () => {
   test.use({ viewport: PORTRAIT_VIEWPORT });
 
@@ -24,6 +30,16 @@ test.describe("Autopilot feature", () => {
     await page.waitForTimeout(1500);
 
     await page.keyboard.type("198081");
+
+    await expect(robotIcon(page)).toBeVisible({ timeout: 3000 });
+  });
+
+  test("activates on mobile keypad taps for cheat code 198081", async ({ page }) => {
+    await page.goto(BASE_URL);
+    await page.waitForSelector("#root > *", { timeout: 10000 });
+    await page.waitForTimeout(1500);
+
+    await typeCheatOnKeypad(page);
 
     await expect(robotIcon(page)).toBeVisible({ timeout: 3000 });
   });

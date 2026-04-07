@@ -110,7 +110,8 @@ export function useAutopilot({
 
   function scheduleAim() {
     const { correctAnswer } = stateRef.current;
-    const canGoWrong = wrongCountRef.current < MAX_WRONG_PER_STAGE;
+    const canGoWrong =
+      mode === "continuous" && wrongCountRef.current < MAX_WRONG_PER_STAGE;
     const isWrong = canGoWrong && Math.random() < WRONG_ANSWER_RATE;
     if (isWrong) wrongCountRef.current += 1;
     const targetAngle = isWrong ? wrongAnswer(correctAnswer) : correctAnswer;

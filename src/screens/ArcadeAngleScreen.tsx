@@ -1351,6 +1351,7 @@ function ColoredPrompt({
 function NumericKeypad({
   value,
   onChange,
+  onKeyInput,
   onFire,
   canFire: canFireProp,
   disabled,
@@ -1363,6 +1364,7 @@ function NumericKeypad({
 }: {
   value: string;
   onChange: (v: string) => void;
+  onKeyInput?: (key: string) => boolean;
   onFire: () => void;
   canFire: boolean;
   disabled: boolean;
@@ -1422,6 +1424,7 @@ function NumericKeypad({
   function press(key: string) {
     playKeyClick();
     if (disabled) return;
+    if (onKeyInput?.(key)) return;
     if (key === "⌫") {
       const next = value.slice(0, -1);
       onChange(next === "-" ? "" : next);
@@ -2999,6 +3002,7 @@ export default function ArcadeAngleScreen() {
   }
 
   function cancelAutopilotMode() {
+    resetCheatBuffer();
     clearSingleQuestionDemo();
     deactivateAutopilot();
   }
@@ -3012,6 +3016,7 @@ export default function ArcadeAngleScreen() {
   }
 
   function runSingleQuestionDemo() {
+    resetCheatBuffer();
     clearSingleQuestionDemo();
     if (isAutopilot) {
       deactivateAutopilot();
@@ -3058,7 +3063,7 @@ export default function ArcadeAngleScreen() {
   isAutopilotRef.current = isAutopilot && autopilotMode === "continuous";
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  useCheatCodes({
+  const { processCheatKey, resetCheatBuffer } = useCheatCodes({
     "198081": () => {
       if (demoRetryPending) return;
       if (isAutopilot && autopilotMode === "continuous") {
@@ -3081,6 +3086,10 @@ export default function ArcadeAngleScreen() {
       }
     },
   });
+
+  function handleKeypadCheatInput(key: string): boolean {
+    return processCheatKey(key);
+  }
 
   return (
     <div
@@ -3777,6 +3786,7 @@ export default function ArcadeAngleScreen() {
             <NumericKeypad
               value={keypadValue}
               onChange={handleKeypadChange}
+              onKeyInput={handleKeypadCheatInput}
               onFire={doSubmit}
               canFire={canKeypadFire}
               disabled={sceneBusy}
@@ -3854,6 +3864,7 @@ export default function ArcadeAngleScreen() {
           <NumericKeypad
             value={keypadValue}
             onChange={handleKeypadChange}
+            onKeyInput={handleKeypadCheatInput}
             onFire={doSubmit}
             canFire={canKeypadFire}
             disabled={sceneBusy}
