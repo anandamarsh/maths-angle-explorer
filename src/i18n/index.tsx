@@ -6,12 +6,10 @@ import type { Translations, TranslationKey, TFunction } from "./types";
 import { en } from "./en";
 import { hi } from "./hi";
 import { zh } from "./zh";
-import { es } from "./es";
-import { ru } from "./ru";
 
 // ── Built-in locales ───────────────────────────────────────────────────────────
 
-const BUILT_IN: Record<string, Translations> = { en, hi, zh, es, ru };
+const BUILT_IN: Record<string, Translations> = { en, hi, zh };
 
 // ── Cache for on-demand translated locales (persists for session) ───────────────
 

@@ -8,8 +8,6 @@ import { en } from "../i18n/en";
 const BUILT_IN_LOCALES: { code: string; key: TranslationKey }[] = [
   { code: "en", key: "lang.en" },
   { code: "zh", key: "lang.zh" },
-  { code: "es", key: "lang.es" },
-  { code: "ru", key: "lang.ru" },
   { code: "hi", key: "lang.hi" },
 ];
 
@@ -127,24 +125,32 @@ export default function LanguageSwitcher() {
               boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
             }}
           >
-            {BUILT_IN_LOCALES.map(({ code, key }) => (
-              <button
-                key={code}
-                onClick={() => { setLocale(code); setOpen(false); }}
-                style={itemStyle(locale === code)}
-              >
-                {t(key)}
-              </button>
-            ))}
-            {Object.entries(customLangs).map(([code, name]) => (
-              <button
-                key={code}
-                onClick={() => { setLocale(code); setOpen(false); }}
-                style={itemStyle(locale === code)}
-              >
-                {name}
-              </button>
-            ))}
+            {BUILT_IN_LOCALES.map(({ code, key }) => {
+              const isActive = locale === code;
+              return (
+                <button
+                  key={code}
+                  onClick={() => { setLocale(code); setOpen(false); }}
+                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span>{t(key)}</span>
+                  {isActive && <span style={{ color: "#38bdf8", marginLeft: 8 }}>&#10003;</span>}
+                </button>
+              );
+            })}
+            {Object.entries(customLangs).map(([code, name]) => {
+              const isActive = locale === code;
+              return (
+                <button
+                  key={code}
+                  onClick={() => { setLocale(code); setOpen(false); }}
+                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <span>{name}</span>
+                  {isActive && <span style={{ color: "#38bdf8", marginLeft: 8 }}>&#10003;</span>}
+                </button>
+              );
+            })}
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", margin: "4px 0" }} />
             <button
               onClick={openOther}

@@ -26,7 +26,7 @@ import {
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 import { texts } from "../texts";
-import { useT, useLocale, type TFunction } from "../i18n";
+import { useT, useLocale, type TFunction, type TranslationKey } from "../i18n";
 import {
   SocialShare,
   SocialComments,
@@ -64,8 +64,14 @@ function readInitialLevel(): 1 | 2 {
   return raw === "2" ? 2 : 1;
 }
 
-const MONSTER_ROUND_NAMES = texts.rounds.monster.names;
-const PLATINUM_ROUND_NAMES = texts.rounds.platinum.names;
+const MONSTER_ROUND_KEYS: TranslationKey[] = [
+  "monster.name.0", "monster.name.1", "monster.name.2",
+  "monster.name.3", "monster.name.4", "monster.name.5",
+];
+const PLATINUM_ROUND_KEYS: TranslationKey[] = [
+  "platinum.name.0", "platinum.name.1", "platinum.name.2",
+  "platinum.name.3", "platinum.name.4", "platinum.name.5",
+];
 
 const LEVEL_BG: Record<string, { bg: string; glow: string; tint: string }> = {
   "1-normal": { bg: "#080e1c", glow: "#1e3a5f", tint: "transparent" },
@@ -445,8 +451,9 @@ function CannonDragHint({
   isMobile: boolean;
 }) {
   void startAngle;
+  const t = useT();
   const endpoint = polarToXY(CX, CY, hintAngle, BEAM_LEN);
-  const hintLabel = isTouchInput ? "Touch and Rotate" : "Click and Rotate";
+  const hintLabel = isTouchInput ? t("game.hintTouchRotate") : t("game.hintClickRotate");
   const hintFontSize = isMobile ? 19.5 : 13;
   const hintBoxWidth = isMobile ? 248 : 174;
   return (
@@ -2492,10 +2499,8 @@ export default function ArcadeAngleScreen() {
   loseEggRef.current = loseEgg;
 
   function startMonsterRound() {
-    const name =
-      MONSTER_ROUND_NAMES[
-        Math.floor(Math.random() * MONSTER_ROUND_NAMES.length)
-      ];
+    const key = MONSTER_ROUND_KEYS[Math.floor(Math.random() * MONSTER_ROUND_KEYS.length)];
+    const name = t(key);
     setMonsterRoundName(name);
     setGamePhase("monster");
     setMonsterEggs(0);
@@ -2508,10 +2513,8 @@ export default function ArcadeAngleScreen() {
   }
 
   function startPlatinumRound() {
-    const name =
-      PLATINUM_ROUND_NAMES[
-        Math.floor(Math.random() * PLATINUM_ROUND_NAMES.length)
-      ];
+    const key = PLATINUM_ROUND_KEYS[Math.floor(Math.random() * PLATINUM_ROUND_KEYS.length)];
+    const name = t(key);
     setMonsterRoundName(name);
     setGamePhase("platinum");
     setMonsterEggs(0);

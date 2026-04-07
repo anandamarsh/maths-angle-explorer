@@ -136,8 +136,8 @@ function getEmailMetadata(summary: SessionSummary) {
   };
 }
 
-async function buildReportBlob(summary: SessionSummary, t: TFunction): Promise<Blob> {
-  return generateSessionPdf(summary, t);
+async function buildReportBlob(summary: SessionSummary, t: TFunction, locale: string): Promise<Blob> {
+  return generateSessionPdf(summary, t, locale);
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -158,7 +158,7 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 export async function downloadReport(summary: SessionSummary, locale = "en"): Promise<void> {
   const t = getT(locale);
-  const blob = await buildReportBlob(summary, t);
+  const blob = await buildReportBlob(summary, t, locale);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -171,7 +171,7 @@ export async function downloadReport(summary: SessionSummary, locale = "en"): Pr
 
 export async function shareReport(summary: SessionSummary, locale = "en"): Promise<boolean> {
   const t = getT(locale);
-  const blob = await buildReportBlob(summary, t);
+  const blob = await buildReportBlob(summary, t, locale);
   const fileName = getReportFileName(summary);
   const file = new File([blob], fileName, { type: "application/pdf" });
 
@@ -209,7 +209,7 @@ export async function emailReport(
   locale = "en",
 ): Promise<void> {
   const t = getT(locale);
-  const blob = await buildReportBlob(summary, t);
+  const blob = await buildReportBlob(summary, t, locale);
   const emailSubject = t("email.subject");
   const emailHtml = buildEmailHtml(summary, t);
 

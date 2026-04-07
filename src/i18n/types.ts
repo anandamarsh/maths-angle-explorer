@@ -61,6 +61,23 @@ export type TranslationKey =
   // Level completion
   | "completion.allLevelsTitle"
   | "completion.allLevelsSub"
+  // Tutorial hints
+  | "game.hintClickRotate"
+  | "game.hintTouchRotate"
+  // Monster round names
+  | "monster.name.0"
+  | "monster.name.1"
+  | "monster.name.2"
+  | "monster.name.3"
+  | "monster.name.4"
+  | "monster.name.5"
+  // Platinum round names
+  | "platinum.name.0"
+  | "platinum.name.1"
+  | "platinum.name.2"
+  | "platinum.name.3"
+  | "platinum.name.4"
+  | "platinum.name.5"
   // Autopilot
   | "autopilot.clickToStop"
   | "autopilot.ariaCancel"
@@ -68,8 +85,6 @@ export type TranslationKey =
   | "lang.label"
   | "lang.en"
   | "lang.zh"
-  | "lang.es"
-  | "lang.ru"
   | "lang.hi"
   | "lang.other"
   | "lang.translating"

@@ -45,9 +45,40 @@ const CURRICULUM_LEVELS = [
   },
 ];
 
+// --- Unicode font loading ---
+
+const UNICODE_FONT_MAP: Partial<Record<string, string>> = {
+  hi: "/fonts/NotoSansDevanagari-Regular.ttf",
+  zh: "/fonts/ArialUnicode.ttf",
+  en: "/fonts/NotoSans-Regular.ttf",
+};
+
+async function loadFontBase64(locale: string): Promise<{ name: string; base64: string } | null> {
+  const url = UNICODE_FONT_MAP[locale] ?? "/fonts/NotoSans-Regular.ttf";
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    // Efficient base64 encoding — process in chunks to avoid O(n²) string concat
+    const bytes = new Uint8Array(buf);
+    const CHUNK = 8192;
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    }
+    const name = locale === "hi" ? "NotoSansDevanagari" : locale === "zh" ? "ArialUnicode" : "NotoSans";
+    return { name, base64: btoa(binary) };
+  } catch {
+    return null;
+  }
+}
+
 // --- Text sanitiser ---
 
-function sanitize(text: string): string {
+function sanitize(text: string, useUnicode = false): string {
+  if (useUnicode) {
+    return text.replace(/\u2192/g, "\u2192").replace(/\u2013/g, "-").replace(/\u2014/g, "-");
+  }
   return text
     .replace(/°/g, "\u00b0")
     .replace(/\u2192/g, "->")
@@ -142,6 +173,7 @@ function drawLevel1AngleDiagram(
   y: number,
   width: number,
   height: number,
+  mainFont: string,
 ) {
   // Light background
   doc.setFillColor("#f8fafc");
@@ -254,7 +286,7 @@ function drawLevel1AngleDiagram(
   const lx = vx + LABEL_FRAC * L * Math.cos(midRad);
   const ly = vy - LABEL_FRAC * L * Math.sin(midRad);
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(DARK);
   doc.text(`${correctAngle}\u00b0`, lx, ly, { align: "center" });
 
@@ -264,7 +296,7 @@ function drawLevel1AngleDiagram(
     const ulx = vx + USER_LABEL_TIP_FRAC * L * Math.cos(uRad);
     const uly = vy - USER_LABEL_TIP_FRAC * L * Math.sin(uRad);
     doc.setFontSize(6);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(mainFont, "normal");
     doc.setTextColor(RED);
     doc.text(`${userAngle}\u00b0`, ulx, uly, { align: "center" });
   }
@@ -279,6 +311,7 @@ function drawLevel2SectorDiagram(
   y: number,
   width: number,
   height: number,
+  mainFont: string,
 ) {
   // Always light background — consistent with Level 1 style
   doc.setFillColor("#f8fafc");
@@ -295,7 +328,7 @@ function drawLevel2SectorDiagram(
 
   if (!sectorArcs || sectorArcs.length === 0) {
     doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(mainFont, "bold");
     doc.setTextColor("#f59e0b");
     doc.text(`${attempt.correctAnswer}\u00b0`, cx, cy + 1, { align: "center" });
     return;
@@ -347,7 +380,7 @@ function drawLevel2SectorDiagram(
     const lx = cx + lDist * Math.cos(midRad);
     const ly = cy - lDist * Math.sin(midRad);
     doc.setFontSize(5.5);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(mainFont, "bold");
     doc.setTextColor(isMissing ? missingLabelColor : knownLabelColor);
     doc.text(sector.label ?? "", lx, ly, { align: "center" });
   }
@@ -366,23 +399,38 @@ function drawAngleDiagram(
   y: number,
   width: number,
   height: number,
+  mainFont: string,
 ) {
   if (attempt.level === 2 || attempt.level === 3) {
-    drawLevel2SectorDiagram(doc, attempt, x, y, width, height);
+    drawLevel2SectorDiagram(doc, attempt, x, y, width, height, mainFont);
   } else {
-    drawLevel1AngleDiagram(doc, attempt, x, y, width, height);
+    drawLevel1AngleDiagram(doc, attempt, x, y, width, height, mainFont);
   }
 }
 
 // --- Main PDF generation ---
 
-export async function generateSessionPdf(summary: SessionSummary, t: TFunction): Promise<Blob> {
+export async function generateSessionPdf(summary: SessionSummary, t: TFunction, locale = "en"): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
   const margin = 15;
   const contentW = pageW - margin * 2;              // 180
   let curY = margin;
+
+  // Load Unicode font for non-Latin scripts
+  const fontData = await loadFontBase64(locale);
+  const unicodeFont = fontData?.name ?? null;
+  if (fontData && unicodeFont) {
+    const fileName = `${unicodeFont}-Regular.ttf`;
+    doc.addFileToVFS(fileName, fontData.base64);
+    doc.addFont(fileName, unicodeFont, "normal");
+    doc.addFont(fileName, unicodeFont, "bold");
+    doc.setFont(unicodeFont, "normal");
+  }
+
+  const useUnicode = unicodeFont !== null;
+  const mainFont = unicodeFont ?? "helvetica";
 
   const iconBase64 = await loadIconBase64();
 
@@ -412,21 +460,21 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
 
   doc.setTextColor(COLORS.textDark);
   doc.setFontSize(17);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.text("Angle Explorer", titleCX, curY + 11, { align: "center" });
 
   const line2Y = curY + 21;
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text(sanitize(formatDate(summary.date)), titleColX, line2Y);
+  doc.text(sanitize(formatDate(summary.date), useUnicode), titleColX, line2Y);
   doc.text(
     `${formatTime(summary.startTime)} - ${formatTime(summary.endTime)}`,
     margin + contentW - iconPad, line2Y, { align: "right" }
   );
 
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.sessionReport", { level: summary.level }), titleCX, line2Y, { align: "center" });
 
@@ -442,21 +490,21 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   const CURR_BLUE = "#1e40af";
 
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   const pillText = curr.code;
   const pillPadX = 3;
   const pillH = 5;
   const pillW = doc.getTextWidth(pillText) + pillPadX * 2;
 
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   const stageW = doc.getTextWidth(curr.stageLabel);
   const descAvailW = contentW - pillW - 4 - stageW - 4;
-  const descWrapped = doc.splitTextToSize(sanitize(curr.description), descAvailW);
+  const descWrapped = doc.splitTextToSize(sanitize(curr.description, useUnicode), descAvailW);
 
   // Title
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.nswCurriculum"), margin, curY);
   curY += 5.5 + 3.5;
@@ -466,7 +514,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setFillColor(GREEN);
   doc.roundedRect(margin, pillTopY, pillW, pillH, 1.5, 1.5, "F");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor("#ffffff");
   doc.text(pillText, margin + pillPadX, curY);
 
@@ -475,7 +523,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
 
   const stageX = margin + pillW + 4;
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(CURR_BLUE);
   doc.text(curr.stageLabel, stageX, curY);
   doc.text(descWrapped, stageX + stageW + 4, curY);
@@ -483,22 +531,22 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
 
   // Objective line — with extra gap below before the round lines
   doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.objective"), margin, curY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, "")),
+    sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, ""), useUnicode),
     margin + doc.getTextWidth(t("pdf.objective")) + 2, curY
   );
   curY += currLineH + 3;  // extra gap after Objective
 
   // Blackout Round
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.blackoutRound"), margin, curY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
     t("pdf.blackoutDesc"),
@@ -507,10 +555,10 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   curY += currLineH;
 
   // Monster Round
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.monsterRound"), margin, curY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
     t("pdf.monsterDesc"),
@@ -519,10 +567,10 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   curY += currLineH;
 
   // Platinum Round
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.textDark);
   doc.text(t("pdf.platinumRound"), margin, curY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
     t("pdf.platinumDesc"),
@@ -545,11 +593,11 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setLineWidth(0.5);
   doc.roundedRect(margin, curY, boxW, boxH, 3, 3, "S");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(t("pdf.scoreLabel"), margin + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(scoreColor);
   doc.text(`${summary.correctCount} / ${summary.totalQuestions}`, margin + boxW / 2, curY + 13.5, { align: "center" });
 
@@ -561,11 +609,11 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setDrawColor(accColor);
   doc.roundedRect(box2X, curY, boxW, boxH, 3, 3, "S");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(t("pdf.accuracyLabel"), box2X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(accColor);
   doc.text(`${summary.accuracy}%`, box2X + boxW / 2, curY + 13.5, { align: "center" });
 
@@ -575,11 +623,11 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   doc.setDrawColor(COLORS.accentPurple);
   doc.roundedRect(box3X, curY, boxW, boxH, 3, 3, "S");
   doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(mainFont, "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(t("pdf.timeLabel"), box3X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.accentPurple);
   doc.text(formatDuration(summary.endTime - summary.startTime), box3X + boxW / 2, curY + 13.5, { align: "center" });
 
@@ -656,17 +704,17 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     doc.rect(cardLeft, curY, stripeW, stripeH, "F");
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(mainFont, "bold");
     doc.setTextColor(COLORS.textDark);
     doc.text(`Q${attempt.questionNumber}`, cardLeft + stripeW + 3, curY + 6.8);
 
     const timeStr = formatDuration(attempt.timeTakenMs);
     doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(mainFont, "normal");
     const timeW2 = doc.getTextWidth(timeStr);
 
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(mainFont, "bold");
     const icon = attempt.isCorrect ? t("pdf.correct") : t("pdf.wrong");
     const iconW = doc.getTextWidth(icon);
     const groupRight = pageW - margin - 4;
@@ -676,7 +724,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     doc.text(icon, groupStart, curY + 6.8);
 
     doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(mainFont, "normal");
     doc.setTextColor(COLORS.textMuted);
     doc.text(timeStr, groupRight, curY + 6.8, { align: "right" });
 
@@ -685,7 +733,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     // Diagram
     const bodyPad = 4;
     const diagramX = cardLeft + stripeW + 4;
-    drawAngleDiagram(doc, attempt, diagramX, curY + bodyPad, diagramW, diagramH);
+    drawAngleDiagram(doc, attempt, diagramX, curY + bodyPad, diagramW, diagramH, mainFont);
 
     // Text area — NO prompt, just phase badge + answers
     const textX = diagramX + diagramW + 5;
@@ -694,13 +742,13 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     // Phase badge
     if (attempt.gamePhase === "platinum") {
       doc.setFontSize(6.5);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(mainFont, "bold");
       doc.setTextColor("#94a3b8");
       doc.text(t("pdf.platinumBadge"), textX, textY);
       textY += 6;
     } else if (attempt.gamePhase === "monster") {
       doc.setFontSize(6.5);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(mainFont, "bold");
       doc.setTextColor("#a855f7");
       doc.text(t("pdf.monsterBadge"), textX, textY);
       textY += 6;
@@ -708,7 +756,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
 
     // Your answer
     doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(mainFont, "normal");
     doc.setTextColor(attempt.isCorrect ? COLORS.correctDark : COLORS.wrongBorder);
     const givenLabel = attempt.childAnswer !== null
       ? t("pdf.yourAnswer", { value: attempt.childAnswer })
@@ -717,7 +765,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
     textY += 5;
 
     // Correct angle
-    doc.setFont("helvetica", "normal");
+    doc.setFont(mainFont, "normal");
     doc.setTextColor(COLORS.textDark);
     doc.text(t("pdf.correctAngle", { value: attempt.correctAnswer }), textX, textY);
 
@@ -754,7 +802,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   drawStar(doc, rEdge - 9, starCY + 6, 2.5, 1.1, "#fde68a");
 
   doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(mainFont, "bold");
   doc.setTextColor(COLORS.accentPurple);
   const encouragement =
     summary.accuracy >= 90 ? t("pdf.encourage90") :
@@ -766,7 +814,7 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction):
   const wrongAttempts = summary.attempts.filter(a => !a.isCorrect);
   if (wrongAttempts.length > 0) {
     doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(mainFont, "normal");
     doc.setTextColor(COLORS.textMuted);
     doc.text(
       t("pdf.tip"),
