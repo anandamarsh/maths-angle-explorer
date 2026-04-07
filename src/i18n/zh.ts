@@ -125,7 +125,8 @@ export const zh: Translations = {
   // Email
   "email.subject": "Angle Explorer \u62a5\u544a",
   "email.greeting": "\u4f60\u597d\uff0c",
-  "email.bodyIntro": "\u4e00\u540d\u73a9\u5bb6\u4e8e {date} {time} \u73a9\u4e86 {duration} \u7684 {game}\u3002\u5f97\u5206\uff1a{score}\uff0c\u51c6\u786e\u7387\uff1a{accuracy}\u3002",
+  "email.defaultPlayerName": "\u4e00\u540d\u73a9\u5bb6",
+  "email.bodyIntro": "{name} \u4e8e {date} {time} \u73a9\u4e86 {duration} \u7684 {game}\u3002\u5f97\u5206\uff1a{score}\uff0c\u51c6\u786e\u7387\uff1a{accuracy}\u3002",
   "email.curriculumIntro": "\u8be5\u6e38\u620f\u5bf9\u5e94 {stage} \u7684\u4e3b\u9898 {curriculum}\u3002",
   "email.regards": "\u6b64\u81f4\uff0c",
 };

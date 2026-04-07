@@ -123,6 +123,7 @@ export type TranslationKey =
   // Email
   | "email.subject"
   | "email.greeting"
+  | "email.defaultPlayerName"
   | "email.bodyIntro"
   | "email.curriculumIntro"
   | "email.regards";

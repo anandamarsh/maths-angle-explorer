@@ -87,6 +87,7 @@ function buildEmailStrings(summary: SessionSummary, t: TFunction) {
     emailSubject: t("email.subject"),
     emailGreeting: t("email.greeting"),
     emailBody: t("email.bodyIntro", {
+      name: summary.playerName || t("email.defaultPlayerName"),
       game: GAME_NAME,
       time: sessionTime,
       date: sessionDate,

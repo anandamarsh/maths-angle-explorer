@@ -125,7 +125,8 @@ export const en: Translations = {
   // Email
   "email.subject": "Angle Explorer Report",
   "email.greeting": "Hi there,",
-  "email.bodyIntro": "A player played {game} at {time} on {date} for {duration}. They scored {score} and had an accuracy of {accuracy}.",
+  "email.defaultPlayerName": "A player",
+  "email.bodyIntro": "{name} played {game} at {time} on {date} for {duration}. Score: {score}, Accuracy: {accuracy}.",
   "email.curriculumIntro": "This game is equivalent to {stage} on topic {curriculum}.",
   "email.regards": "Regards,",
 };

@@ -467,7 +467,11 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text(sanitize(formatDate(summary.date), false), titleColX, line2Y);
+  const dateStr = sanitize(formatDate(summary.date), false);
+  const bannerLeft = summary.playerName
+    ? `${summary.playerName}  ·  ${dateStr}`
+    : dateStr;
+  doc.text(bannerLeft, titleColX, line2Y);
   doc.text(
     `${formatTime(summary.startTime)} - ${formatTime(summary.endTime)}`,
     margin + contentW - iconPad, line2Y, { align: "right" }
