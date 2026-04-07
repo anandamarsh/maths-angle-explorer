@@ -63,6 +63,8 @@ export default async function handler(req: any, res: any) {
         curriculumUrl?: string;
         curriculumIndexUrl?: string;
         reportFileName?: string;
+        emailSubject?: string;
+        emailHtml?: string;
       }
     | null;
 
@@ -108,8 +110,8 @@ export default async function handler(req: any, res: any) {
     body: JSON.stringify({
       from: `${senderName} <${from}>`,
       to: [email],
-      subject: `${gameName} Report`,
-      html: `
+      subject: payload?.emailSubject || `${gameName} Report`,
+      html: payload?.emailHtml || `
         <p>Hi there,</p>
         <p>
           A player played <strong>${escapeHtml(gameName)}</strong> at

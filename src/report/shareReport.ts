@@ -1,6 +1,8 @@
 // src/report/shareReport.ts
 
 import { generateSessionPdf } from "./generatePdf";
+import { getT } from "../i18n";
+import type { TFunction } from "../i18n/types";
 import type { SessionSummary } from "./sessionLog";
 
 const SITE_URL = "https://www.seemaths.com";
@@ -72,8 +74,53 @@ function formatDurationMinutes(startTime: number, endTime: number): string {
   return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildEmailHtml(summary: SessionSummary, t: TFunction): string {
+  const curriculum = CURRICULUM_BY_LEVEL[Math.min(summary.level, 3) as 1 | 2 | 3];
+  const scoreLine = `${summary.correctCount}/${summary.totalQuestions}`;
+  const accuracy = `${summary.accuracy}%`;
+  const sessionTime = formatSessionTime(summary.startTime);
+  const sessionDate = formatSessionDate(summary.startTime);
+  const durationText = formatDurationMinutes(summary.startTime, summary.endTime);
+  const curriculumText = `${curriculum.code} - ${curriculum.description}`;
+
+  const greeting = escapeHtml(t("email.greeting"));
+  const body = escapeHtml(
+    t("email.bodyIntro", {
+      game: GAME_NAME,
+      time: sessionTime,
+      date: sessionDate,
+      duration: durationText,
+      score: scoreLine,
+      accuracy,
+    }),
+  );
+  const curriculumLine = escapeHtml(
+    t("email.curriculumIntro", {
+      stage: curriculum.stageLabel,
+      curriculum: curriculumText,
+    }),
+  );
+  const regards = escapeHtml(t("email.regards"));
+
+  return `
+    <p>${greeting}</p>
+    <p>${body}</p>
+    <p>${curriculumLine}</p>
+    <p>${regards}<br />${escapeHtml(GAME_NAME)}<br /><a href="${escapeHtml(SITE_URL)}">${escapeHtml(SITE_URL)}</a></p>
+  `;
+}
+
 function getEmailMetadata(summary: SessionSummary) {
-  const curriculum = CURRICULUM_BY_LEVEL[summary.level];
+  const curriculum = CURRICULUM_BY_LEVEL[Math.min(summary.level, 3) as 1 | 2 | 3];
   return {
     gameName: GAME_NAME,
     senderName: SENDER_NAME,
@@ -89,8 +136,8 @@ function getEmailMetadata(summary: SessionSummary) {
   };
 }
 
-async function buildReportBlob(summary: SessionSummary): Promise<Blob> {
-  return generateSessionPdf(summary);
+async function buildReportBlob(summary: SessionSummary, t: TFunction): Promise<Blob> {
+  return generateSessionPdf(summary, t);
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -109,8 +156,9 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-export async function downloadReport(summary: SessionSummary): Promise<void> {
-  const blob = await buildReportBlob(summary);
+export async function downloadReport(summary: SessionSummary, locale = "en"): Promise<void> {
+  const t = getT(locale);
+  const blob = await buildReportBlob(summary, t);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -121,8 +169,9 @@ export async function downloadReport(summary: SessionSummary): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-export async function shareReport(summary: SessionSummary): Promise<boolean> {
-  const blob = await buildReportBlob(summary);
+export async function shareReport(summary: SessionSummary, locale = "en"): Promise<boolean> {
+  const t = getT(locale);
+  const blob = await buildReportBlob(summary, t);
   const fileName = getReportFileName(summary);
   const file = new File([blob], fileName, { type: "application/pdf" });
 
@@ -150,15 +199,20 @@ export async function shareReport(summary: SessionSummary): Promise<boolean> {
     }
   }
 
-  await downloadReport(summary);
+  await downloadReport(summary, locale);
   return true;
 }
 
 export async function emailReport(
   summary: SessionSummary,
   email: string,
+  locale = "en",
 ): Promise<void> {
-  const blob = await buildReportBlob(summary);
+  const t = getT(locale);
+  const blob = await buildReportBlob(summary, t);
+  const emailSubject = t("email.subject");
+  const emailHtml = buildEmailHtml(summary, t);
+
   const response = await fetch("/api/send-report", {
     method: "POST",
     headers: {
@@ -173,6 +227,8 @@ export async function emailReport(
       accuracy: summary.accuracy,
       ...getEmailMetadata(summary),
       reportFileName: getReportFileName(summary),
+      emailSubject,
+      emailHtml,
     }),
   });
 

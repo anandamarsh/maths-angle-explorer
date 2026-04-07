@@ -77,7 +77,39 @@ export type TranslationKey =
   | "lang.promptTitle"
   | "lang.promptPlaceholder"
   | "lang.translate"
-  | "lang.cancel";
+  | "lang.cancel"
+  // PDF
+  | "pdf.sessionReport"
+  | "pdf.nswCurriculum"
+  | "pdf.objective"
+  | "pdf.blackoutRound"
+  | "pdf.blackoutDesc"
+  | "pdf.monsterRound"
+  | "pdf.monsterDesc"
+  | "pdf.platinumRound"
+  | "pdf.platinumDesc"
+  | "pdf.scoreLabel"
+  | "pdf.accuracyLabel"
+  | "pdf.timeLabel"
+  | "pdf.correct"
+  | "pdf.wrong"
+  | "pdf.yourAnswer"
+  | "pdf.yourAnswerAimed"
+  | "pdf.correctAngle"
+  | "pdf.platinumBadge"
+  | "pdf.monsterBadge"
+  | "pdf.encourage90"
+  | "pdf.encourage70"
+  | "pdf.encourage50"
+  | "pdf.encourageBelow"
+  | "pdf.tip"
+  | "pdf.footer"
+  // Email
+  | "email.subject"
+  | "email.greeting"
+  | "email.bodyIntro"
+  | "email.curriculumIntro"
+  | "email.regards";
 
 export type Translations = Record<TranslationKey, string>;
 

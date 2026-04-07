@@ -2,6 +2,7 @@
 
 import { generateSessionPdf } from "./generatePdf";
 import type { SessionSummary, QuestionAttempt } from "./sessionLog";
+import { getT } from "../i18n";
 
 // Level 2 sector data helpers
 function makeSectors(values: number[], unknownIdx: number) {
@@ -251,7 +252,7 @@ export async function generateTestPdf(): Promise<void> {
     attempts,
   };
 
-  const blob = await generateSessionPdf(summary);
+  const blob = await generateSessionPdf(summary, getT("en"));
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

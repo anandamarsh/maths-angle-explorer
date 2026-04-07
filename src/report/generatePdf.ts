@@ -2,6 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import type { SessionSummary, QuestionAttempt } from "./sessionLog";
+import type { TFunction } from "../i18n/types";
 
 // --- Color palette ---
 
@@ -375,7 +376,7 @@ function drawAngleDiagram(
 
 // --- Main PDF generation ---
 
-export async function generateSessionPdf(summary: SessionSummary): Promise<Blob> {
+export async function generateSessionPdf(summary: SessionSummary, t: TFunction): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();   // 210
   const pageH = doc.internal.pageSize.getHeight();  // 297
@@ -427,7 +428,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text(`Session Report (Level ${summary.level})`, titleCX, line2Y, { align: "center" });
+  doc.text(t("pdf.sessionReport", { level: summary.level }), titleCX, line2Y, { align: "center" });
 
   curY += bannerH + 14;
 
@@ -457,7 +458,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("NSW Mathematics Curriculum", margin, curY);
+  doc.text(t("pdf.nswCurriculum"), margin, curY);
   curY += 5.5 + 3.5;
 
   // Pill + stage + description row
@@ -484,48 +485,48 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Objective:", margin, curY);
+  doc.text(t("pdf.objective"), margin, curY);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
     sanitize(curr.levelDesc.replace(/^Level \d+\s*[-\u2013]\s*/i, "")),
-    margin + doc.getTextWidth("Objective:") + 2, curY
+    margin + doc.getTextWidth(t("pdf.objective")) + 2, curY
   );
   curY += currLineH + 3;  // extra gap after Objective
 
   // Blackout Round
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Blackout Round:", margin, curY);
+  doc.text(t("pdf.blackoutRound"), margin, curY);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Earn 10 stars by aiming the cannon at the correct angle and firing.",
-    margin + doc.getTextWidth("Blackout Round:") + 2, curY
+    t("pdf.blackoutDesc"),
+    margin + doc.getTextWidth(t("pdf.blackoutRound")) + 2, curY
   );
   curY += currLineH;
 
   // Monster Round
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Monster Round:", margin, curY);
+  doc.text(t("pdf.monsterRound"), margin, curY);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Defend all 10 stars against harder questions. Wrong answers lose a star.",
-    margin + doc.getTextWidth("Monster Round:") + 2, curY
+    t("pdf.monsterDesc"),
+    margin + doc.getTextWidth(t("pdf.monsterRound")) + 2, curY
   );
   curY += currLineH;
 
   // Platinum Round
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.textDark);
-  doc.text("Platinum Round:", margin, curY);
+  doc.text(t("pdf.platinumRound"), margin, curY);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
   doc.text(
-    "Type the angle and fire blind \u2014 the cannon is hidden. Maximum challenge!",
-    margin + doc.getTextWidth("Platinum Round:") + 2, curY
+    t("pdf.platinumDesc"),
+    margin + doc.getTextWidth(t("pdf.platinumRound")) + 2, curY
   );
   curY += 8;
 
@@ -546,7 +547,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text("Score", margin + boxW / 2, curY + 5.5, { align: "center" });
+  doc.text(t("pdf.scoreLabel"), margin + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(scoreColor);
@@ -562,7 +563,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text("Accuracy", box2X + boxW / 2, curY + 5.5, { align: "center" });
+  doc.text(t("pdf.accuracyLabel"), box2X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(accColor);
@@ -576,7 +577,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text("Total Time", box3X + boxW / 2, curY + 5.5, { align: "center" });
+  doc.text(t("pdf.timeLabel"), box3X + boxW / 2, curY + 5.5, { align: "center" });
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.accentPurple);
@@ -666,7 +667,7 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    const icon = attempt.isCorrect ? "CORRECT" : "WRONG";
+    const icon = attempt.isCorrect ? t("pdf.correct") : t("pdf.wrong");
     const iconW = doc.getTextWidth(icon);
     const groupRight = pageW - margin - 4;
     const groupStart = groupRight - iconW - 3 - timeW2;
@@ -695,13 +696,13 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor("#94a3b8");
-      doc.text("PLATINUM ROUND", textX, textY);
+      doc.text(t("pdf.platinumBadge"), textX, textY);
       textY += 6;
     } else if (attempt.gamePhase === "monster") {
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       doc.setTextColor("#a855f7");
-      doc.text("MONSTER ROUND", textX, textY);
+      doc.text(t("pdf.monsterBadge"), textX, textY);
       textY += 6;
     }
 
@@ -710,15 +711,15 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFont("helvetica", "normal");
     doc.setTextColor(attempt.isCorrect ? COLORS.correctDark : COLORS.wrongBorder);
     const givenLabel = attempt.childAnswer !== null
-      ? `Your answer: ${attempt.childAnswer}\u00b0`
-      : "Your answer: (aimed)";
-    doc.text(sanitize(givenLabel), textX, textY);
+      ? t("pdf.yourAnswer", { value: attempt.childAnswer })
+      : t("pdf.yourAnswerAimed");
+    doc.text(givenLabel, textX, textY);
     textY += 5;
 
     // Correct angle
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COLORS.textDark);
-    doc.text(sanitize(`Correct angle: ${attempt.correctAnswer}\u00b0`), textX, textY);
+    doc.text(t("pdf.correctAngle", { value: attempt.correctAnswer }), textX, textY);
 
     curY += cardBodyH;
 
@@ -756,10 +757,10 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
   doc.setFont("helvetica", "bold");
   doc.setTextColor(COLORS.accentPurple);
   const encouragement =
-    summary.accuracy >= 90 ? "Amazing work! You're an angle master!" :
-    summary.accuracy >= 70 ? "Great job! Your aim is getting sharper!" :
-    summary.accuracy >= 50 ? "Nice effort! Keep practising those angles!" :
-                             "Good try! Every shot teaches you something new!";
+    summary.accuracy >= 90 ? t("pdf.encourage90") :
+    summary.accuracy >= 70 ? t("pdf.encourage70") :
+    summary.accuracy >= 50 ? t("pdf.encourage50") :
+                             t("pdf.encourageBelow");
   doc.text(encouragement, pageW / 2, curY + 13, { align: "center" });
 
   const wrongAttempts = summary.attempts.filter(a => !a.isCorrect);
@@ -768,14 +769,14 @@ export async function generateSessionPdf(summary: SessionSummary): Promise<Blob>
     doc.setFont("helvetica", "normal");
     doc.setTextColor(COLORS.textMuted);
     doc.text(
-      "Tip: Look at the angle diagram \u2014 remember 90\u00b0 is a right angle, 180\u00b0 is a straight line.",
+      t("pdf.tip"),
       pageW / 2, curY + 22, { align: "center" }
     );
   }
 
   doc.setFontSize(7);
   doc.setTextColor("#94a3b8");
-  doc.text("Generated by SeeMaths - Angle Explorer", pageW / 2, pageH - 8, { align: "center" });
+  doc.text(t("pdf.footer"), pageW / 2, pageH - 8, { align: "center" });
   doc.text("https://www.seemaths.com", pageW / 2, pageH - 4, { align: "center" });
 
   return doc.output("blob");

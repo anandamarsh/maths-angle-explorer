@@ -5,7 +5,7 @@ import { useIsMobileLandscape } from "../hooks/useMediaQuery";
 import type { SessionSummary } from "../report/sessionLog";
 import type { ModalAutopilotControls } from "../hooks/useAutopilot";
 import { emailReport, shareReport } from "../report/shareReport";
-import { useT } from "../i18n";
+import { useT, useLocale } from "../i18n";
 
 function LevelCompleteReportActions({
   summary,
@@ -17,6 +17,7 @@ function LevelCompleteReportActions({
   autopilotControlsRef?: React.MutableRefObject<ModalAutopilotControls | null>;
 }) {
   const t = useT();
+  const { locale } = useLocale();
   const [generating, setGenerating] = useState(false);
   const [shareEmail, setShareEmail] = useState("");
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
@@ -45,7 +46,7 @@ function LevelCompleteReportActions({
   async function handleShare() {
     setGenerating(true);
     try {
-      await shareReport(summary);
+      await shareReport(summary, locale);
     } catch (error) {
       console.error("Report share failed:", error);
     } finally {
@@ -59,7 +60,7 @@ function LevelCompleteReportActions({
     setEmailFeedback(null);
     setEmailError(false);
     try {
-      await emailReport(summary, shareEmail);
+      await emailReport(summary, shareEmail, locale);
       setEmailFeedback(t("report.sendSuccess", { email: shareEmail.trim() }));
     } catch (error) {
       console.error("Email send failed:", error);
