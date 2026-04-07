@@ -114,7 +114,7 @@ function buildEmailHtml(summary: SessionSummary, t: TFunction): string {
   return `
     <p>${greeting}</p>
     <p>${body}</p>
-    <p>${curriculumLine}</p>
+    <p>${curriculumLine} <a href="${escapeHtml(curriculum.syllabusUrl)}">${escapeHtml(curriculum.code)}</a></p>
     <p>${regards}<br />${escapeHtml(GAME_NAME)}<br /><a href="${escapeHtml(SITE_URL)}">${escapeHtml(SITE_URL)}</a></p>
   `;
 }

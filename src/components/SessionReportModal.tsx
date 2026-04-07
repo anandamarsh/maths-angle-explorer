@@ -19,6 +19,9 @@ function LevelCompleteReportActions({
   const t = useT();
   const { locale } = useLocale();
   const [generating, setGenerating] = useState(false);
+  const [playerName, setPlayerName] = useState(() => {
+    try { return localStorage.getItem("reportName") || ""; } catch { return ""; }
+  });
   const [shareEmail, setShareEmail] = useState(() => {
     try { return localStorage.getItem("reportEmail") || ""; } catch { return ""; }
   });
@@ -69,7 +72,8 @@ function LevelCompleteReportActions({
     setEmailFeedback(null);
     setEmailError(false);
     try {
-      await emailReport(summary, shareEmail, locale);
+      const namedSummary = playerName.trim() ? { ...summary, playerName: playerName.trim() } : summary;
+      await emailReport(namedSummary, shareEmail, locale);
       setEmailFeedback(t("report.sendSuccess", { email: shareEmail.trim() }));
     } catch (error) {
       console.error("Email send failed:", error);
@@ -127,6 +131,17 @@ function LevelCompleteReportActions({
         >
           {generating ? t("report.creating") : t("report.shareReport")}
         </button>
+        <input
+          type="text"
+          value={playerName}
+          onChange={(event) => {
+            const v = event.target.value;
+            setPlayerName(v);
+            try { localStorage.setItem("reportName", v); } catch { /* ignore */ }
+          }}
+          placeholder={t("report.namePlaceholder")}
+          className="min-w-0 w-36 shrink-0 rounded-2xl border-2 border-slate-600 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-slate-400"
+        />
         <input
           type="email"
           value={shareEmail}

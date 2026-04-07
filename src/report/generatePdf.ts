@@ -465,9 +465,9 @@ export async function generateSessionPdf(summary: SessionSummary, t: TFunction, 
 
   const line2Y = curY + 21;
   doc.setFontSize(7.5);
-  doc.setFont(mainFont, "normal");
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(COLORS.textMuted);
-  doc.text(sanitize(formatDate(summary.date), useUnicode), titleColX, line2Y);
+  doc.text(sanitize(formatDate(summary.date), false), titleColX, line2Y);
   doc.text(
     `${formatTime(summary.startTime)} - ${formatTime(summary.endTime)}`,
     margin + contentW - iconPad, line2Y, { align: "right" }

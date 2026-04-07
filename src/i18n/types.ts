@@ -56,6 +56,7 @@ export type TranslationKey =
   | "report.score"
   | "report.accuracy"
   | "report.stars"
+  | "report.namePlaceholder"
   | "report.sendSuccess"
   | "report.sendFail"
   // Level completion

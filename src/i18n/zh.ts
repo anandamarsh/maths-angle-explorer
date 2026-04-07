@@ -73,6 +73,7 @@ export const zh: Translations = {
   "report.score": "\u5f97\u5206",
   "report.accuracy": "\u51c6\u786e\u7387",
   "report.stars": "\u661f\u661f",
+  "report.namePlaceholder": "\u60a8\u7684\u59d3\u540d\uff08\u53ef\u9009\uff09",
   "report.sendSuccess": "\u62a5\u544a\u5df2\u53d1\u9001\u81f3 {email}",
   "report.sendFail": "\u53d1\u9001\u5931\u8d25\u3002",
 

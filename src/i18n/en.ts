@@ -73,6 +73,7 @@ export const en: Translations = {
   "report.score": "Score",
   "report.accuracy": "Accuracy",
   "report.stars": "Stars",
+  "report.namePlaceholder": "Your name (optional)",
   "report.sendSuccess": "Report sent to {email}",
   "report.sendFail": "Failed to send report.",
 
