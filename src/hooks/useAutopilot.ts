@@ -64,6 +64,9 @@ interface UseAutopilotArgs {
   callbacksRef: React.RefObject<AutopilotCallbacks | null>;
   autopilotEmail: string;
   mode?: "continuous" | "single-question";
+  wrongAnswerRate?: number;
+  maxWrongPerStage?: number;
+  timingScale?: number;
 }
 
 export function useAutopilot({
@@ -71,6 +74,9 @@ export function useAutopilot({
   callbacksRef,
   autopilotEmail,
   mode = "continuous",
+  wrongAnswerRate = WRONG_ANSWER_RATE,
+  maxWrongPerStage = MAX_WRONG_PER_STAGE,
+  timingScale = 1,
 }: UseAutopilotArgs) {
   const [isActive, setIsActive] = useState(false);
   const [phantomPos, setPhantomPos] = useState<PhantomPos | null>(null);
@@ -90,7 +96,7 @@ export function useAutopilot({
     const t = window.setTimeout(() => {
       if (!isActiveRef.current) return;
       fn();
-    }, ms);
+    }, Math.max(1, Math.round(ms * timingScale)));
     timersRef.current.push(t);
   }
 
@@ -103,7 +109,7 @@ export function useAutopilot({
     window.setTimeout(() => {
       if (!isActiveRef.current) return;
       setPhantomPos(prev => prev ? { ...prev, isClicking: false } : null);
-    }, 130);
+    }, Math.max(1, Math.round(130 * timingScale)));
   }
 
   // ── Type answer directly on keypad ────────────────────────────────────────
@@ -111,8 +117,8 @@ export function useAutopilot({
   function scheduleAim() {
     const { correctAnswer } = stateRef.current;
     const canGoWrong =
-      mode === "continuous" && wrongCountRef.current < MAX_WRONG_PER_STAGE;
-    const isWrong = canGoWrong && Math.random() < WRONG_ANSWER_RATE;
+      mode === "continuous" && wrongCountRef.current < maxWrongPerStage;
+    const isWrong = canGoWrong && Math.random() < wrongAnswerRate;
     if (isWrong) wrongCountRef.current += 1;
     const targetAngle = isWrong ? wrongAnswer(correctAnswer) : correctAnswer;
 
@@ -188,11 +194,11 @@ export function useAutopilot({
         callbacksRef.current?.submitAnswer();
         setPhantomPos(null);
         if (mode === "single-question") {
+          callbacksRef.current?.onAutopilotComplete?.();
           isActiveRef.current = false;
           setIsActive(false);
-          callbacksRef.current?.onAutopilotComplete?.();
         }
-      }, 140);
+      }, Math.max(1, Math.round(140 * timingScale)));
     });
   }
 
@@ -207,9 +213,9 @@ export function useAutopilot({
         if (level < levelCount) {
           callbacksRef.current?.goNextLevel();
         } else {
+          callbacksRef.current?.onAutopilotComplete?.();
           isActiveRef.current = false;
           setIsActive(false);
-          callbacksRef.current?.onAutopilotComplete?.();
         }
       });
       return;
@@ -253,7 +259,7 @@ export function useAutopilot({
         try {
           await (callbacksRef.current?.emailModalControls?.current?.triggerSend?.() ?? Promise.resolve());
         } catch { /* email errors don't block progression */ }
-        await new Promise<void>(r => window.setTimeout(r, 2000));
+        await new Promise<void>(r => window.setTimeout(r, Math.max(1, Math.round(2000 * timingScale))));
         if (!isActiveRef.current) return;
         setPhantomPos(null);
         const { level, levelCount } = stateRef.current;
@@ -262,10 +268,10 @@ export function useAutopilot({
           if (el) {
             const rect2 = el.getBoundingClientRect();
             moveHand(rect2.left + rect2.width / 2, rect2.top + rect2.height / 2);
-            await new Promise<void>(r => window.setTimeout(r, 400));
+            await new Promise<void>(r => window.setTimeout(r, Math.max(1, Math.round(400 * timingScale))));
             if (!isActiveRef.current) return;
             clickAt(rect2.left + rect2.width / 2, rect2.top + rect2.height / 2);
-            await new Promise<void>(r => window.setTimeout(r, 140));
+            await new Promise<void>(r => window.setTimeout(r, Math.max(1, Math.round(140 * timingScale))));
             if (!isActiveRef.current) return;
             el.click();
             setPhantomPos(null);
@@ -273,11 +279,11 @@ export function useAutopilot({
             callbacksRef.current?.goNextLevel();
           }
         } else {
+          callbacksRef.current?.onAutopilotComplete?.();
           isActiveRef.current = false;
           setIsActive(false);
-          callbacksRef.current?.onAutopilotComplete?.();
         }
-      }, 140);
+      }, Math.max(1, Math.round(140 * timingScale)));
     });
   }
 

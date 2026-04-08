@@ -18,6 +18,7 @@ Core features:
 - **Three round types** per level: Normal → Platinum → Monster
 - **Three difficulty levels** (Level 1, 2, 3)
 - **Session reporting** — PDF emailed at level completion
+- **Demo video recording** — dev-only screen-record flow with intro/outro slides
 - **Autopilot** — types answers directly, no canvas tapping
 - **Cheat codes** — keyboard shortcuts for dev/testing
 - **i18n** — multi-language support (new feature, see `i18n.md`)
@@ -106,6 +107,7 @@ Core features:
 | [Canvas & SVG](./canvas.md) | `specs/canvas.md` | `screens/ArcadeAngleScreen.tsx`, `geometry.ts` |
 | [Sound System](./sound-system.md) | `specs/sound-system.md` | `sound/index.ts` |
 | [Session Reporting](./session-reporting.md) | `specs/session-reporting.md` | `report/` |
+| [Demo Video Recording](./demo-video.md) | `specs/demo-video.md` | `hooks/useDemoRecorder.ts`, `components/DemoIntroOverlay.tsx`, `screens/ArcadeAngleScreen.tsx` |
 | [Autopilot](./autopilot.md) | `specs/autopilot.md` | `hooks/useAutopilot.ts`, `components/PhantomHand.tsx`, `components/AutopilotIcon.tsx` |
 | [Cheat Codes](./cheat-codes.md) | `specs/cheat-codes.md` | `hooks/useCheatCodes.ts` |
 | [i18n](./i18n.md) | `specs/i18n.md` | `i18n/` (planned), `components/LanguageSwitcher.tsx` (planned) |

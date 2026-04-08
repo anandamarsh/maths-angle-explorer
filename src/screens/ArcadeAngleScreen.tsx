@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { makeQuestion, type AngleQuestion } from "../game/angles";
+import DemoIntroOverlay from "../components/DemoIntroOverlay";
 import {
   startMusic,
   shuffleMusic,
@@ -23,6 +24,9 @@ import {
   playTypewriterClick,
   playKeyClick,
   ensureAudioReady,
+  startRecordingSoundtrack,
+  fadeOutRecordingSoundtrack,
+  stopRecordingSoundtrack,
 } from "../sound";
 import { polarToXY, arcPath, pointerToAngle } from "../geometry";
 import { texts } from "../texts";
@@ -36,6 +40,7 @@ import LanguageSwitcher from "../components/LanguageSwitcher";
 import SessionReportModal from "../components/SessionReportModal";
 import { useCheatCodes } from "../hooks/useCheatCodes";
 import { useAutopilot, type AutopilotCallbacks, type ModalAutopilotControls } from "../hooks/useAutopilot";
+import { useDemoRecorder } from "../hooks/useDemoRecorder";
 import PhantomHand from "../components/PhantomHand";
 import AutopilotIcon from "../components/AutopilotIcon";
 import {
@@ -52,11 +57,29 @@ import {
 const IS_DEV = import.meta.env.DEV;
 const ANSWER_CHEAT_CODE = "197879";
 const AUTOPILOT_EMAIL = (import.meta.env.VITE_AUTOPILOT_EMAIL as string | undefined) ?? "amarsh.anand@gmail.com";
+const DEMO_RECORDING_EMAIL = "teacher@myschool.com";
 const IS_LOCALHOST_DEV =
   IS_DEV &&
   new Set(["localhost", "127.0.0.1", "::1"]).has(
     globalThis.location?.hostname ?? "",
   );
+
+const DEMO_TEST_SCALE = (() => {
+  if (typeof window === "undefined") return 1;
+  const raw = new URLSearchParams(window.location.search).get("demoTestScale");
+  const parsed = raw ? Number.parseFloat(raw) : 1;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+})();
+
+function scaleDemoMs(ms: number) {
+  return Math.max(1, Math.round(ms * DEMO_TEST_SCALE));
+}
+
+function getStageTarget(isRecording: boolean, isAutopilot: boolean) {
+  if (isRecording) return 2;
+  if (isAutopilot) return AUTOPILOT_STAGE_TARGET;
+  return LEVEL_TARGET_COUNT;
+}
 
 function readInitialLevel(): 1 | 2 {
   if (typeof window === "undefined") return 1;
@@ -107,12 +130,12 @@ const CX = 240;
 const CY = 170;
 const BEAM_LEN = 150;
 const EGG_RADIUS = 130;
-const DEPLOY_MS = 900;
-const SHOT_MS = 380;
-const SPIN_MS = 600;
-const HIT_RESOLVE_MS = 1000;
-const PLATINUM_REVEAL_MS = 500;
-const ROUND_ANNOUNCE_MS = 4200;
+const DEPLOY_MS = scaleDemoMs(900);
+const SHOT_MS = scaleDemoMs(380);
+const SPIN_MS = scaleDemoMs(600);
+const HIT_RESOLVE_MS = scaleDemoMs(1000);
+const PLATINUM_REVEAL_MS = scaleDemoMs(500);
+const ROUND_ANNOUNCE_MS = scaleDemoMs(4200);
 const L1_TARGET_RADIUS = 100;
 const TARGET_DISTANCE = BEAM_LEN;
 const TARGET_EDGE_MARGIN = 4;
@@ -1897,6 +1920,21 @@ export default function ArcadeAngleScreen() {
   const autopilotCallbacksRef = useRef<AutopilotCallbacks | null>(null);
   const autopilotEmailModalRef = useRef<ModalAutopilotControls | null>(null);
   const isAutopilotRef = useRef(false);
+  const muteBeforeRecordingRef = useRef<boolean | null>(null);
+  const demoRecorderCallbacksRef = useRef({
+    onStartPlaying: () => {},
+    prepareAudio: () => {},
+    cleanupAudio: () => {},
+  });
+
+  const {
+    recordingPhase,
+    isRecording,
+    startRecording,
+    onIntroComplete,
+    showOutro,
+    onOutroComplete,
+  } = useDemoRecorder(demoRecorderCallbacksRef);
 
   function handleAudioToggle() {
     const nextMuted = toggleMute();
@@ -2186,7 +2224,7 @@ export default function ArcadeAngleScreen() {
           if (singleQuestionDemoRef.current) {
             singleQuestionDemoRef.current = false;
             showIconFlash(true);
-            window.setTimeout(() => setDemoRetryPending(true), 950);
+            window.setTimeout(() => setDemoRetryPending(true), scaleDemoMs(950));
           } else if (gamePhaseRef.current === "platinum") {
             earnPlatinumEggRef.current();
           } else if (gamePhaseRef.current === "monster") {
@@ -2371,14 +2409,14 @@ export default function ArcadeAngleScreen() {
   function showFlash(text: string, ok: boolean) {
     setFlash({ text, ok });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1600);
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), scaleDemoMs(1600));
   }
 
   function showIconFlash(ok: boolean) {
     playFlashDrop(ok);
     setFlash({ text: "", ok, icon: true });
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = window.setTimeout(() => setFlash(null), 1200);
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), scaleDemoMs(1200));
   }
 
   function nextQuestion(targetLevel = level) {
@@ -2428,16 +2466,16 @@ export default function ArcadeAngleScreen() {
     if (eggsCollected === 0) {
       setOpeningTutorialEnabled(false);
     }
-    const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
+    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
     if (newEggs === stageTarget) {
       setEggsCollected(stageTarget);
-      window.setTimeout(() => startMonsterRound(), 950);
+      window.setTimeout(() => startMonsterRound(), scaleDemoMs(950));
       return;
     }
     setEggsCollected(newEggs);
     shuffleMusic();
     showIconFlash(true);
-    window.setTimeout(() => nextQuestion(level), 950);
+    window.setTimeout(() => nextQuestion(level), scaleDemoMs(950));
   }
 
   function earnMonsterEgg() {
@@ -2455,17 +2493,17 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newGolden = monsterEggs + 1;
-    const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
+    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
     if (newGolden === stageTarget) {
       setMonsterEggs(stageTarget);
-      window.setTimeout(() => startPlatinumRound(), 950);
+      window.setTimeout(() => startPlatinumRound(), scaleDemoMs(950));
       return;
     }
     setMonsterEggs(newGolden);
     playGoldenEgg();
     switchToMonsterMusic();
     showIconFlash(true);
-    window.setTimeout(() => nextQuestion(level), 950);
+    window.setTimeout(() => nextQuestion(level), scaleDemoMs(950));
   }
 
   function loseEgg() {
@@ -2544,7 +2582,7 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newPlat = monsterEggs + 1;
-    const stageTarget = isAutopilotRef.current ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT;
+    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
     if (newPlat === stageTarget) {
       setMonsterEggs(stageTarget);
       if (level === 2) {
@@ -2578,7 +2616,7 @@ export default function ArcadeAngleScreen() {
     setMonsterEggs(newPlat);
     playGoldenEgg();
     showIconFlash(true);
-    window.setTimeout(() => nextQuestion(level), 950);
+    window.setTimeout(() => nextQuestion(level), scaleDemoMs(950));
   }
 
   function beginNewRun(targetLevel?: 1 | 2, carry = false) {
@@ -2893,6 +2931,7 @@ export default function ArcadeAngleScreen() {
   const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
   const showDevAnswer =
     (IS_DEV || cheatAnswerUnlocked) &&
+    !isRecording &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
   const baseAngle = level === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
@@ -2981,6 +3020,7 @@ export default function ArcadeAngleScreen() {
     goNextLevel: () => beginNewRun(level === 1 ? 2 : level, level > 1),
     playAgain: () => beginNewRun(level),
     emailModalControls: autopilotEmailModalRef,
+    onAutopilotComplete: isRecording ? showOutro : undefined,
   };
 
   const autopilotPhase =
@@ -3044,7 +3084,10 @@ export default function ArcadeAngleScreen() {
     mode: autopilotMode,
     gameState: autopilotGameState,
     callbacksRef: autopilotCallbacksRef,
-    autopilotEmail: AUTOPILOT_EMAIL,
+    autopilotEmail: isRecording ? DEMO_RECORDING_EMAIL : AUTOPILOT_EMAIL,
+    wrongAnswerRate: isRecording ? 0 : undefined,
+    maxWrongPerStage: isRecording ? 0 : undefined,
+    timingScale: DEMO_TEST_SCALE,
   });
   const isRobotVisibleActive = isAutopilot;
   const handleRobotButtonClick = isRobotVisibleActive
@@ -3090,6 +3133,44 @@ export default function ArcadeAngleScreen() {
   function handleKeypadCheatInput(key: string): boolean {
     return processCheatKey(key);
   }
+
+  demoRecorderCallbacksRef.current = {
+    onStartPlaying: () => {
+      resetCheatBuffer();
+      clearSingleQuestionDemo();
+      if (isAutopilot) deactivateAutopilot();
+      setAutopilotMode("continuous");
+      setUnlockedLevel(1);
+      setHasDiscoveredCannonDrag(true);
+      setHasSeenFirstFireTutorial(true);
+      setTutorialHintVisible(false);
+      setTypedAimTutorialStage("done");
+      setFirstFireTutorialReady(false);
+      handleKeypadChange("");
+      beginNewRun(1);
+      window.setTimeout(() => activateAutopilot(), scaleDemoMs(450));
+    },
+    prepareAudio: () => {
+      muteBeforeRecordingRef.current = isMuted();
+      if (!isMuted()) {
+        const nextMuted = toggleMute();
+        setSoundMuted(nextMuted);
+      } else {
+        setSoundMuted(true);
+      }
+      startRecordingSoundtrack();
+    },
+    cleanupAudio: () => {
+      stopRecordingSoundtrack();
+      if (muteBeforeRecordingRef.current === false && isMuted()) {
+        const nextMuted = toggleMute();
+        setSoundMuted(nextMuted);
+      } else {
+        setSoundMuted(isMuted());
+      }
+      muteBeforeRecordingRef.current = null;
+    },
+  };
 
   return (
     <div
@@ -3188,7 +3269,7 @@ export default function ArcadeAngleScreen() {
           )}
 
           <div className="flex items-center gap-1.5">
-            {Array.from({ length: isAutopilot ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT }, (_, i) => i).map(
+            {Array.from({ length: getStageTarget(isRecording, isAutopilot) }, (_, i) => i).map(
               (i) => {
                 const collected =
                   isMonster || isPlatinum ? i < monsterEggs : i < eggsCollected;
@@ -3672,8 +3753,22 @@ export default function ArcadeAngleScreen() {
           </div>
 
           {/* Stars */}
-          <div className="shrink-0 grid grid-cols-5 gap-1 justify-center justify-items-center pb-1">
-            {Array.from({ length: isAutopilot ? AUTOPILOT_STAGE_TARGET : LEVEL_TARGET_COUNT }, (_, i) => i).map(
+          <div
+            className="shrink-0 gap-1 justify-center justify-items-center pb-1"
+            style={
+              isRecording
+                ? {
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }
+                : {
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                  }
+            }
+          >
+            {Array.from({ length: getStageTarget(isRecording, isAutopilot) }, (_, i) => i).map(
               (i) => {
                 const collected =
                   isMonster || isPlatinum ? i < monsterEggs : i < eggsCollected;
@@ -4015,28 +4110,42 @@ export default function ArcadeAngleScreen() {
           style={{ bottom: "1rem", left: "1rem" }}
         >
           {IS_LOCALHOST_DEV && (
-            <button
-              onClick={handleCaptureScene}
-              title="Capture scene"
-              className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                <path
-                  d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle
-                  cx="12"
-                  cy="12.5"
-                  r="3.25"
-                  stroke="white"
-                  strokeWidth="2"
-                />
-              </svg>
-            </button>
+            <>
+              <button
+                onClick={handleCaptureScene}
+                title="Capture scene"
+                className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                  <path
+                    d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12.5"
+                    r="3.25"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </button>
+              {!isRecording && (
+                <button
+                  onClick={startRecording}
+                  title="Record demo video"
+                  className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                    <rect x="2" y="4" width="13" height="16" rx="2" stroke="white" strokeWidth="2" />
+                    <path d="m22 7-5 3.5V14l5 3.5Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </>
           )}
           <div className="flex flex-row gap-1.5">
             <button
@@ -4217,30 +4326,71 @@ export default function ArcadeAngleScreen() {
             </svg>
           </button>
           {IS_LOCALHOST_DEV && (
-            <button
-              onClick={handleCaptureScene}
-              title="Capture scene"
-              className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                <path
-                  d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle
-                  cx="12"
-                  cy="12.5"
-                  r="3.25"
-                  stroke="white"
-                  strokeWidth="2"
-                />
-              </svg>
-            </button>
+            <>
+              <button
+                onClick={handleCaptureScene}
+                title="Capture scene"
+                className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                  <path
+                    d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12.5"
+                    r="3.25"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                </svg>
+              </button>
+              {!isRecording && (
+                <button
+                  onClick={startRecording}
+                  title="Record demo video"
+                  className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                    <rect x="2" y="4" width="13" height="16" rx="2" stroke="white" strokeWidth="2" />
+                    <path d="m22 7-5 3.5V14l5 3.5Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </>
           )}
         </div>
+      )}
+
+      {isRecording && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-3 z-[90] h-3 w-3 rounded-full"
+          style={{
+            background: "#ef4444",
+            boxShadow: "0 0 0 0 rgba(239,68,68,0.8)",
+            animation: "demo-recording-pulse 1.4s ease-in-out infinite",
+          }}
+        />
+      )}
+
+      {recordingPhase === "intro-prompt" && <DemoIntroOverlay type="intro" isStatic />}
+      {recordingPhase === "intro" && (
+        <DemoIntroOverlay type="intro" onComplete={onIntroComplete} />
+      )}
+      {recordingPhase === "outro" && (
+        <DemoIntroOverlay
+          type="outro"
+          onFadeStart={fadeOutRecordingSoundtrack}
+          onComplete={onOutroComplete}
+        />
+      )}
+      {recordingPhase === "stopping" && (
+        <div className="fixed inset-0 z-[9998]" style={{ background: "#020617" }} />
       )}
 
       {demoRetryPending && (

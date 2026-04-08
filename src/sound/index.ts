@@ -318,6 +318,29 @@ let bgTimer: ReturnType<typeof setTimeout> | null = null;
 let musicOn = false;
 let step = 0;
 let currentPattern: MusicPattern = MUSIC_PATTERNS[0];
+let recordingTimer: ReturnType<typeof setTimeout> | null = null;
+let recordingStep = 0;
+let recordingSoundtrackGain: GainNode | null = null;
+
+const RECORDING_SOUNDTRACK: MusicPattern = {
+  melody: [
+    392.0, 523.25, 659.25, 783.99,
+    659.25, 523.25, 440.0, 523.25,
+    587.33, 659.25, 783.99, 987.77,
+    783.99, 659.25, 523.25, 440.0,
+  ],
+  bass: [
+    98.0, 0, 130.81, 0,
+    110.0, 0, 130.81, 0,
+    146.83, 0, 164.81, 0,
+    130.81, 0, 110.0, 0,
+  ],
+  bpm: 132,
+  melodyVol: 0.042,
+  bassVol: 0.03,
+  melodyType: "triangle",
+  bassType: "sine",
+};
 
 function tick() {
   if (!musicOn) return;
@@ -356,6 +379,94 @@ export function stopMusic() {
 
 export function isMusicOn() {
   return musicOn;
+}
+
+function recordingTone(
+  freq: number,
+  start: number,
+  dur: number,
+  vol = 0.05,
+  type: OscillatorType = "triangle",
+) {
+  const c = ac();
+  if (!recordingSoundtrackGain) {
+    recordingSoundtrackGain = c.createGain();
+    recordingSoundtrackGain.gain.value = 0;
+    recordingSoundtrackGain.connect(c.destination);
+  }
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.connect(gain);
+  gain.connect(recordingSoundtrackGain);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  gain.gain.setValueAtTime(capGain(vol), start);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+  osc.start(start);
+  osc.stop(start + dur + 0.01);
+}
+
+function tickRecordingSoundtrack() {
+  if (!recordingSoundtrackGain) return;
+  const t = ac().currentTime;
+  const beat = 60 / RECORDING_SOUNDTRACK.bpm;
+  const {
+    melody,
+    bass,
+    melodyVol = 0.04,
+    bassVol = 0.03,
+    melodyType = "triangle",
+    bassType = "sine",
+  } = RECORDING_SOUNDTRACK;
+
+  if (melody[recordingStep]) {
+    recordingTone(melody[recordingStep], t, beat * 0.76, melodyVol, melodyType);
+  }
+  if (bass[recordingStep]) {
+    recordingTone(bass[recordingStep], t, beat * 0.92, bassVol, bassType);
+  }
+
+  recordingStep = (recordingStep + 1) % melody.length;
+  recordingTimer = setTimeout(tickRecordingSoundtrack, beat * 1000);
+}
+
+export function startRecordingSoundtrack() {
+  const c = ac();
+  if (!recordingSoundtrackGain) {
+    recordingSoundtrackGain = c.createGain();
+    recordingSoundtrackGain.gain.value = 0;
+    recordingSoundtrackGain.connect(c.destination);
+  }
+  if (recordingTimer) clearTimeout(recordingTimer);
+  recordingStep = 0;
+  const now = c.currentTime;
+  recordingSoundtrackGain.gain.cancelScheduledValues(now);
+  recordingSoundtrackGain.gain.setValueAtTime(
+    Math.max(recordingSoundtrackGain.gain.value, 0.0001),
+    now,
+  );
+  recordingSoundtrackGain.gain.exponentialRampToValueAtTime(0.22, now + 1.2);
+  tickRecordingSoundtrack();
+}
+
+export function fadeOutRecordingSoundtrack() {
+  if (!recordingSoundtrackGain || !ctx) return;
+  const now = ctx.currentTime;
+  recordingSoundtrackGain.gain.cancelScheduledValues(now);
+  recordingSoundtrackGain.gain.setValueAtTime(
+    Math.max(recordingSoundtrackGain.gain.value, 0.0001),
+    now,
+  );
+  recordingSoundtrackGain.gain.exponentialRampToValueAtTime(0.001, now + 1);
+}
+
+export function stopRecordingSoundtrack() {
+  if (recordingTimer) clearTimeout(recordingTimer);
+  recordingTimer = null;
+  if (!recordingSoundtrackGain || !ctx) return;
+  const now = ctx.currentTime;
+  recordingSoundtrackGain.gain.cancelScheduledValues(now);
+  recordingSoundtrackGain.gain.setValueAtTime(0.0001, now);
 }
 
 // ─── Monster Round music & SFX ────────────────────────────────────────────────

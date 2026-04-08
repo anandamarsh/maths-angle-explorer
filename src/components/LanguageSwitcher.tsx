@@ -61,7 +61,7 @@ export default function LanguageSwitcher() {
           onClick={() => setOpen((v) => !v)}
           title={t("lang.label")}
           aria-label={t("lang.label")}
-          className="arcade-button h-12 w-12 flex items-center justify-center p-2 shadow-[0_14px_30px_rgba(2,6,23,0.42)]"
+          className="arcade-button h-10 w-10 flex items-center justify-center p-2"
         >
           {/* Globe icon */}
           <svg

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Angle Explorer Intro</title>
+    <style>
+      :root {
+        --bg-top: #13294a;
+        --bg-bottom: #020617;
+        --panel-text: #f8fafc;
+        --muted: #b6c2d2;
+        --cyan-soft: #67e8f9;
+        --gold: #fde047;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        background: #020617;
+        color: var(--panel-text);
+        font-family: "Courier New", "Lucida Console", monospace;
+      }
+
+      body {
+        width: 100vw;
+        min-height: 100vh;
+      }
+
+      body.phase-2 .logo,
+      body.phase-2 .title,
+      body.phase-2 .subtitle,
+      body.phase-2 .divider,
+      body.phase-2 #intro-panel-1 {
+        display: none;
+      }
+
+      body.phase-2 .wrap {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+      }
+
+      body.phase-2 .content {
+        margin-top: 0;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .screen {
+        position: relative;
+        width: 100vw;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 18%, rgba(103, 232, 249, 0.14), transparent 18%),
+          radial-gradient(ellipse at top, var(--bg-top) 0%, #0b1b34 42%, var(--bg-bottom) 100%);
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0.12;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+        background-size: 38px 38px;
+        pointer-events: none;
+      }
+
+      .stars {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .star {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.75);
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
+      }
+
+      .wrap {
+        position: relative;
+        z-index: 1;
+        width: 100vw;
+        max-width: none;
+        margin: 0 auto;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 68px 1rem 72px;
+        text-align: center;
+      }
+
+      .logo {
+        width: 108px;
+        height: 108px;
+        margin: 0 auto 18px;
+        border-radius: 24px;
+        display: grid;
+        place-items: center;
+        background: rgba(9, 21, 43, 0.68);
+        box-shadow:
+          0 0 34px rgba(86, 207, 255, 0.22),
+          inset 0 0 0 1px rgba(126, 211, 255, 0.08);
+      }
+
+      .logo img {
+        width: 82px;
+        height: 82px;
+        object-fit: contain;
+        filter: drop-shadow(0 0 18px rgba(91, 227, 255, 0.35));
+      }
+
+      .title {
+        margin: 0;
+        color: var(--gold);
+        font-size: clamp(46px, 7vw, 84px);
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        text-shadow: 0 0 28px rgba(253, 224, 71, 0.18);
+      }
+
+      .subtitle,
+      .meta-line,
+      .body-line {
+        margin: 0;
+        font-size: clamp(24px, 2.3vw, 38px);
+        line-height: 1.34;
+      }
+
+      .subtitle {
+        margin-top: 18px;
+        color: var(--cyan-soft);
+        font-weight: 700;
+      }
+
+      .divider {
+        width: 92px;
+        height: 3px;
+        margin: 22px auto 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.9), transparent);
+      }
+
+      .content {
+        width: 100%;
+        margin: 26px auto 0;
+        text-align: left;
+        position: relative;
+        min-height: 240px;
+      }
+
+      .intro-panel {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity 320ms ease, transform 320ms ease;
+        pointer-events: none;
+      }
+
+      .intro-panel.is-active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      body.phase-2 .intro-panel {
+        position: static;
+        inset: auto;
+        transform: none;
+      }
+
+      .meta-line.centered { text-align: center; }
+
+      .body-line {
+        width: min(68vw, 1100px);
+        max-width: 100%;
+        margin: 0 auto;
+        color: #f8fafc;
+        font-size: clamp(24px, 2.4vw, 40px);
+        line-height: 1.45;
+        text-align: left;
+      }
+
+      .gold { color: var(--gold); font-weight: 700; }
+      .cyan { color: var(--cyan-soft); font-weight: 700; }
+      .muted { color: var(--muted); font-weight: 700; }
+      .group { margin-top: 18px; }
+      .group:first-of-type { margin-top: 0; }
+      .group.teaches { margin-top: 24px; }
+
+      @media (max-width: 720px) {
+        .wrap {
+          width: 100vw;
+          padding: 44px 1rem 52px;
+        }
+
+        .title { letter-spacing: 0.1em; }
+        .subtitle, .meta-line { font-size: clamp(20px, 5vw, 32px); }
+        .body-line {
+          width: min(88vw, 640px);
+          font-size: clamp(20px, 4.8vw, 30px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="screen">
+      <div class="grid"></div>
+      <div class="stars" aria-hidden="true">
+        <span class="star" style="left: 8%; top: 9%;"></span>
+        <span class="star" style="left: 19%; top: 28%;"></span>
+        <span class="star" style="left: 37%; top: 7%;"></span>
+        <span class="star" style="left: 55%; top: 16%;"></span>
+        <span class="star" style="left: 72%; top: 13%;"></span>
+        <span class="star" style="left: 86%; top: 30%;"></span>
+        <span class="star" style="left: 91%; top: 8%;"></span>
+        <span class="star" style="left: 12%; top: 56%;"></span>
+        <span class="star" style="left: 28%; top: 76%;"></span>
+        <span class="star" style="left: 49%; top: 64%;"></span>
+        <span class="star" style="left: 67%; top: 81%;"></span>
+        <span class="star" style="left: 82%; top: 69%;"></span>
+        <span class="star" style="left: 92%; top: 85%;"></span>
+      </div>
+      <div class="wrap">
+        <div class="logo">
+          <img src="apple-touch-icon.png" alt="Angle Explorer icon" />
+        </div>
+        <h1 class="title">Angle Explorer</h1>
+        <p class="subtitle">Angles, Aiming &amp; Missing Angle Reasoning</p>
+        <div class="divider"></div>
+
+        <section class="content">
+          <div id="intro-panel-1" class="intro-panel is-active">
+            <div class="group">
+              <p class="meta-line centered"><span class="gold">Stage 2-3</span> <span class="muted">NSW Curriculum</span></p>
+            </div>
+            <div class="group">
+              <p class="meta-line centered"><span class="cyan">MA2-16MG / MA3-16MG</span></p>
+            </div>
+          </div>
+
+          <div id="intro-panel-2" class="intro-panel">
+            <div class="group teaches">
+              <p class="body-line" contenteditable="true">
+                Students rotate a cannon to match
+                <span class="gold"> target angles</span>, then progress to
+                <span class="gold"> missing-angle</span> problems where they
+                must reason from
+                <span class="gold">90&deg;</span>, <span class="gold">180&deg;</span>,
+                and <span class="gold">360&deg;</span>
+                <span class="gold"> totals</span> before firing.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      window.setTimeout(() => {
+        document.body.classList.add("phase-2");
+        document.getElementById("intro-panel-1")?.classList.remove("is-active");
+        document.getElementById("intro-panel-2")?.classList.add("is-active");
+      }, 4000);
+    </script>
+  </body>
+</html>
