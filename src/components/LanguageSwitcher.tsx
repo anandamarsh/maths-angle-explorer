@@ -1,7 +1,7 @@
 // src/components/LanguageSwitcher.tsx
 
 import { useState, useRef, useEffect } from "react";
-import { useLocale, useT, getCustomLangs } from "../i18n";
+import { useLocale, useT } from "../i18n";
 import type { TranslationKey } from "../i18n";
 
 const BUILT_IN_LOCALES: { code: string; key: TranslationKey }[] = [
@@ -27,8 +27,6 @@ export default function LanguageSwitcher() {
   const t = useT();
   const [open, setOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
-
-  const customLangs = getCustomLangs();
 
   useEffect(() => {
     if (!open) return;
@@ -107,23 +105,7 @@ export default function LanguageSwitcher() {
                   <span style={{ flex: 1, fontFamily: '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Noto Sans CJK SC", "Arial Unicode MS", sans-serif' }}>
                     {t(key)}
                   </span>
-                  {isActive && <span style={{ color: "#22d3ee", fontSize: "2rem", lineHeight: 1 }}>&#10003;</span>}
-                </button>
-              );
-            })}
-            {Object.entries(customLangs).map(([code, name]) => {
-              const isActive = locale === code;
-              return (
-                <button
-                  key={code}
-                  onClick={() => { setLocale(code); setOpen(false); }}
-                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", gap: "16px" }}
-                >
-                  <span aria-hidden="true" style={FLAG_STYLE}>{"\u{1F310}"}</span>
-                  <span style={{ flex: 1, fontFamily: '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Noto Sans CJK SC", "Arial Unicode MS", sans-serif' }}>
-                    {name}
-                  </span>
-                  {isActive && <span style={{ color: "#22d3ee", fontSize: "2rem", lineHeight: 1 }}>&#10003;</span>}
+                  {isActive && <span className="text-cyan-400">&#10003;</span>}
                 </button>
               );
             })}
