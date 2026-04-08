@@ -10,6 +10,18 @@ const BUILT_IN_LOCALES: { code: string; key: TranslationKey }[] = [
   { code: "hi", key: "lang.hi" },
 ];
 
+const FLAG_EMOJI: Record<string, string> = {
+  en: "\u{1F1EC}\u{1F1E7}",
+  zh: "\u{1F1E8}\u{1F1F3}",
+  hi: "\u{1F1EE}\u{1F1F3}",
+};
+
+const FLAG_STYLE: React.CSSProperties = {
+  fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+  fontSize: "1.55rem",
+  lineHeight: 1,
+};
+
 export default function LanguageSwitcher() {
   const { locale, setLocale } = useLocale();
   const t = useT();
@@ -32,15 +44,16 @@ export default function LanguageSwitcher() {
   const itemStyle = (selected: boolean): React.CSSProperties => ({
     display: "block",
     width: "100%",
-    padding: "8px 16px",
+    padding: "14px 16px",
     textAlign: "left",
-    background: selected ? "rgba(56,189,248,0.15)" : "transparent",
-    color: selected ? "#38bdf8" : "#cbd5e1",
-    fontWeight: selected ? 700 : 400,
-    fontSize: "0.85rem",
+    background: "transparent",
+    color: selected ? "#67e8f9" : "#e5e7eb",
+    fontWeight: selected ? 800 : 500,
+    fontSize: "1rem",
     border: "none",
     cursor: "pointer",
     whiteSpace: "nowrap",
+    borderRadius: "18px",
   });
 
   return (
@@ -50,7 +63,7 @@ export default function LanguageSwitcher() {
           onClick={() => setOpen((v) => !v)}
           title={t("lang.label")}
           aria-label={t("lang.label")}
-          className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+          className="arcade-button h-12 w-12 flex items-center justify-center p-2 shadow-[0_14px_30px_rgba(2,6,23,0.42)]"
         >
           {/* Globe icon */}
           <svg
@@ -71,15 +84,15 @@ export default function LanguageSwitcher() {
           <div
             style={{
               position: "absolute",
-              top: "calc(100% + 6px)",
+              top: "calc(100% + 12px)",
               right: 0,
-              background: "rgba(2,6,23,0.97)",
-              border: "2px solid rgba(56,189,248,0.4)",
-              borderRadius: "12px",
-              padding: "6px 0",
-              minWidth: "160px",
+              background: "rgba(15,23,42,0.985)",
+              border: "4px solid rgba(36,127,186,0.78)",
+              borderRadius: "28px",
+              padding: "14px",
+              minWidth: "260px",
               zIndex: 9999,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+              boxShadow: "0 22px 44px rgba(2,6,23,0.52)",
             }}
           >
             {BUILT_IN_LOCALES.map(({ code, key }) => {
@@ -88,10 +101,13 @@ export default function LanguageSwitcher() {
                 <button
                   key={code}
                   onClick={() => { setLocale(code); setOpen(false); }}
-                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", gap: "16px" }}
                 >
-                  <span>{t(key)}</span>
-                  {isActive && <span style={{ color: "#38bdf8", marginLeft: 8 }}>&#10003;</span>}
+                  <span aria-hidden="true" style={FLAG_STYLE}>{FLAG_EMOJI[code] ?? "\u{1F310}"}</span>
+                  <span style={{ flex: 1, fontFamily: '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Noto Sans CJK SC", "Arial Unicode MS", sans-serif' }}>
+                    {t(key)}
+                  </span>
+                  {isActive && <span style={{ color: "#22d3ee", fontSize: "2rem", lineHeight: 1 }}>&#10003;</span>}
                 </button>
               );
             })}
@@ -101,10 +117,13 @@ export default function LanguageSwitcher() {
                 <button
                   key={code}
                   onClick={() => { setLocale(code); setOpen(false); }}
-                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  style={{ ...itemStyle(isActive), display: "flex", alignItems: "center", gap: "16px" }}
                 >
-                  <span>{name}</span>
-                  {isActive && <span style={{ color: "#38bdf8", marginLeft: 8 }}>&#10003;</span>}
+                  <span aria-hidden="true" style={FLAG_STYLE}>{"\u{1F310}"}</span>
+                  <span style={{ flex: 1, fontFamily: '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Noto Sans CJK SC", "Arial Unicode MS", sans-serif' }}>
+                    {name}
+                  </span>
+                  {isActive && <span style={{ color: "#22d3ee", fontSize: "2rem", lineHeight: 1 }}>&#10003;</span>}
                 </button>
               );
             })}
