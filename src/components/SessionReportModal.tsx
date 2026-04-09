@@ -6,6 +6,11 @@ import type { SessionSummary } from "../report/sessionLog";
 import type { ModalAutopilotControls } from "../hooks/useAutopilot";
 import { emailReport, shareReport } from "../report/shareReport";
 import { useT, useLocale } from "../i18n";
+import { usePersistentString } from "../utils/embeddedStorage";
+import { SHARED_STORAGE_KEYS } from "../utils/storageKeys";
+
+const LEGACY_REPORT_NAME_KEY = "reportName";
+const LEGACY_REPORT_EMAIL_KEY = "reportEmail";
 
 function LevelCompleteReportActions({
   summary,
@@ -19,12 +24,22 @@ function LevelCompleteReportActions({
   const t = useT();
   const { locale } = useLocale();
   const [generating, setGenerating] = useState(false);
-  const [playerName, setPlayerName] = useState(() => {
-    try { return localStorage.getItem("reportName") || ""; } catch { return ""; }
-  });
-  const [shareEmail, setShareEmail] = useState(() => {
-    try { return localStorage.getItem("reportEmail") || ""; } catch { return ""; }
-  });
+  const [playerName, setPlayerName] = usePersistentString(
+    SHARED_STORAGE_KEYS.reportName,
+    "",
+    {
+      legacyKeys: [LEGACY_REPORT_NAME_KEY],
+      removeWhen: (value) => value.trim() === "",
+    },
+  );
+  const [shareEmail, setShareEmail] = usePersistentString(
+    SHARED_STORAGE_KEYS.reportEmail,
+    "",
+    {
+      legacyKeys: [LEGACY_REPORT_EMAIL_KEY],
+      removeWhen: (value) => value.trim() === "",
+    },
+  );
   const [emailFeedback, setEmailFeedback] = useState<string | null>(null);
   const [emailError, setEmailError] = useState(false);
   const totalStars = summary.normalEggs + summary.monsterEggs;
@@ -34,14 +49,9 @@ function LevelCompleteReportActions({
   useEffect(() => {
     if (!autopilotControlsRef) return;
     autopilotControlsRef.current = {
-      appendChar: (ch: string) => setShareEmail(prev => {
-        const v = prev + ch;
-        try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
-        return v;
-      }),
+      appendChar: (ch: string) => setShareEmail((prev) => prev + ch),
       setEmail: (v: string) => {
         setShareEmail(v);
-        try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
       },
       triggerSend: () => {
         const email = shareEmail.trim();
@@ -145,9 +155,7 @@ function LevelCompleteReportActions({
           type="text"
           value={playerName}
           onChange={(event) => {
-            const v = event.target.value;
-            setPlayerName(v);
-            try { localStorage.setItem("reportName", v); } catch { /* ignore */ }
+            setPlayerName(event.target.value);
           }}
           placeholder={t("report.namePlaceholder")}
           className="min-w-0 w-36 shrink-0 rounded-2xl border-2 border-slate-600 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-slate-400"
@@ -156,9 +164,7 @@ function LevelCompleteReportActions({
           type="email"
           value={shareEmail}
           onChange={(event) => {
-            const v = event.target.value;
-            setShareEmail(v);
-            try { localStorage.setItem("reportEmail", v); } catch { /* ignore */ }
+            setShareEmail(event.target.value);
             if (emailFeedback) {
               setEmailFeedback(null);
               setEmailError(false);

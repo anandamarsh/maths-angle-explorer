@@ -1,11 +1,13 @@
 // src/i18n/index.ts
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import type { Translations, TranslationKey, TFunction } from "./types";
 import { en } from "./en";
 import { hi } from "./hi";
 import { zh } from "./zh";
+import { usePersistentString } from "../utils/embeddedStorage";
+import { SHARED_STORAGE_KEYS } from "../utils/storageKeys";
 
 // ── Built-in locales ───────────────────────────────────────────────────────────
 
@@ -71,14 +73,19 @@ function readSavedLocale(): string {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<string>(readSavedLocale);
+  const [locale, setLocaleState, localeLoaded] = usePersistentString(
+    SHARED_STORAGE_KEYS.locale,
+    readSavedLocale(),
+    { legacyKeys: ["lang"] },
+  );
 
   function setLocale(code: string) {
     setLocaleState(code);
-    try { localStorage.setItem("lang", code); } catch { /* ignore */ }
   }
 
   const t = getT(locale);
+
+  if (!localeLoaded) return null;
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>

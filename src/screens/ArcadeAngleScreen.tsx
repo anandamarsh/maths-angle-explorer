@@ -44,6 +44,8 @@ import { useAutopilot, type AutopilotCallbacks, type ModalAutopilotControls } fr
 import { useDemoRecorder } from "../hooks/useDemoRecorder";
 import PhantomHand from "../components/PhantomHand";
 import AutopilotIcon from "../components/AutopilotIcon";
+import { usePersistentBoolean } from "../utils/embeddedStorage";
+import { SHARED_STORAGE_KEYS } from "../utils/storageKeys";
 import {
   startSession,
   continueSession,
@@ -64,14 +66,9 @@ const IS_LOCALHOST_DEV =
   new Set(["localhost", "127.0.0.1", "::1"]).has(
     globalThis.location?.hostname ?? "",
   );
-const YOUTUBE_BUBBLE_DISMISSED_KEY =
+const LEGACY_YOUTUBE_BUBBLE_DISMISSED_KEY =
   "maths-angle-explorer:youtube-bubble-dismissed";
 const YOUTUBE_ICON_URL = "/youtube-circle-logo-svgrepo-com.svg";
-
-function readYouTubeBubbleDismissed() {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(YOUTUBE_BUBBLE_DISMISSED_KEY) === "true";
-}
 
 function toYouTubeEmbedUrl(url: string): string | null {
   try {
@@ -1687,9 +1684,12 @@ export default function ArcadeAngleScreen() {
   );
   const [showShareDrawer, setShowShareDrawer] = useState(false);
   const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
-  const [youtubeBubbleDismissed, setYoutubeBubbleDismissed] = useState(
-    readYouTubeBubbleDismissed,
-  );
+  const [youtubeBubbleDismissed, setYoutubeBubbleDismissed, youtubePrefsLoaded] =
+    usePersistentBoolean(
+      SHARED_STORAGE_KEYS.youtubeBubbleDismissed,
+      false,
+      { legacyKeys: [LEGACY_YOUTUBE_BUBBLE_DISMISSED_KEY] },
+    );
   const [youtubeEmbedUrl, setYoutubeEmbedUrl] = useState<string | null>(null);
   const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(() => {
@@ -1798,13 +1798,6 @@ export default function ArcadeAngleScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    window.localStorage.setItem(
-      YOUTUBE_BUBBLE_DISMISSED_KEY,
-      youtubeBubbleDismissed ? "true" : "false",
-    );
-  }, [youtubeBubbleDismissed]);
-
   // Intro / deploy animation
   type IntroPhase = "origin" | "deploying" | "ready";
   const [introPhase, setIntroPhase] = useState<IntroPhase>("origin");
@@ -1812,6 +1805,7 @@ export default function ArcadeAngleScreen() {
   const [panelVisible, setPanelVisible] = useState(false);
   const [typeIdx, setTypeIdx] = useState(0);
   const [introKey, setIntroKey] = useState(0); // bump to replay intro for same Q
+  const showYoutubeBubble = youtubePrefsLoaded && !youtubeBubbleDismissed;
 
   // Shot animation
   const [isFiring, setIsFiring] = useState<{
@@ -3241,7 +3235,7 @@ export default function ArcadeAngleScreen() {
     <div
       className={`social-video-cta ${isMobileLandscape ? "row-start-1 col-start-1" : ""}`}
     >
-      {!youtubeBubbleDismissed && (
+      {showYoutubeBubble && (
         <div
           className={`social-video-bubble ${youtubeBubblePlacement} ${isMobileLandscape ? "is-mobile-landscape" : ""}`}
           role="complementary"
