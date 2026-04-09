@@ -13,6 +13,8 @@ export const en: Translations = {
   "toolbar.addComment": "Add Comment",
 
   "social.shareHeading": "Spread the word...",
+  "social.youtubePrompt": "First time? Look at a video on how to play.",
+  "social.youtubeDismiss": "Don't show again",
 
   "game.enterNumber": "Enter a number!",
   "game.tryAgain": "Try again!",

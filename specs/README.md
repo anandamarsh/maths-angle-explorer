@@ -105,6 +105,7 @@ Core features:
 | [Game Loop](./game-loop.md) | `specs/game-loop.md` | `screens/ArcadeAngleScreen.tsx` |
 | [Game Logic](./game-logic.md) | `specs/game-logic.md` | `game/angles.ts`, `geometry.ts` |
 | [Canvas & SVG](./canvas.md) | `specs/canvas.md` | `screens/ArcadeAngleScreen.tsx`, `geometry.ts` |
+| [Social](./social.md) | `specs/social.md` | `components/Social.jsx`, `screens/ArcadeAngleScreen.tsx`, `index.css` |
 | [Sound System](./sound-system.md) | `specs/sound-system.md` | `sound/index.ts` |
 | [Session Reporting](./session-reporting.md) | `specs/session-reporting.md` | `report/` |
 | [Demo Video Recording](./demo-video.md) | `specs/demo-video.md` | `hooks/useDemoRecorder.ts`, `components/DemoIntroOverlay.tsx`, `screens/ArcadeAngleScreen.tsx` |

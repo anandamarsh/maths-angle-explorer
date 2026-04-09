@@ -12,6 +12,8 @@ export type TranslationKey =
   | "toolbar.addComment"
   // Social
   | "social.shareHeading"
+  | "social.youtubePrompt"
+  | "social.youtubeDismiss"
   // Game feedback
   | "game.enterNumber"
   | "game.tryAgain"

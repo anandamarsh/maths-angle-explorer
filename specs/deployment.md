@@ -146,6 +146,12 @@ directly — players discover games through the shell).
 
 **Comments button** → opens DiscussIt drawer (embedded iframe).
 
+**YouTube button**:
+- rendered when `public/manifest.json` contains a valid `videoUrl`
+- opens a centered modal with the embedded project walkthrough video
+- shows a first-time dismissible speech bubble
+- the bubble may appear above or below the icon depending on which position keeps it visible
+
 ---
 
 ## Playwright test config (`playwright.config.ts`)

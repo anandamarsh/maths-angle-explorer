@@ -13,6 +13,8 @@ export const zh: Translations = {
   "toolbar.addComment": "\u6dfb\u52a0\u8bc4\u8bba",
 
   "social.shareHeading": "\u5206\u4eab\u7ed9\u670b\u53cb...",
+  "social.youtubePrompt": "\u7b2c\u4e00\u6b21\u73a9\u5417\uff1f\u5148\u770b\u4e00\u4e2a\u5982\u4f55\u73a9\u7684\u5f71\u7247\u3002",
+  "social.youtubeDismiss": "\u4e0d\u518d\u663e\u793a",
 
   "game.enterNumber": "\u8bf7\u8f93\u5165\u6570\u5b57\uff01",
   "game.tryAgain": "\u518d\u8bd5\u4e00\u6b21\uff01",

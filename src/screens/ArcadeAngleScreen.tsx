@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 import { createPortal } from "react-dom";
 import { makeQuestion, type AngleQuestion } from "../game/angles";
 import DemoIntroOverlay from "../components/DemoIntroOverlay";
@@ -63,6 +64,30 @@ const IS_LOCALHOST_DEV =
   new Set(["localhost", "127.0.0.1", "::1"]).has(
     globalThis.location?.hostname ?? "",
   );
+const YOUTUBE_BUBBLE_DISMISSED_KEY =
+  "maths-angle-explorer:youtube-bubble-dismissed";
+const YOUTUBE_ICON_URL = "/youtube-circle-logo-svgrepo-com.svg";
+
+function readYouTubeBubbleDismissed() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(YOUTUBE_BUBBLE_DISMISSED_KEY) === "true";
+}
+
+function toYouTubeEmbedUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const videoId = parsed.hostname.includes("youtu.be")
+      ? parsed.pathname.replace(/^\/+/, "")
+      : (parsed.searchParams.get("v") ??
+        (parsed.pathname.startsWith("/shorts/")
+          ? parsed.pathname.split("/")[2]
+          : null));
+    if (!videoId) return null;
+    return `https://www.youtube.com/embed/${videoId}`;
+  } catch {
+    return null;
+  }
+}
 
 const DEMO_TEST_SCALE = (() => {
   if (typeof window === "undefined") return 1;
@@ -1650,6 +1675,7 @@ function NumericKeypad({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ArcadeAngleScreen() {
+  const MOBILE_VIEWPORT_MAX_WIDTH = 768;
   const t = useT();
   const { locale } = useLocale();
   const initialLevelRef = useRef<1 | 2>(readInitialLevel());
@@ -1661,13 +1687,16 @@ export default function ArcadeAngleScreen() {
   );
   const [showShareDrawer, setShowShareDrawer] = useState(false);
   const [showCommentsDrawer, setShowCommentsDrawer] = useState(false);
+  const [youtubeBubbleDismissed, setYoutubeBubbleDismissed] = useState(
+    readYouTubeBubbleDismissed,
+  );
+  const [youtubeEmbedUrl, setYoutubeEmbedUrl] = useState<string | null>(null);
+  const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(() => {
     if (typeof window === "undefined") return false;
     const coarsePointer =
       window.matchMedia?.("(pointer: coarse)").matches ?? false;
-    return (
-      coarsePointer && Math.min(window.innerWidth, window.innerHeight) < 900
-    );
+    return coarsePointer && window.innerWidth <= MOBILE_VIEWPORT_MAX_WIDTH;
   });
   const [isTouchInput, setIsTouchInput] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -1741,6 +1770,40 @@ export default function ArcadeAngleScreen() {
       "*",
     );
   }, [showCommentsDrawer, showShareDrawer]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/manifest.json", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load manifest (${response.status})`);
+        }
+        return response.json() as Promise<{ videoUrl?: unknown }>;
+      })
+      .then((manifest) => {
+        if (cancelled) return;
+        const rawVideoUrl =
+          typeof manifest.videoUrl === "string" ? manifest.videoUrl.trim() : "";
+        setYoutubeEmbedUrl(rawVideoUrl ? toYouTubeEmbedUrl(rawVideoUrl) : null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setYoutubeEmbedUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      YOUTUBE_BUBBLE_DISMISSED_KEY,
+      youtubeBubbleDismissed ? "true" : "false",
+    );
+  }, [youtubeBubbleDismissed]);
 
   // Intro / deploy animation
   type IntroPhase = "origin" | "deploying" | "ready";
@@ -1820,7 +1883,7 @@ export default function ArcadeAngleScreen() {
         window.matchMedia?.("(pointer: coarse)").matches ?? false;
       setIsTouchInput(coarsePointer);
       setIsCompactViewport(
-        coarsePointer && Math.min(window.innerWidth, window.innerHeight) < 900,
+        coarsePointer && window.innerWidth <= MOBILE_VIEWPORT_MAX_WIDTH,
       );
       setIsMobileLandscape(
         window.innerWidth < 1024 && window.innerWidth > window.innerHeight,
@@ -3172,6 +3235,65 @@ export default function ArcadeAngleScreen() {
     },
   };
 
+  const youtubeBubblePlacement = "is-above";
+
+  const youtubeCta = youtubeEmbedUrl ? (
+    <div className="social-video-cta">
+      {!youtubeBubbleDismissed && (
+        <div
+          className={`social-video-bubble ${youtubeBubblePlacement}`}
+          role="complementary"
+          aria-label="How to play video prompt"
+        >
+          <button
+            type="button"
+            className="social-video-bubble-link"
+            onClick={() => {
+              setShowShareDrawer(false);
+              setShowCommentsDrawer(false);
+              setYoutubeModalOpen(true);
+            }}
+          >
+            <span className="social-video-bubble-icon-shell">
+              <img
+                src={YOUTUBE_ICON_URL}
+                alt="YouTube"
+                className="social-video-button-image"
+              />
+            </span>
+            <span className="social-video-bubble-copy">
+              {t("social.youtubePrompt")}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="social-video-bubble-dismiss"
+            onClick={() => setYoutubeBubbleDismissed(true)}
+          >
+            {t("social.youtubeDismiss")}
+          </button>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setShowShareDrawer(false);
+          setShowCommentsDrawer(false);
+          setYoutubeModalOpen(true);
+        }}
+        title="Watch how to play"
+        aria-label="Watch how to play"
+        className={`social-video-button ${youtubeModalOpen ? "is-active" : ""}`}
+      >
+        <img
+          src={YOUTUBE_ICON_URL}
+          alt="YouTube"
+          className="social-video-button-image"
+        />
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div
       className="flex flex-col landscape:flex-row h-svh w-screen overflow-hidden font-arcade relative"
@@ -4233,6 +4355,7 @@ export default function ArcadeAngleScreen() {
                 />
               </svg>
             </button>
+            {youtubeCta}
           </div>
         </div>
       ) : (
@@ -4323,8 +4446,9 @@ export default function ArcadeAngleScreen() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-            </svg>
-          </button>
+              </svg>
+            </button>
+          {youtubeCta}
           {IS_LOCALHOST_DEV && (
             <>
               <button
@@ -4407,6 +4531,37 @@ export default function ArcadeAngleScreen() {
             </button>
           </div>
         </div>
+      )}
+
+      {youtubeModalOpen && youtubeEmbedUrl && (
+        <>
+          <div
+            className="fixed inset-0 z-[2147483646] social-video-backdrop"
+            onClick={() => setYoutubeModalOpen(false)}
+          />
+          <div
+            className="social-video-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="How to play video"
+          >
+            <button
+              type="button"
+              className="social-video-modal-close"
+              aria-label="Close how to play video"
+              onClick={() => setYoutubeModalOpen(false)}
+            >
+              <CloseIcon className="social-video-modal-close-icon" aria-hidden="true" />
+            </button>
+            <iframe
+              src={youtubeEmbedUrl}
+              title="How to play video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
+        </>
       )}
 
       {/* ── Backdrop — closes whichever drawer is open ── */}
