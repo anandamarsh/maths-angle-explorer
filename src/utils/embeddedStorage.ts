@@ -4,7 +4,7 @@ const STORAGE_GET = "interactive-maths:storage:get";
 const STORAGE_SET = "interactive-maths:storage:set";
 const STORAGE_REMOVE = "interactive-maths:storage:remove";
 const STORAGE_VALUE = "interactive-maths:storage:value";
-const TIMEOUT_MS = 250;
+const TIMEOUT_MS = 1500;
 
 type StorageOptions = {
   legacyKeys?: string[];
