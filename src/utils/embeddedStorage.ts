@@ -8,6 +8,7 @@ const TIMEOUT_MS = 250;
 
 type StorageOptions = {
   legacyKeys?: string[];
+  clearKeysOnSet?: string[];
 };
 
 type PersistentStringOptions = StorageOptions & {
@@ -147,6 +148,11 @@ export function usePersistentString(
 ): [string, Dispatch<SetStateAction<string>>, boolean] {
   const legacyKeysKey = (options.legacyKeys ?? []).join("\u0000");
   const legacyKeys = useMemo(() => options.legacyKeys ?? [], [legacyKeysKey]);
+  const clearKeysOnSetKey = (options.clearKeysOnSet ?? []).join("\u0000");
+  const clearKeysOnSet = useMemo(
+    () => options.clearKeysOnSet ?? [],
+    [clearKeysOnSetKey],
+  );
   const removeWhen = options.removeWhen;
   const [value, setValueState] = useState(
     () => readLocalWithLegacyFallback(key, legacyKeys) ?? defaultValue,
@@ -183,10 +189,13 @@ export function usePersistentString(
       for (const legacyKey of legacyKeys) {
         removeLocalStorageValue(legacyKey);
       }
+      for (const staleKey of clearKeysOnSet) {
+        void removeEmbeddedStorageItem(staleKey);
+      }
 
       return resolvedValue;
     });
-  }, [key, legacyKeys, removeWhen]);
+  }, [clearKeysOnSet, key, legacyKeys, removeWhen]);
 
   return [value, setValue, loaded];
 }

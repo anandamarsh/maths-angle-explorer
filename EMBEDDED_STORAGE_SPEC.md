@@ -8,7 +8,7 @@ standalone and timeout fallback.
 ## Migrations
 
 - `maths-angle-explorer:youtube-bubble-dismissed`
-  -> `interactive-maths:youtubeBubbleDismissed`
+  -> `interactive-maths:angle-explorer:youtubeBubbleDismissed`
 - `reportName`
   -> `interactive-maths:reportName`
 - `reportEmail`

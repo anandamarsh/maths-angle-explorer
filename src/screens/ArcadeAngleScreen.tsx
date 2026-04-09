@@ -68,6 +68,8 @@ const IS_LOCALHOST_DEV =
   );
 const LEGACY_YOUTUBE_BUBBLE_DISMISSED_KEY =
   "maths-angle-explorer:youtube-bubble-dismissed";
+const LEGACY_SHARED_YOUTUBE_BUBBLE_DISMISSED_KEY =
+  "interactive-maths:youtubeBubbleDismissed";
 const YOUTUBE_ICON_URL = "/youtube-circle-logo-svgrepo-com.svg";
 
 function toYouTubeEmbedUrl(url: string): string | null {
@@ -1688,7 +1690,10 @@ export default function ArcadeAngleScreen() {
     usePersistentBoolean(
       SHARED_STORAGE_KEYS.youtubeBubbleDismissed,
       false,
-      { legacyKeys: [LEGACY_YOUTUBE_BUBBLE_DISMISSED_KEY] },
+      {
+        legacyKeys: [LEGACY_YOUTUBE_BUBBLE_DISMISSED_KEY],
+        clearKeysOnSet: [LEGACY_SHARED_YOUTUBE_BUBBLE_DISMISSED_KEY],
+      },
     );
   const [youtubeEmbedUrl, setYoutubeEmbedUrl] = useState<string | null>(null);
   const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
