@@ -3238,10 +3238,12 @@ export default function ArcadeAngleScreen() {
   const youtubeBubblePlacement = "is-above";
 
   const youtubeCta = youtubeEmbedUrl ? (
-    <div className="social-video-cta">
+    <div
+      className={`social-video-cta ${isMobileLandscape ? "row-start-1 col-start-1" : ""}`}
+    >
       {!youtubeBubbleDismissed && (
         <div
-          className={`social-video-bubble ${youtubeBubblePlacement}`}
+          className={`social-video-bubble ${youtubeBubblePlacement} ${isMobileLandscape ? "is-mobile-landscape" : ""}`}
           role="complementary"
           aria-label="How to play video prompt"
         >
@@ -4269,11 +4271,17 @@ export default function ArcadeAngleScreen() {
               )}
             </>
           )}
-          <div className="flex flex-row gap-1.5">
+          <div
+            className={
+              isMobileLandscape
+                ? "grid grid-cols-2 grid-rows-2 gap-1.5"
+                : "flex flex-row gap-1.5"
+            }
+          >
             <button
               onClick={handleShare}
               title={t("toolbar.share")}
-              className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+              className={`arcade-button w-10 h-10 flex items-center justify-center p-2 ${isMobileLandscape ? "col-start-1 row-start-2" : ""}`}
               style={
                 showShareDrawer
                   ? {
@@ -4334,7 +4342,7 @@ export default function ArcadeAngleScreen() {
                 setShowShareDrawer(false);
               }}
               title={t("toolbar.comments")}
-              className="arcade-button w-10 h-10 flex items-center justify-center p-2"
+              className={`arcade-button w-10 h-10 flex items-center justify-center p-2 ${isMobileLandscape ? "col-start-2 row-start-2" : ""}`}
               style={
                 showCommentsDrawer
                   ? {
@@ -4360,97 +4368,105 @@ export default function ArcadeAngleScreen() {
         </div>
       ) : (
         <div
-          className="absolute z-[60] flex flex-row gap-1.5"
+          className={`absolute z-[60] ${isMobileLandscape ? "flex flex-row items-end gap-1.5" : "flex flex-row gap-1.5"}`}
           style={{ bottom: "1rem", left: "1rem" }}
         >
-          <button
-            onClick={handleShare}
-            title={t("toolbar.share")}
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-            style={
-              showShareDrawer
-                ? {
-                    background: "linear-gradient(180deg,#0369a1,#075985)",
-                    borderColor: "#38bdf8",
-                  }
-                : {}
+          <div
+            className={
+              isMobileLandscape
+                ? "grid grid-cols-2 grid-rows-2 gap-1.5 items-start justify-items-start"
+                : "flex flex-row gap-1.5"
             }
           >
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <circle
-                cx="18"
-                cy="5"
-                r="3"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-              />
-              <circle
-                cx="6"
-                cy="12"
-                r="3"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-              />
-              <circle
-                cx="18"
-                cy="19"
-                r="3"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-              />
-              <line
-                x1="8.59"
-                y1="13.51"
-                x2="15.42"
-                y2="17.49"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <line
-                x1="15.41"
-                y1="6.51"
-                x2="8.59"
-                y2="10.49"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <button
-            onClick={() => {
-              setShowCommentsDrawer((s) => !s);
-              setShowShareDrawer(false);
-            }}
-            title={t("toolbar.comments")}
-            className="arcade-button w-10 h-10 flex items-center justify-center p-2"
-            style={
-              showCommentsDrawer
-                ? {
-                    background: "linear-gradient(180deg,#854d0e,#713f12)",
-                    borderColor: "#facc15",
-                  }
-                : {}
-            }
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-              <path
-                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            <button
+              onClick={handleShare}
+              title={t("toolbar.share")}
+              className={`arcade-button w-10 h-10 flex items-center justify-center p-2 ${isMobileLandscape ? "row-start-2 col-start-1" : ""}`}
+              style={
+                showShareDrawer
+                  ? {
+                      background: "linear-gradient(180deg,#0369a1,#075985)",
+                      borderColor: "#38bdf8",
+                    }
+                  : {}
+              }
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                <circle
+                  cx="18"
+                  cy="5"
+                  r="3"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+                <circle
+                  cx="6"
+                  cy="12"
+                  r="3"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+                <circle
+                  cx="18"
+                  cy="19"
+                  r="3"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                />
+                <line
+                  x1="8.59"
+                  y1="13.51"
+                  x2="15.42"
+                  y2="17.49"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="15.41"
+                  y1="6.51"
+                  x2="8.59"
+                  y2="10.49"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
             </button>
-          {youtubeCta}
+            <button
+              onClick={() => {
+                setShowCommentsDrawer((s) => !s);
+                setShowShareDrawer(false);
+              }}
+              title={t("toolbar.comments")}
+              className={`arcade-button w-10 h-10 flex items-center justify-center p-2 ${isMobileLandscape ? "row-start-2 col-start-2" : ""}`}
+              style={
+                showCommentsDrawer
+                  ? {
+                      background: "linear-gradient(180deg,#854d0e,#713f12)",
+                      borderColor: "#facc15",
+                    }
+                  : {}
+              }
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                <path
+                  d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {youtubeCta}
+          </div>
           {IS_LOCALHOST_DEV && (
-            <>
+            <div className="flex flex-row gap-1.5 self-end">
               <button
                 onClick={handleCaptureScene}
                 title="Capture scene"
@@ -4485,7 +4501,7 @@ export default function ArcadeAngleScreen() {
                   </svg>
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
       )}
