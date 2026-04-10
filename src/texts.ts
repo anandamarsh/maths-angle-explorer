@@ -1,4 +1,4 @@
-import rawTexts from "./texts.json";
+import rawTexts from "./texts.json" with { type: "json" };
 
 type TextValue = string | number;
 

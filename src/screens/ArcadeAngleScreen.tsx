@@ -1713,7 +1713,7 @@ export default function ArcadeAngleScreen() {
     return window.innerWidth < 1024 && window.innerWidth > window.innerHeight;
   });
   const [currentQ, setCurrentQ] = useState<AngleQuestion>(() =>
-    makeQuestion(initialLevel),
+    makeQuestion(initialLevel, "normal"),
   );
   const [eggsCollected, setEggsCollected] = useState(0);
   const [monsterEggs, setMonsterEggs] = useState(0);
@@ -2482,9 +2482,12 @@ export default function ArcadeAngleScreen() {
     flashTimerRef.current = window.setTimeout(() => setFlash(null), scaleDemoMs(1200));
   }
 
-  function nextQuestion(targetLevel = level) {
+  function nextQuestion(
+    targetLevel = level,
+    round: "normal" | "monster" | "platinum" = gamePhaseRef.current,
+  ) {
     startQuestionTimer();
-    const q = makeQuestion(targetLevel);
+    const q = makeQuestion(targetLevel, round);
     submitLockRef.current = false;
     setCurrentQ(q);
     setAnswer("");
@@ -2615,7 +2618,7 @@ export default function ArcadeAngleScreen() {
     setShowMonsterAnnounce(true);
     playMonsterStart();
     switchToMonsterMusic();
-    nextQuestion(level);
+    nextQuestion(level, "monster");
     window.setTimeout(() => setShowMonsterAnnounce(false), ROUND_ANNOUNCE_MS);
     setCalcRoundKey((k) => k + 1);
   }
@@ -2633,7 +2636,7 @@ export default function ArcadeAngleScreen() {
     setShowMonsterAnnounce(true);
     playMonsterStart();
     switchToMonsterMusic();
-    nextQuestion(level);
+    nextQuestion(level, "platinum");
     window.setTimeout(() => setShowMonsterAnnounce(false), ROUND_ANNOUNCE_MS);
     setCalcRoundKey((k) => k + 1);
   }
@@ -2717,7 +2720,7 @@ export default function ArcadeAngleScreen() {
     const lv = targetLevel ?? level;
     submitLockRef.current = false;
     if (targetLevel) setLevel(targetLevel);
-    const firstQ = makeQuestion(lv);
+    const firstQ = makeQuestion(lv, "normal");
     setScreen("playing");
     setCurrentQ(firstQ);
     setEggsCollected(0);
