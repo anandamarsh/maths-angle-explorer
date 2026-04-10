@@ -46,6 +46,7 @@ import PhantomHand from "../components/PhantomHand";
 import AutopilotIcon from "../components/AutopilotIcon";
 import { usePersistentBoolean } from "../utils/embeddedStorage";
 import { SHARED_STORAGE_KEYS } from "../utils/storageKeys";
+import { sendEmbeddedAnalyticsEvent } from "../utils/embeddedAnalytics";
 import {
   startSession,
   continueSession,
@@ -2524,6 +2525,13 @@ export default function ArcadeAngleScreen() {
       startAngleDeg: currentQRef.current.startAngleDeg,
       setKind: currentQRef.current.setKind,
     });
+    sendEmbeddedAnalyticsEvent("question_answered", {
+      level,
+      correct: true,
+      gamePhase: "normal",
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+    });
     const newEggs = eggsCollected + 1;
     if (eggsCollected === 0) {
       setOpeningTutorialEnabled(false);
@@ -2554,6 +2562,13 @@ export default function ArcadeAngleScreen() {
       startAngleDeg: currentQRef.current.startAngleDeg,
       setKind: currentQRef.current.setKind,
     });
+    sendEmbeddedAnalyticsEvent("question_answered", {
+      level,
+      correct: true,
+      gamePhase: "monster",
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+    });
     const newGolden = monsterEggs + 1;
     const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
     if (newGolden === stageTarget) {
@@ -2582,6 +2597,13 @@ export default function ArcadeAngleScreen() {
       startAngleDeg: currentQRef.current.startAngleDeg,
       setKind: currentQRef.current.setKind,
     });
+    sendEmbeddedAnalyticsEvent("question_answered", {
+      level,
+      correct: false,
+      gamePhase: gamePhaseRef.current,
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+    });
     submitLockRef.current = false;
     playWrong();
     if (gamePhase === "monster" || gamePhase === "platinum") {
@@ -2605,6 +2627,10 @@ export default function ArcadeAngleScreen() {
     const key = MONSTER_ROUND_KEYS[Math.floor(Math.random() * MONSTER_ROUND_KEYS.length)];
     const name = t(key);
     setMonsterRoundName(name);
+    sendEmbeddedAnalyticsEvent("monster_round_started", {
+      level,
+      roundName: name,
+    });
     setGamePhase("monster");
     setMonsterEggs(0);
     setShowMonsterAnnounce(true);
@@ -2619,6 +2645,10 @@ export default function ArcadeAngleScreen() {
     const key = PLATINUM_ROUND_KEYS[Math.floor(Math.random() * PLATINUM_ROUND_KEYS.length)];
     const name = t(key);
     setMonsterRoundName(name);
+    sendEmbeddedAnalyticsEvent("platinum_round_started", {
+      level,
+      roundName: name,
+    });
     setGamePhase("platinum");
     setMonsterEggs(0);
     setShowMonsterAnnounce(true);
@@ -2643,10 +2673,21 @@ export default function ArcadeAngleScreen() {
       startAngleDeg: currentQRef.current.startAngleDeg,
       setKind: currentQRef.current.setKind,
     });
+    sendEmbeddedAnalyticsEvent("question_answered", {
+      level,
+      correct: true,
+      gamePhase: "platinum",
+      correctAnswer: currentQRef.current.answer,
+      childAnswer: lastTypedAnswerRef.current,
+    });
     const newPlat = monsterEggs + 1;
     const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
     if (newPlat === stageTarget) {
       setMonsterEggs(stageTarget);
+      sendEmbeddedAnalyticsEvent("platinum_round_completed", {
+        level,
+        roundName: monsterRoundName,
+      });
       if (level === 2) {
         playGameComplete();
         const summary = buildSummary({
@@ -2656,6 +2697,13 @@ export default function ArcadeAngleScreen() {
           monsterEggs: LEVEL_TARGET_COUNT,
           levelCompleted: true,
           monsterRoundCompleted: true,
+        });
+        sendEmbeddedAnalyticsEvent("level_completed", {
+          level,
+          gamePhase: "platinum",
+        });
+        sendEmbeddedAnalyticsEvent("game_completed", {
+          level,
         });
         setSessionSummary(summary);
         setScreen("gameover");
@@ -2669,6 +2717,10 @@ export default function ArcadeAngleScreen() {
           monsterEggs: LEVEL_TARGET_COUNT,
           levelCompleted: true,
           monsterRoundCompleted: true,
+        });
+        sendEmbeddedAnalyticsEvent("level_completed", {
+          level,
+          gamePhase: "platinum",
         });
         setSessionSummary(summary);
         setScreen("won");
