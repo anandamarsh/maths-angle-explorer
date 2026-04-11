@@ -47,6 +47,7 @@ import AutopilotIcon from "../components/AutopilotIcon";
 import { usePersistentBoolean } from "../utils/embeddedStorage";
 import { SHARED_STORAGE_KEYS } from "../utils/storageKeys";
 import { sendEmbeddedAnalyticsEvent } from "../utils/embeddedAnalytics";
+import { getDemoConfig } from "../demoMode";
 import {
   startSession,
   continueSession,
@@ -100,8 +101,9 @@ function scaleDemoMs(ms: number) {
   return Math.max(1, Math.round(ms * DEMO_TEST_SCALE));
 }
 
-function getStageTarget(isRecording: boolean, isAutopilot: boolean) {
+function getStageTarget(isRecording: boolean, isAutopilot: boolean, demoEnabled: boolean) {
   if (isRecording) return 2;
+  if (demoEnabled) return 2;
   if (isAutopilot) return AUTOPILOT_STAGE_TARGET;
   return LEVEL_TARGET_COUNT;
 }
@@ -1675,6 +1677,7 @@ function NumericKeypad({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ArcadeAngleScreen() {
+  const demo = getDemoConfig();
   const MOBILE_VIEWPORT_MAX_WIDTH = 768;
   const t = useT();
   const { locale } = useLocale();
@@ -2532,7 +2535,7 @@ export default function ArcadeAngleScreen() {
     if (eggsCollected === 0) {
       setOpeningTutorialEnabled(false);
     }
-    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
+    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current, demo.enabled);
     if (newEggs === stageTarget) {
       setEggsCollected(stageTarget);
       window.setTimeout(() => startMonsterRound(), scaleDemoMs(950));
@@ -2559,7 +2562,7 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newGolden = monsterEggs + 1;
-    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
+    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current, demo.enabled);
     if (newGolden === stageTarget) {
       setMonsterEggs(stageTarget);
       window.setTimeout(() => startPlatinumRound(), scaleDemoMs(950));
@@ -2656,7 +2659,7 @@ export default function ArcadeAngleScreen() {
       setKind: currentQRef.current.setKind,
     });
     const newPlat = monsterEggs + 1;
-    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current);
+    const stageTarget = getStageTarget(isRecording, isAutopilotRef.current, demo.enabled);
     if (newPlat === stageTarget) {
       setMonsterEggs(stageTarget);
       sendEmbeddedAnalyticsEvent("platinum_round_completed", {
@@ -3019,7 +3022,7 @@ export default function ArcadeAngleScreen() {
   const hideFirstPromptChar = !currentQ.promptLines && typeIdx === 0;
   const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
   const showDevAnswer =
-    (IS_DEV || cheatAnswerUnlocked) &&
+    (IS_DEV || cheatAnswerUnlocked || demo.showAnswers) &&
     !isRecording &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
@@ -3330,6 +3333,21 @@ export default function ArcadeAngleScreen() {
       }}
     >
       <div className="pointer-events-none absolute inset-0 arcade-grid opacity-20" />
+      {demo.enabled && (
+        <div className="pointer-events-none absolute left-2 right-2 top-2 z-[19] flex justify-center">
+          <div
+            className="max-w-3xl rounded-2xl px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.16em]"
+            style={{
+              background: "rgba(250,204,21,0.14)",
+              border: "1px solid rgba(250,204,21,0.42)",
+              color: "#fef08a",
+              boxShadow: "0 0 22px rgba(250,204,21,0.14)",
+            }}
+          >
+            Demo Mode · {demo.targetStars} stars only · answers visible · please comment and email your report
+          </div>
+        </div>
+      )}
       {(isMonster || isPlatinum) && (
         <div
           className="pointer-events-none absolute inset-0 z-[1]"
@@ -3419,7 +3437,7 @@ export default function ArcadeAngleScreen() {
           )}
 
           <div className="flex items-center gap-1.5">
-            {Array.from({ length: getStageTarget(isRecording, isAutopilot) }, (_, i) => i).map(
+            {Array.from({ length: getStageTarget(isRecording, isAutopilot, demo.enabled) }, (_, i) => i).map(
               (i) => {
                 const collected =
                   isMonster || isPlatinum ? i < monsterEggs : i < eggsCollected;
@@ -3918,7 +3936,7 @@ export default function ArcadeAngleScreen() {
                   }
             }
           >
-            {Array.from({ length: getStageTarget(isRecording, isAutopilot) }, (_, i) => i).map(
+            {Array.from({ length: getStageTarget(isRecording, isAutopilot, demo.enabled) }, (_, i) => i).map(
               (i) => {
                 const collected =
                   isMonster || isPlatinum ? i < monsterEggs : i < eggsCollected;
@@ -4234,6 +4252,7 @@ export default function ArcadeAngleScreen() {
         <SessionReportModal
           summary={sessionSummary}
           level={level}
+          demoMode={demo.enabled}
           onClose={() => beginNewRun(level)}
           onNextLevel={level < 2 ? () => beginNewRun(2, true) : undefined}
           autopilotControlsRef={autopilotEmailModalRef}
@@ -4245,6 +4264,7 @@ export default function ArcadeAngleScreen() {
         <SessionReportModal
           summary={sessionSummary}
           level={level}
+          demoMode={demo.enabled}
           onClose={() => {
             setUnlockedLevel(1);
             beginNewRun(1);

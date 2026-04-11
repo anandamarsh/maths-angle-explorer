@@ -159,3 +159,21 @@ Angle Explorer is the benchmark for future keypad-based games:
 - `198081` clears the typed answer and starts continuous autopilot
 - `197879` reveals/fills the correct answer and fires it
 - cheat trigger digits are swallowed instead of lingering in the answer display
+
+## Demo mode contract
+
+Angle Explorer follows the same demo contract as the other See Maths games:
+
+- `?demo=1` enables demo mode and persists it in `localStorage`
+- `?demo=0` disables demo mode and clears the stored flag
+- if the query parameter is absent, the stored demo flag is reused so refreshes
+  and installed-PWA relaunches stay in the same mode
+- See Maths is expected to forward the `demo` query parameter when launching
+  the game
+
+While demo mode is enabled:
+- the game shows a persistent `Demo Mode` banner
+- star target drops to `2`
+- the correct angle is visible without needing the answer cheat code
+- the level-complete modal tells testers to leave a comment and email the
+  report to themselves

@@ -96,6 +96,16 @@ export function clearSession(): void
 export function getAttemptCount(): number
 ```
 
+## Demo mode expectations
+
+When demo mode is enabled, `SessionReportModal` must add a clear demo callout:
+
+- demo mode is active
+- answers were visible
+- the target was shortened
+- the tester should leave a comment and email the report to themselves before
+  leaving the game
+
 ---
 
 ## PDF generation (`generatePdf.ts`)
