@@ -11,7 +11,7 @@ Angle Explorer is an interactive maths game built as a Progressive Web App. A ca
 The game is designed to move from visual intuition to calculation:
 - **Level 1** — recognise angle types by sight and aim the cannon by dragging
 - **Level 2** — compute missing angles in complementary, supplementary, and complete-rotation sets
-- **Level 3** — angle reasoning with less visual scaffolding (planned)
+- **Level 3** — defend the centred cannon against incoming bugs that drop in and crawl radially toward it
 
 ## Curriculum
 
@@ -29,6 +29,8 @@ The game is designed to move from visual intuition to calculation:
 4. Collect stars by answering correctly.
 5. Survive the Platinum Round (typed answers only) to unlock the Monster Round.
 6. Clear the Monster Round to complete the level.
+
+Level 3 currently ships with the new basic rapid-action round first. Monster and platinum variants for Level 3 are still follow-up work.
 
 ## Tech Stack
 

@@ -130,9 +130,11 @@ export function makeQuestion(level: 1 | 2 | 3, round?: GameRound): AngleQuestion
 ```
 
 Compatibility notes:
-- `makeL3Question()` remains an alias for the Level 2 normal calculator because
-  the current game still shares that maths.
-- `makeMonsterL3Question()` remains an alias for the Level 2 monster calculator.
+- `makeL3Question()` now produces Level 3 basic-round questions on `30°`
+  landmarks, matching the rapid-action cannon-defence mode.
+- `makeMonsterL3Question()` and the platinum dispatch now point at Level 3
+  calculators as placeholders so the screen can route Level 3 cleanly while the
+  specialised monster/platinum rules are still being expanded.
 
 ## Test strategy
 

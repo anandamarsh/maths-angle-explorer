@@ -279,7 +279,7 @@ export default function SessionReportModal({ summary, level, onClose, onNextLeve
         />
 
         <div className="mt-6 flex flex-col items-center gap-3">
-          {level < 2 && onNextLevel ? (
+          {level < 3 && onNextLevel ? (
             <button
               onClick={onNextLevel}
               data-autopilot-key="next-level"

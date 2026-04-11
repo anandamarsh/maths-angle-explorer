@@ -396,6 +396,102 @@ function drawLevel2SectorDiagram(
   doc.circle(cx, cy, 0.5, "F");
 }
 
+function drawSweepAngleDiagram(
+  doc: jsPDF,
+  attempt: QuestionAttempt,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  mainFont: string,
+) {
+  doc.setFillColor("#f8fafc");
+  doc.roundedRect(x, y, width, height, 3, 3, "F");
+  doc.setDrawColor("#e2e8f0");
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x, y, width, height, 3, 3, "S");
+
+  const startAngle = attempt.sweepStartAngleDeg ?? 0;
+  const correctEnd = attempt.correctEndAngleDeg ?? startAngle;
+  const userEnd =
+    !attempt.isCorrect && attempt.childEndAngleDeg !== null && attempt.childEndAngleDeg !== undefined
+      ? attempt.childEndAngleDeg
+      : null;
+
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const L = Math.min(width, height) * 0.32;
+  const arcR = L * 0.42;
+  const userArcR = arcR * 0.7;
+  const DARK = "#5c6777";
+  const RED = "#ef4444";
+  const ARC_SEGS = 32;
+
+  const drawRay = (deg: number, color: string, lineWidth: number) => {
+    const rad = (deg * Math.PI) / 180;
+    doc.setDrawColor(color);
+    doc.setLineWidth(lineWidth);
+    doc.line(cx, cy, cx + L * Math.cos(rad), cy - L * Math.sin(rad));
+  };
+
+  const drawArc = (fromDeg: number, toDeg: number, r: number, color: string, lw: number) => {
+    const delta = ((toDeg - fromDeg + 540) % 360) - 180;
+    doc.setDrawColor(color);
+    doc.setLineWidth(lw);
+    for (let i = 0; i < ARC_SEGS; i++) {
+      const d1 = fromDeg + delta * (i / ARC_SEGS);
+      const d2 = fromDeg + delta * ((i + 1) / ARC_SEGS);
+      const a1 = (d1 * Math.PI) / 180;
+      const a2 = (d2 * Math.PI) / 180;
+      doc.line(
+        cx + r * Math.cos(a1), cy - r * Math.sin(a1),
+        cx + r * Math.cos(a2), cy - r * Math.sin(a2),
+      );
+    }
+  };
+
+  drawArc(startAngle, correctEnd, arcR, DARK, 0.8);
+  if (userEnd !== null) {
+    drawArc(startAngle, userEnd, userArcR, RED, 0.5);
+  }
+
+  drawRay(startAngle, DARK, 0.9);
+  drawRay(correctEnd, DARK, 0.9);
+  if (userEnd !== null) {
+    drawRay(userEnd, RED, 0.6);
+  }
+
+  doc.setFillColor(DARK);
+  doc.circle(cx, cy, 0.9, "F");
+
+  const correctMid = startAngle + (((correctEnd - startAngle + 540) % 360) - 180) / 2;
+  const correctLabelR = L * 0.68;
+  const correctLabelRad = (correctMid * Math.PI) / 180;
+  doc.setFontSize(7);
+  doc.setFont(mainFont, "bold");
+  doc.setTextColor(DARK);
+  doc.text(
+    `${attempt.correctAnswer}\u00b0`,
+    cx + correctLabelR * Math.cos(correctLabelRad),
+    cy - correctLabelR * Math.sin(correctLabelRad),
+    { align: "center" },
+  );
+
+  if (userEnd !== null && attempt.childAnswer !== null) {
+    const userLabelRad = (userEnd * Math.PI) / 180;
+    const userLabelR = L * 1.08;
+    doc.setFontSize(6);
+    doc.setFont(mainFont, "normal");
+    doc.setTextColor(RED);
+    doc.text(
+      `${attempt.childAnswer}\u00b0`,
+      cx + userLabelR * Math.cos(userLabelRad),
+      cy - userLabelR * Math.sin(userLabelRad),
+      { align: "center" },
+    );
+  }
+}
+
 // --- Diagram dispatcher ---
 
 function drawAngleDiagram(
@@ -407,6 +503,10 @@ function drawAngleDiagram(
   height: number,
   mainFont: string,
 ) {
+  if (attempt.sweepStartAngleDeg !== undefined && attempt.correctEndAngleDeg !== undefined) {
+    drawSweepAngleDiagram(doc, attempt, x, y, width, height, mainFont);
+    return;
+  }
   if (attempt.level === 2 || attempt.level === 3) {
     drawLevel2SectorDiagram(doc, attempt, x, y, width, height, mainFont);
   } else {

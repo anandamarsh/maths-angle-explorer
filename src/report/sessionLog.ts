@@ -18,6 +18,9 @@ export interface QuestionAttempt {
   totalContext?: 90 | 180 | 360;
   startAngleDeg?: number;
   setKind?: "COMPLEMENTARY" | "SUPPLEMENTARY" | "COMPLETE";
+  sweepStartAngleDeg?: number;
+  correctEndAngleDeg?: number;
+  childEndAngleDeg?: number | null;
 }
 
 export interface SessionSummary {

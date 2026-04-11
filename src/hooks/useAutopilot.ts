@@ -12,17 +12,8 @@ const T = {
   END_PAUSE:   [3600, 5000] as [number, number],
 } as const;
 
-const WRONG_ANSWER_RATE = 0.2;
-const MAX_WRONG_PER_STAGE = 2;
-
 function rand([lo, hi]: [number, number]): number {
   return Math.round(lo + Math.random() * (hi - lo));
-}
-
-function wrongAnswer(correct: number): number {
-  const offsets = [-30, -20, 15, 20, 30, -15];
-  const offset = offsets[Math.floor(Math.random() * offsets.length)];
-  return correct + offset;
 }
 
 function getKeyRect(key: string): DOMRect | null {
@@ -64,8 +55,6 @@ interface UseAutopilotArgs {
   callbacksRef: React.RefObject<AutopilotCallbacks | null>;
   autopilotEmail: string;
   mode?: "continuous" | "single-question";
-  wrongAnswerRate?: number;
-  maxWrongPerStage?: number;
   timingScale?: number;
 }
 
@@ -74,8 +63,6 @@ export function useAutopilot({
   callbacksRef,
   autopilotEmail,
   mode = "continuous",
-  wrongAnswerRate = WRONG_ANSWER_RATE,
-  maxWrongPerStage = MAX_WRONG_PER_STAGE,
   timingScale = 1,
 }: UseAutopilotArgs) {
   const [isActive, setIsActive] = useState(false);
@@ -116,11 +103,7 @@ export function useAutopilot({
 
   function scheduleAim() {
     const { correctAnswer } = stateRef.current;
-    const canGoWrong =
-      mode === "continuous" && wrongCountRef.current < maxWrongPerStage;
-    const isWrong = canGoWrong && Math.random() < wrongAnswerRate;
-    if (isWrong) wrongCountRef.current += 1;
-    const targetAngle = isWrong ? wrongAnswer(correctAnswer) : correctAnswer;
+    const targetAngle = correctAnswer;
 
     // Wait a brief "thinking" pause then go straight to typing
     scheduleTyping(targetAngle, rand(T.AIM_FIRST));
