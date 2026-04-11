@@ -20,6 +20,8 @@
   font-family: "Courier New", "Lucida Console", monospace;
   color: #f8fafc;
   background: #020617;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
