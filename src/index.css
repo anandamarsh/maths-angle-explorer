@@ -206,12 +206,12 @@ body {
 }
 
 .social-video-button {
-  width: 2.7rem;
-  height: 2.7rem;
+  width: 2.5rem;
+  height: 2.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 0.5rem;
   background: transparent;
   border: 3px solid #fef08a;
   border-radius: 9999px;

@@ -1923,8 +1923,10 @@ export default function ArcadeAngleScreen() {
     const delayMs = 1000;
     const holdMs = 450;
     const travelMs = 1400;
-    const fadeMs = 220;
-    const cycleMs = holdMs + travelMs + fadeMs;
+    const fadeOutMs = 700;
+    const pauseMs = 2000;
+    const fadeInMs = 700;
+    const cycleMs = holdMs + travelMs + fadeOutMs + pauseMs + fadeInMs;
     const revealTimer = window.setTimeout(
       () => setTutorialHintVisible(true),
       delayMs,
@@ -1957,10 +1959,17 @@ export default function ArcadeAngleScreen() {
           const t = (cyclePos - holdMs) / travelMs;
           wave = (1 - Math.cos(Math.PI * t)) / 2;
           opacity = 1;
-        } else {
+        } else if (cyclePos < holdMs + travelMs + fadeOutMs) {
           wave = 1;
-          const t = (cyclePos - holdMs - travelMs) / fadeMs;
+          const t = (cyclePos - holdMs - travelMs) / fadeOutMs;
           opacity = 1 - t;
+        } else if (cyclePos < holdMs + travelMs + fadeOutMs + pauseMs) {
+          wave = 0;
+          opacity = 0;
+        } else {
+          wave = 0;
+          const t = (cyclePos - holdMs - travelMs - fadeOutMs - pauseMs) / fadeInMs;
+          opacity = t;
         }
       }
 
