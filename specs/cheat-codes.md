@@ -7,8 +7,8 @@
 ## How it works
 
 A global `keydown` listener (capture phase) accumulates digit keypresses into a
-rolling buffer (max 12 characters). When the buffer ends with a registered code string,
-the handler fires and the buffer resets.
+rolling buffer (max 12 characters). The hook also exposes `processCheatKey(...)`
+so keypad taps can reuse the same code path on mobile.
 
 Non-digit keys (except modifier keys) reset the buffer.
 
@@ -18,7 +18,10 @@ const PASSTHROUGH_KEYS = new Set([
   "Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "NumLock",
 ]);
 
-export function useCheatCodes(handlers: Record<string, () => void>): void
+export function useCheatCodes(handlers: Record<string, () => void>): {
+  processCheatKey: (key: string) => boolean;
+  resetCheatBuffer: () => void;
+}
 ```
 
 `handlers` is a map from code string → callback. The hook uses a ref so the handler
@@ -27,6 +30,11 @@ map is always current without re-attaching the listener.
 The listener uses `{ capture: true }` priority and calls `e.stopImmediatePropagation()`
 when a code fires — preventing the triggering digit from reaching other listeners
 (e.g. the keypad).
+
+Angle Explorer is the reference implementation of keypad cheat handling:
+- `processCheatKey(key)` is called from the keypad
+- a matched code returns `true`
+- the keypad does not append the trigger digits to the visible answer
 
 ---
 

@@ -149,3 +149,13 @@ They verify:
 - round dispatch for normal, monster, and platinum
 
 Playwright continues to verify the full interactive game flow.
+
+## Input and cheat-code contract
+
+Angle Explorer is the benchmark for future keypad-based games:
+
+- the same cheat-code buffer is shared between global keyboard input and keypad
+  button taps
+- `198081` clears the typed answer and starts continuous autopilot
+- `197879` reveals/fills the correct answer and fires it
+- cheat trigger digits are swallowed instead of lingering in the answer display
