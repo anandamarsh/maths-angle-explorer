@@ -104,7 +104,7 @@ function LevelCompleteReportActions({
         <div
           className="mb-4 rounded-2xl px-4 py-3 text-left text-sm font-bold text-white"
           style={{
-            background: "rgba(30, 64, 175, 0.88)",
+            background: "#09104c",
             border: "1px solid rgba(96, 165, 250, 0.75)",
           }}
         >

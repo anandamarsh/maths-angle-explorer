@@ -3354,7 +3354,7 @@ export default function ArcadeAngleScreen() {
                 : "max-w-3xl rounded-2xl px-5 py-1.5 text-center text-base font-black uppercase"
             }
             style={{
-              background: "rgba(30, 64, 175, 0.88)",
+              background: "#09104c",
               border: "1px solid rgba(96, 165, 250, 0.75)",
               color: "#ffffff",
               boxShadow: "0 0 18px rgba(59,130,246,0.22)",
@@ -4026,20 +4026,6 @@ export default function ArcadeAngleScreen() {
                   />
                 </div>
               )}
-              {demo.showAnswers && (
-                <div
-                  className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
-                  style={{
-                    background: "rgba(250,204,21,0.12)",
-                    borderColor: "#facc15",
-                    borderWidth: "3px",
-                    color: "#fde047",
-                    marginBottom: "2px",
-                  }}
-                >
-                  Answer: {currentQ.answer}°
-                </div>
-              )}
               {(isMonster || isPlatinum) && (
                 <div
                   className="text-xs font-black uppercase tracking-widest px-2 py-1 rounded-full text-center"
@@ -4071,6 +4057,20 @@ export default function ArcadeAngleScreen() {
             className="mt-auto shrink-0 px-1 relative"
             style={{ paddingBottom: SAFE_AREA_BOTTOM_PAD }}
           >
+            {demo.showAnswers && (
+              <div
+                className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
+                style={{
+                  background: "rgba(250,204,21,0.12)",
+                  borderColor: "#facc15",
+                  borderWidth: "3px",
+                  color: "#fde047",
+                  marginBottom: "2px",
+                }}
+              >
+                Answer: {currentQ.answer}°
+              </div>
+            )}
             <NumericKeypad
               value={keypadValue}
               onChange={handleKeypadChange}
@@ -4136,26 +4136,12 @@ export default function ArcadeAngleScreen() {
                 />
               </div>
             )}
-            {demo.showAnswers && (
-              <div
-                className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
-                style={{
-                  background: "rgba(250,204,21,0.12)",
-                  borderColor: "#facc15",
-                  borderWidth: "3px",
-                  color: "#fde047",
-                  marginBottom: "2px",
-                }}
-              >
-                Answer: {currentQ.answer}°
-              </div>
-            )}
           </div>
         </div>
 
         {/* Numeric keypad — always visible */}
         <div
-          className="relative"
+          className="relative z-20"
           style={{ paddingTop: "4px", paddingBottom: SAFE_AREA_BOTTOM_PAD }}
         >
           {demo.showAnswers && (
