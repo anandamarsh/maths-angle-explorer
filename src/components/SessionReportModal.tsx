@@ -101,8 +101,11 @@ function LevelCompleteReportActions({
   return (
     <div className="mx-auto mt-5 w-full max-w-xl">
       {demoMode ? (
-        <div className="mb-4 rounded-2xl border border-yellow-300/30 bg-yellow-400/10 px-4 py-3 text-left text-sm text-yellow-100">
-          Demo mode is on. Answers are visible, the level target is shorter, and you should leave a comment and email this report to yourself before you exit.
+        <div
+          className="mb-4 rounded-2xl px-4 py-3 text-left text-sm font-bold text-white"
+          style={{ background: "#f97316", border: "1px solid #ea580c" }}
+        >
+          Enter your email to receive your report.
         </div>
       ) : null}
       {!isMobileLandscape && (
@@ -177,7 +180,7 @@ function LevelCompleteReportActions({
               setEmailError(false);
             }
           }}
-          placeholder="parent@email.com"
+          placeholder={demoMode ? "Enter your email to receive your report" : "parent@email.com"}
           data-autopilot-key="email-input"
           className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />

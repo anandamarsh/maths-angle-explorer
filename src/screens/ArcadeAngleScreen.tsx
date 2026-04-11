@@ -1759,6 +1759,7 @@ export default function ArcadeAngleScreen() {
   const [firstFireTutorialReady, setFirstFireTutorialReady] = useState(false);
   const [tutorialAngle, setTutorialAngle] = useState(0);
   const [tutorialHintVisible, setTutorialHintVisible] = useState(false);
+  const [tutorialHintOpacity, setTutorialHintOpacity] = useState(0);
   const [openingTutorialEnabled, setOpeningTutorialEnabled] = useState(true);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
@@ -1920,9 +1921,10 @@ export default function ArcadeAngleScreen() {
     let frameId = 0;
     let startedAt = 0;
     const delayMs = 1000;
-    const holdMs = 500;
+    const holdMs = 450;
     const travelMs = 1400;
-    const cycleMs = holdMs + travelMs + holdMs + travelMs;
+    const fadeMs = 220;
+    const cycleMs = holdMs + travelMs + fadeMs;
     const revealTimer = window.setTimeout(
       () => setTutorialHintVisible(true),
       delayMs,
@@ -1936,30 +1938,34 @@ export default function ArcadeAngleScreen() {
       Math.sign(targetDelta || 1) * Math.min(Math.abs(targetDelta), 60);
     setTutorialHintVisible(false);
     setTutorialAngle(hintFrom);
+    setTutorialHintOpacity(0);
 
     const animate = (now: number) => {
       if (!startedAt) startedAt = now;
       const elapsed = now - startedAt;
       const activeElapsed = Math.max(0, elapsed - delayMs);
       let wave = 0;
+      let opacity = 0;
 
       if (elapsed >= delayMs) {
         const cyclePos = activeElapsed % cycleMs;
 
         if (cyclePos < holdMs) {
           wave = 0;
+          opacity = 1;
         } else if (cyclePos < holdMs + travelMs) {
           const t = (cyclePos - holdMs) / travelMs;
           wave = (1 - Math.cos(Math.PI * t)) / 2;
-        } else if (cyclePos < holdMs + travelMs + holdMs) {
-          wave = 1;
+          opacity = 1;
         } else {
-          const t = (cyclePos - holdMs - travelMs - holdMs) / travelMs;
-          wave = (1 + Math.cos(Math.PI * t)) / 2;
+          wave = 1;
+          const t = (cyclePos - holdMs - travelMs) / fadeMs;
+          opacity = 1 - t;
         }
       }
 
       setTutorialAngle(hintFrom + hintDelta * wave);
+      setTutorialHintOpacity(Math.max(0, Math.min(1, opacity)));
       frameId = requestAnimationFrame(animate);
     };
 
@@ -3022,7 +3028,7 @@ export default function ArcadeAngleScreen() {
   const hideFirstPromptChar = !currentQ.promptLines && typeIdx === 0;
   const keypadValue = currentQ.promptLines ? subAnswers[subStep] : answer;
   const showDevAnswer =
-    (IS_DEV || cheatAnswerUnlocked || demo.showAnswers) &&
+    (IS_DEV || cheatAnswerUnlocked) &&
     !isRecording &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
@@ -3334,17 +3340,30 @@ export default function ArcadeAngleScreen() {
     >
       <div className="pointer-events-none absolute inset-0 arcade-grid opacity-20" />
       {demo.enabled && (
-        <div className="pointer-events-none absolute left-2 right-2 top-2 z-[19] flex justify-center">
+        <div
+          className={`pointer-events-none absolute z-[19] flex ${
+            isMobileLandscape
+              ? "bottom-20 left-0 top-0 w-14 items-center justify-start"
+              : "left-2 right-2 top-2 justify-center"
+          }`}
+        >
           <div
-            className="max-w-3xl rounded-2xl px-4 py-2 text-center text-[11px] font-black uppercase tracking-[0.16em]"
+            className={
+              isMobileLandscape
+                ? "rounded-r-2xl px-2 py-4 text-center text-2xl font-black uppercase"
+                : "max-w-3xl rounded-2xl px-4 py-2 text-center text-2xl font-black uppercase"
+            }
             style={{
-              background: "rgba(250,204,21,0.14)",
-              border: "1px solid rgba(250,204,21,0.42)",
-              color: "#fef08a",
-              boxShadow: "0 0 22px rgba(250,204,21,0.14)",
+              background: "#f97316",
+              border: "1px solid #ea580c",
+              color: "#ffffff",
+              boxShadow: "0 0 22px rgba(249,115,22,0.28)",
+              writingMode: isMobileLandscape ? "vertical-rl" : undefined,
+              textOrientation: isMobileLandscape ? "mixed" : undefined,
+              transform: isMobileLandscape ? "rotate(180deg)" : undefined,
             }}
           >
-            Demo Mode · {demo.targetStars} stars only · answers visible · please comment and email your report
+            Demo Mode
           </div>
         </div>
       )}
@@ -3646,12 +3665,14 @@ export default function ArcadeAngleScreen() {
               />
             )}
             {showCannonDragHint && level === 1 && (
-              <GazeBeamDrag
-                gazeAngle={tutorialAngle}
-                level={level}
-                baseAngle={0}
-                dottedRay
-              />
+              <g opacity={tutorialHintOpacity}>
+                <GazeBeamDrag
+                  gazeAngle={tutorialAngle}
+                  level={level}
+                  baseAngle={0}
+                  dottedRay
+                />
+              </g>
             )}
 
             {/* Cannon */}
@@ -3662,12 +3683,14 @@ export default function ArcadeAngleScreen() {
             )}
 
             {showSceneActors && showCannonDragHint && (
-              <CannonDragHint
-                startAngle={0}
-                hintAngle={tutorialAngle}
-                isTouchInput={isTouchInput}
-                isMobile={isCompactViewport}
-              />
+              <g opacity={tutorialHintOpacity}>
+                <CannonDragHint
+                  startAngle={0}
+                  hintAngle={tutorialAngle}
+                  isTouchInput={isTouchInput}
+                  isMobile={isCompactViewport}
+                />
+              </g>
             )}
 
             {/* Show angle measure whenever the visible arc has a non-zero sweep */}
@@ -4004,9 +4027,16 @@ export default function ArcadeAngleScreen() {
                   />
                 </div>
               )}
-              {showDevAnswer && (
-                <div className="arcade-panel px-2 py-1 text-[10px] font-black text-yellow-300">
-                  {texts.generic.devAnswerPrefix} {currentQ.answer}°
+              {demo.showAnswers && (
+                <div
+                  className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight text-white"
+                  style={{
+                    background: "#f97316",
+                    borderColor: "#ea580c",
+                    color: "#ffffff",
+                  }}
+                >
+                  Answer: {currentQ.answer}°
                 </div>
               )}
               {(isMonster || isPlatinum) && (
@@ -4105,9 +4135,16 @@ export default function ArcadeAngleScreen() {
                 />
               </div>
             )}
-            {showDevAnswer && (
-              <div className="arcade-panel px-3 py-1.5 text-xs font-black text-yellow-300">
-                {texts.generic.devAnswerPrefix} {currentQ.answer}°
+            {demo.showAnswers && (
+              <div
+                className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight text-white"
+                style={{
+                  background: "#f97316",
+                  borderColor: "#ea580c",
+                  color: "#ffffff",
+                }}
+              >
+                Answer: {currentQ.answer}°
               </div>
             )}
           </div>
@@ -4118,6 +4155,18 @@ export default function ArcadeAngleScreen() {
           className="relative"
           style={{ paddingTop: "4px", paddingBottom: SAFE_AREA_BOTTOM_PAD }}
         >
+          {demo.showAnswers && (
+            <div
+              className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight text-white"
+              style={{
+                background: "#f97316",
+                borderColor: "#ea580c",
+                color: "#ffffff",
+              }}
+            >
+              Answer: {currentQ.answer}°
+            </div>
+          )}
           <NumericKeypad
             value={keypadValue}
             onChange={handleKeypadChange}
