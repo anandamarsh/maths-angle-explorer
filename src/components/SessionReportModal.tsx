@@ -158,7 +158,7 @@ function LevelCompleteReportActions({
             setPlayerName(event.target.value);
           }}
           placeholder={t("report.namePlaceholder")}
-          className="min-w-0 w-36 shrink-0 rounded-2xl border-2 border-slate-600 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-slate-400"
+          className="min-w-0 w-36 shrink-0 rounded-2xl border-2 border-slate-600 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-slate-500 focus:border-slate-400"
         />
         <input
           type="email"
@@ -172,7 +172,7 @@ function LevelCompleteReportActions({
           }}
           placeholder="parent@email.com"
           data-autopilot-key="email-input"
-          className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
+          className="min-w-0 flex-1 rounded-2xl border-2 border-cyan-300 bg-slate-900/80 px-4 py-3 text-base text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-200"
         />
         <button
           type="button"
