@@ -1922,10 +1922,10 @@ export default function ArcadeAngleScreen() {
     let startedAt = 0;
     const delayMs = 1000;
     const holdMs = 450;
-    const travelMs = 1400;
-    const fadeOutMs = 700;
+    const travelMs = 2200;
+    const fadeOutMs = 1100;
     const pauseMs = 2000;
-    const fadeInMs = 700;
+    const fadeInMs = 1200;
     const cycleMs = holdMs + travelMs + fadeOutMs + pauseMs + fadeInMs;
     const revealTimer = window.setTimeout(
       () => setTutorialHintVisible(true),
@@ -3366,7 +3366,7 @@ export default function ArcadeAngleScreen() {
               background: "#09104c",
               border: "1px solid rgba(96, 165, 250, 0.75)",
               color: "#ffffff",
-              boxShadow: "0 0 18px rgba(59,130,246,0.22)",
+              boxShadow: "0 0 24px rgba(96,165,250,0.38), 0 0 44px rgba(59,130,246,0.2)",
               writingMode: isMobileLandscape ? "vertical-rl" : undefined,
               textOrientation: isMobileLandscape ? "upright" : undefined,
             }}

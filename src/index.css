@@ -211,11 +211,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
-  background: transparent;
+  padding: 0;
+  background: #ff0000;
   border: 3px solid #fef08a;
   border-radius: 9999px;
   box-shadow: none;
+  overflow: hidden;
   color: white;
   transition: transform 180ms ease, filter 180ms ease;
 }
