@@ -3343,14 +3343,14 @@ export default function ArcadeAngleScreen() {
         <div
           className={`pointer-events-none absolute z-[19] flex ${
             isMobileLandscape
-              ? "bottom-20 left-2 top-0 w-12 items-center justify-start"
+              ? "bottom-20 left-0 top-0 w-12 items-center justify-start"
               : "left-2 right-2 top-2 justify-center"
           }`}
         >
           <div
             className={
               isMobileLandscape
-                ? "rounded-2xl px-1.5 py-3 text-center text-base font-black uppercase"
+                ? "rounded-r-2xl rounded-l-none px-1.5 py-3 text-center text-base font-black uppercase"
                 : "max-w-3xl rounded-2xl px-5 py-1.5 text-center text-base font-black uppercase"
             }
             style={{
@@ -3362,7 +3362,7 @@ export default function ArcadeAngleScreen() {
               textOrientation: isMobileLandscape ? "upright" : undefined,
             }}
           >
-            Demo Mode
+            Demo
           </div>
         </div>
       )}
@@ -4028,12 +4028,13 @@ export default function ArcadeAngleScreen() {
               )}
               {demo.showAnswers && (
                 <div
-                  className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight"
+                  className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
                   style={{
                     background: "rgba(250,204,21,0.12)",
                     borderColor: "#facc15",
                     borderWidth: "3px",
                     color: "#fde047",
+                    marginBottom: "2px",
                   }}
                 >
                   Answer: {currentQ.answer}°
@@ -4137,12 +4138,13 @@ export default function ArcadeAngleScreen() {
             )}
             {demo.showAnswers && (
               <div
-                className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight"
+                className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
                 style={{
                   background: "rgba(250,204,21,0.12)",
                   borderColor: "#facc15",
                   borderWidth: "3px",
                   color: "#fde047",
+                  marginBottom: "2px",
                 }}
               >
                 Answer: {currentQ.answer}°
@@ -4158,12 +4160,13 @@ export default function ArcadeAngleScreen() {
         >
           {demo.showAnswers && (
             <div
-              className="arcade-panel rounded-b-none border-b-0 px-3 py-2 text-center text-[1rem] font-bold leading-tight"
+              className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
               style={{
                 background: "rgba(250,204,21,0.12)",
                 borderColor: "#facc15",
                 borderWidth: "3px",
                 color: "#fde047",
+                marginBottom: "2px",
               }}
             >
               Answer: {currentQ.answer}°
