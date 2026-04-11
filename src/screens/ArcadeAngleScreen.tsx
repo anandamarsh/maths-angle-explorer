@@ -3318,8 +3318,7 @@ export default function ArcadeAngleScreen() {
     pendingLevelThreeHitEnemyIdRef.current = null;
     pendingLevelThreeTargetAngleRef.current = null;
     pendingLevelThreeImpactPointRef.current = null;
-    pendingLevelThreeReportCorrectRef.current = null;
-    pendingLevelThreeReportChildRef.current = null;
+    clearLoggedSweepSnapshot();
     setEggsCollected(0);
     setMonsterEggs(0);
     setGamePhase("normal");
@@ -3360,8 +3359,7 @@ export default function ArcadeAngleScreen() {
       pendingLevelThreeHitEnemyIdRef.current = null;
       pendingLevelThreeTargetAngleRef.current = null;
       pendingLevelThreeImpactPointRef.current = null;
-      pendingLevelThreeReportCorrectRef.current = null;
-      pendingLevelThreeReportChildRef.current = null;
+      clearLoggedSweepSnapshot();
     }
     setRevealedAngle(null);
     setGazeAngle(currentQRef.current.startAngleDeg ?? 0);

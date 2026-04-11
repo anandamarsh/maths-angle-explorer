@@ -108,6 +108,20 @@ export function createLevelTwoMonsterQuestion(random?: () => number): AngleQuest
 export function createLevelTwoPlatinumQuestion(random?: () => number): AngleQuestion
 ```
 
+Displayed Level 2 now runs the rapid soldier-defence mode in the screen layer:
+- centred cannon with progressive angle entry
+- soldiers drop from the top, land on radial paths, then crawl inward
+- normal, monster, and platinum reuse the same soldier-defence loop with
+  different input-assistance rules
+
+### Level 3
+
+```ts
+export function createLevelThreeNormalQuestion(random?: () => number): AngleQuestion
+export function createLevelThreeMonsterQuestion(random?: () => number): AngleQuestion
+export function createLevelThreePlatinumQuestion(random?: () => number): AngleQuestion
+```
+
 Current maths:
 - choose a complementary, supplementary, or complete-angle set
 - build sectors in multiples of `5°`
@@ -130,11 +144,8 @@ export function makeQuestion(level: 1 | 2 | 3, round?: GameRound): AngleQuestion
 ```
 
 Compatibility notes:
-- `makeL3Question()` now produces Level 3 basic-round questions on `30°`
-  landmarks, matching the rapid-action cannon-defence mode.
-- `makeMonsterL3Question()` and the platinum dispatch now point at Level 3
-  calculators as placeholders so the screen can route Level 3 cleanly while the
-  specialised monster/platinum rules are still being expanded.
+- displayed `Level 2` now routes to the rapid soldier-defence ruleset
+- displayed `Level 3` now routes to the missing-angle sector ruleset
 
 ## Test strategy
 
@@ -147,7 +158,7 @@ tests/unit/calculations.test.ts
 They verify:
 - Level 1 deterministic angle selection
 - sector-set totals and `5°` increments
-- deterministic Level 2 missing-angle generation
+- deterministic Level 3 missing-angle generation
 - round dispatch for normal, monster, and platinum
 
 Playwright continues to verify the full interactive game flow.
@@ -176,6 +187,7 @@ Angle Explorer follows the same demo contract as the other See Maths games:
 While demo mode is enabled:
 - the game shows a persistent `Demo Mode` banner
 - star target drops to `2`
+- the soldier round also caps total demo spawns to `2`
 - the correct angle is visible without needing the answer cheat code
 - the level-complete modal tells testers to leave a comment and email the
   report to themselves
