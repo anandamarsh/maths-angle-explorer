@@ -3353,7 +3353,7 @@ export default function ArcadeAngleScreen() {
           className={`pointer-events-none absolute z-[19] flex ${
             isMobileLandscape
               ? "bottom-20 left-0 top-0 w-12 items-center justify-start"
-              : "left-2 right-2 top-2 justify-center"
+              : "left-2 right-2 top-2 justify-center landscape:hidden"
           }`}
         >
           <div
@@ -3903,6 +3903,22 @@ export default function ArcadeAngleScreen() {
               </button>
               <LanguageSwitcher />
             </div>
+            {demo.enabled && !isMobileLandscape && (
+              <div className="flex items-center justify-center py-0.5">
+                <div
+                  className="rounded-2xl px-5 py-1.5 text-center text-base font-black uppercase"
+                  style={{
+                    background: "#09104c",
+                    border: "1px solid rgba(96, 165, 250, 0.75)",
+                    color: "#ffffff",
+                    boxShadow:
+                      "0 0 24px rgba(96,165,250,0.38), 0 0 44px rgba(59,130,246,0.2)",
+                  }}
+                >
+                  Demo
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-center gap-1">
               {([1, 2] as const).map((lv) => {
                 const locked = !IS_DEV && lv > unlockedLevel && lv > level;
