@@ -3,6 +3,29 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 
+function installLongPressMenuBlock() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+  const isEditable = (target: EventTarget | null): target is HTMLElement => {
+    if (!(target instanceof HTMLElement)) return false
+    if (target.isContentEditable) return true
+    return (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
+    )
+  }
+
+  document.addEventListener(
+    'contextmenu',
+    (event) => {
+      if (isEditable(event.target)) return
+      event.preventDefault()
+    },
+    { capture: true },
+  )
+}
+
 function installIosViewportGuard() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   const ua = navigator.userAgent
@@ -83,6 +106,7 @@ if (!import.meta.env.PROD) {
 }
 
 installIosViewportGuard()
+installLongPressMenuBlock()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

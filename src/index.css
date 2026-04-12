@@ -22,10 +22,28 @@
   background: #020617;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  -webkit-touch-callout: none;
 }
 
 body {
   margin: 0;
+}
+
+html,
+body,
+#root {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 #root {
