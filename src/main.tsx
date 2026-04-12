@@ -3,8 +3,21 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 
+function shouldBlockTouchMenus() {
+  if (typeof window === 'undefined') return true
+  if (import.meta.env.PROD) return true
+  const host = window.location.hostname
+  return host !== 'localhost' && host !== '127.0.0.1' && host !== '::1'
+}
+
 function installLongPressMenuBlock() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (
+    typeof window === 'undefined' ||
+    typeof document === 'undefined' ||
+    !shouldBlockTouchMenus()
+  ) {
+    return
+  }
 
   const isEditable = (target: EventTarget | null): target is HTMLElement => {
     if (!(target instanceof HTMLElement)) return false
@@ -24,6 +37,11 @@ function installLongPressMenuBlock() {
     },
     { capture: true },
   )
+}
+
+function applyTouchMenuPolicy() {
+  if (typeof document === 'undefined') return
+  document.documentElement.dataset.blockTouchMenus = shouldBlockTouchMenus() ? 'true' : 'false'
 }
 
 function installIosViewportGuard() {
@@ -106,6 +124,7 @@ if (!import.meta.env.PROD) {
 }
 
 installIosViewportGuard()
+applyTouchMenuPolicy()
 installLongPressMenuBlock()
 
 createRoot(document.getElementById('root')!).render(

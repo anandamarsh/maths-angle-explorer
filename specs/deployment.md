@@ -118,6 +118,16 @@ npm run preview  # serve dist/ locally
 Push to main → Vercel auto-deploys. `api/send-report.ts` is deployed as a serverless
 function alongside the static assets.
 
+## Touch menu policy
+
+During local development on `localhost`, `127.0.0.1`, or `::1`, the app leaves the
+browser's standard right-click and long-press menus enabled so debugging tools and
+normal inspect/copy workflows still work.
+
+In production and any non-local host, the app disables the default `contextmenu`
+surface and iOS touch callout on the game shell, while still allowing normal text
+selection behavior inside editable controls.
+
 ---
 
 ## Icon requirements

@@ -22,25 +22,24 @@
   background: #020617;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  -webkit-touch-callout: none;
 }
 
 body {
   margin: 0;
 }
 
-html,
-body,
-#root {
+html[data-block-touch-menus="true"],
+html[data-block-touch-menus="true"] body,
+html[data-block-touch-menus="true"] #root {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
 
-input,
-textarea,
-select,
-[contenteditable="true"] {
+html[data-block-touch-menus="true"] input,
+html[data-block-touch-menus="true"] textarea,
+html[data-block-touch-menus="true"] select,
+html[data-block-touch-menus="true"] [contenteditable="true"] {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
