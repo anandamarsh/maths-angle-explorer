@@ -194,7 +194,7 @@ const L3_FIRST_SPAWN_DELAY_MS = scaleDemoMs(1200);
 const L3_BUG_SPAWN_Y = -56;
 const L3_BUG_LANDING_RADIUS = TARGET_DISTANCE;
 const L3_BUG_DANGER_RADIUS = 18;
-const L3_MAX_BUGS = Number.POSITIVE_INFINITY;
+const L3_MAX_BUGS = 3;
 const L3_BUG_ANGLES = [
   30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330,
 ] as const;
@@ -317,10 +317,9 @@ function getLevelThreeEnemyPose(enemy: LevelThreeEnemy, now: number) {
 
   const crawlElapsed = elapsed - L3_BUG_FALL_MS;
   const crawlProgress = Math.min(1, crawlElapsed / L3_BUG_CRAWL_MS);
-  const easedCrawlProgress = 1 - (1 - crawlProgress) ** 1.5;
   const radius =
     L3_BUG_LANDING_RADIUS -
-    (L3_BUG_LANDING_RADIUS - L3_BUG_DANGER_RADIUS) * easedCrawlProgress;
+    (L3_BUG_LANDING_RADIUS - L3_BUG_DANGER_RADIUS) * crawlProgress;
   const point = polarToXY(CX, CY, enemy.angleDeg, radius);
   return {
     x: point.x,
