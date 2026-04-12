@@ -188,13 +188,16 @@ const ANGLE_HIT_TOL = 5; // drag/snap tolerance
 const TYPED_TOL = 0.55; // typed answer must be exact (allows ±0.5 for decimal rounding)
 const TICK_INTERVAL = 10;
 const L3_BUG_SPAWN_INTERVAL_MS = scaleDemoMs(2200);
-const L3_BUG_FALL_MS = scaleDemoMs(5700);
+const L3_BUG_FALL_MS = scaleDemoMs(4800);
 const L3_BUG_CRAWL_MS = scaleDemoMs(90000);
+const L3_FIRST_SPAWN_DELAY_MS = scaleDemoMs(1200);
 const L3_BUG_SPAWN_Y = -56;
 const L3_BUG_LANDING_RADIUS = TARGET_DISTANCE;
 const L3_BUG_DANGER_RADIUS = 18;
 const L3_MAX_BUGS = Number.POSITIVE_INFINITY;
-const L3_BUG_ANGLES = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330] as const;
+const L3_BUG_ANGLES = [
+  30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330,
+] as const;
 const BACKGROUND_TICK_MS = 50;
 
 type Level2SetKindKey = "COMPLEMENTARY" | "SUPPLEMENTARY" | "COMPLETE";
@@ -280,11 +283,22 @@ function getNowMs() {
   return Date.now();
 }
 
-function pickLevelThreeAngle(enemies: LevelThreeEnemy[]) {
+function pickLevelThreeAngle(
+  enemies: LevelThreeEnemy[],
+  prevAngle: number | null,
+) {
   const used = new Set(enemies.map((enemy) => enemy.angleDeg));
   const pool = L3_BUG_ANGLES.filter((angle) => !used.has(angle));
   const choices = pool.length > 0 ? pool : [...L3_BUG_ANGLES];
-  return choices[Math.floor(Math.random() * choices.length)] ?? 30;
+  if (prevAngle == null) {
+    const thirdQuadrantChoices = choices.filter((angle) => angle > 180 && angle < 270);
+    const firstChoices = thirdQuadrantChoices.length > 0 ? thirdQuadrantChoices : choices;
+    return firstChoices[Math.floor(Math.random() * firstChoices.length)] ?? 225;
+  }
+  const quadrantChoices =
+    choices.filter((angle) => angleDiffDeg(angle, prevAngle) >= 90);
+  const finalChoices = quadrantChoices.length > 0 ? quadrantChoices : choices;
+  return finalChoices[Math.floor(Math.random() * finalChoices.length)] ?? 30;
 }
 
 function getLevelThreeEnemyPose(enemy: LevelThreeEnemy, now: number) {
@@ -303,9 +317,10 @@ function getLevelThreeEnemyPose(enemy: LevelThreeEnemy, now: number) {
 
   const crawlElapsed = elapsed - L3_BUG_FALL_MS;
   const crawlProgress = Math.min(1, crawlElapsed / L3_BUG_CRAWL_MS);
+  const easedCrawlProgress = 1 - (1 - crawlProgress) ** 1.5;
   const radius =
     L3_BUG_LANDING_RADIUS -
-    (L3_BUG_LANDING_RADIUS - L3_BUG_DANGER_RADIUS) * crawlProgress;
+    (L3_BUG_LANDING_RADIUS - L3_BUG_DANGER_RADIUS) * easedCrawlProgress;
   const point = polarToXY(CX, CY, enemy.angleDeg, radius);
   return {
     x: point.x,
@@ -1072,12 +1087,14 @@ function LiveAngleLabel({
   answerDeg: number;
   baseAngle?: number;
 }) {
-  const displayAnswer = baseAngle === 0 ? answerDeg : answerDeg - baseAngle;
-  const arcAngle = revealed ? displayAnswer : gazeAngle - baseAngle;
+  const displayAnswer = shortestSignedAngleDelta(baseAngle, answerDeg);
+  const arcAngle = revealed
+    ? displayAnswer
+    : shortestSignedAngleDelta(baseAngle, gazeAngle);
   if (Math.abs(arcAngle) < 1 && !revealed) return null;
   const text = revealed
     ? `${Math.round(displayAnswer)}°`
-    : `${Math.round(gazeAngle - baseAngle)}°`;
+    : `${Math.round(arcAngle)}°`;
   // Keep the live sweep label away from the beam in L2.
   const midAngle = baseAngle + arcAngle / 2;
   const labelRadius =
@@ -1296,7 +1313,7 @@ function GazeBeamDrag({
   const ep = clampedBeamEndpoint(gazeAngle);
   const baseEp = clampedBeamEndpoint(baseAngle);
   const beamColor = "#38bdf8";
-  const displaySweep = gazeAngle - baseAngle;
+  const displaySweep = shortestSignedAngleDelta(baseAngle, gazeAngle);
 
   // Arc: signed (handle negative angles for L1)
   const absAngle = Math.abs(displaySweep);
@@ -2174,6 +2191,8 @@ export default function ArcadeAngleScreen() {
   const levelThreeEnemiesRef = useRef<LevelThreeEnemy[]>([]);
   const levelThreeCalcBaseAngleRef = useRef(currentQ.startAngleDeg ?? 0);
   const levelThreeSpawnedCountRef = useRef(0);
+  const levelThreeLastSpawnAngleRef = useRef<number | null>(null);
+  const levelThreeRoundStartAtRef = useRef(getNowMs());
   const levelThreeLandedEnemyIdsRef = useRef<Set<string>>(new Set());
   const earnEggRef = useRef(() => {});
   const earnMonsterEggRef = useRef(() => {});
@@ -2630,21 +2649,39 @@ export default function ArcadeAngleScreen() {
         return;
       }
       if (levelThreeSpawnedCountRef.current >= spawnLimit) return;
+      const nextAngle = pickLevelThreeAngle(
+        currentEnemies,
+        levelThreeLastSpawnAngleRef.current,
+      );
+      setLevelThreeNow(now);
       playTargetDeploy();
       levelThreeSpawnedCountRef.current += 1;
+      levelThreeLastSpawnAngleRef.current = nextAngle;
       setLevelThreeEnemies((prev) => [
         ...prev,
         {
           id: `l3-bug-${Math.random().toString(36).slice(2, 9)}`,
-          angleDeg: pickLevelThreeAngle(prev),
+          angleDeg: nextAngle,
           spawnedAt: now,
         },
       ]);
     };
-
-    spawnEnemy();
+    let firstTimerId: number | null = null;
+    if (
+      levelThreeEnemiesRef.current.length === 0 &&
+      levelThreeSpawnedCountRef.current === 0
+    ) {
+      const elapsed = Math.max(0, getNowMs() - levelThreeRoundStartAtRef.current);
+      const delay = Math.max(0, L3_FIRST_SPAWN_DELAY_MS - elapsed);
+      firstTimerId = window.setTimeout(spawnEnemy, delay);
+    } else {
+      spawnEnemy();
+    }
     const interval = window.setInterval(spawnEnemy, L3_BUG_SPAWN_INTERVAL_MS);
-    return () => window.clearInterval(interval);
+    return () => {
+      if (firstTimerId !== null) window.clearTimeout(firstTimerId);
+      window.clearInterval(interval);
+    };
   }, [demo.enabled, effectiveLevel, eggsCollected, gamePhase, isRecording, monsterEggs, screen, showMonsterAnnounce]);
 
   useEffect(() => {
@@ -2707,6 +2744,7 @@ export default function ArcadeAngleScreen() {
       setLevelThreeCannonDestroyed(false);
       setLevelThreeEnemies([]);
       levelThreeSpawnedCountRef.current = 0;
+      levelThreeLastSpawnAngleRef.current = null;
       levelThreeCalcBaseAngleRef.current = 0;
       pendingLevelThreeHitEnemyIdRef.current = null;
       pendingLevelThreeTargetAngleRef.current = null;
@@ -3135,6 +3173,7 @@ export default function ArcadeAngleScreen() {
       if (effectiveLevel === 3) {
         setLevelThreeEnemies([]);
         levelThreeSpawnedCountRef.current = 0;
+        levelThreeLastSpawnAngleRef.current = null;
         pendingLevelThreeHitEnemyIdRef.current = null;
         pendingLevelThreeTargetAngleRef.current = null;
         pendingLevelThreeImpactPointRef.current = null;
@@ -3179,6 +3218,7 @@ export default function ArcadeAngleScreen() {
       if (effectiveLevel === 3) {
         setLevelThreeEnemies([]);
         levelThreeSpawnedCountRef.current = 0;
+        levelThreeLastSpawnAngleRef.current = null;
         pendingLevelThreeHitEnemyIdRef.current = null;
         pendingLevelThreeTargetAngleRef.current = null;
         pendingLevelThreeImpactPointRef.current = null;
@@ -3258,7 +3298,10 @@ export default function ArcadeAngleScreen() {
     setGamePhase("monster");
     setMonsterEggs(0);
     setLevelThreeEnemies([]);
+    setLevelThreeNow(getNowMs());
+    levelThreeRoundStartAtRef.current = getNowMs();
     levelThreeSpawnedCountRef.current = 0;
+    levelThreeLastSpawnAngleRef.current = null;
     levelThreeCalcBaseAngleRef.current = 0;
     pendingLevelThreeHitEnemyIdRef.current = null;
     pendingLevelThreeTargetAngleRef.current = null;
@@ -3289,7 +3332,10 @@ export default function ArcadeAngleScreen() {
     setGamePhase("platinum");
     setMonsterEggs(0);
     setLevelThreeEnemies([]);
+    setLevelThreeNow(getNowMs());
+    levelThreeRoundStartAtRef.current = getNowMs();
     levelThreeSpawnedCountRef.current = 0;
+    levelThreeLastSpawnAngleRef.current = null;
     levelThreeCalcBaseAngleRef.current = 0;
     pendingLevelThreeHitEnemyIdRef.current = null;
     pendingLevelThreeTargetAngleRef.current = null;
@@ -3328,6 +3374,7 @@ export default function ArcadeAngleScreen() {
       if (effectiveLevel === 3) {
         setLevelThreeEnemies([]);
         levelThreeSpawnedCountRef.current = 0;
+        levelThreeLastSpawnAngleRef.current = null;
         pendingLevelThreeHitEnemyIdRef.current = null;
         pendingLevelThreeTargetAngleRef.current = null;
         pendingLevelThreeImpactPointRef.current = null;
@@ -3403,7 +3450,9 @@ export default function ArcadeAngleScreen() {
     setLevelThreeEnemies([]);
     setLevelThreeNow(getNowMs());
     setLevelThreeCannonDestroyed(false);
+    levelThreeRoundStartAtRef.current = getNowMs();
     levelThreeSpawnedCountRef.current = 0;
+    levelThreeLastSpawnAngleRef.current = null;
     levelThreeCalcBaseAngleRef.current = firstQ.startAngleDeg ?? 0;
     pendingLevelThreeHitEnemyIdRef.current = null;
     pendingLevelThreeTargetAngleRef.current = null;
@@ -3443,7 +3492,9 @@ export default function ArcadeAngleScreen() {
       setLevelThreeEnemies([]);
       setEggsCollected(0);
       setLevelThreeNow(getNowMs());
+      levelThreeRoundStartAtRef.current = getNowMs();
       levelThreeSpawnedCountRef.current = 0;
+      levelThreeLastSpawnAngleRef.current = null;
       levelThreeCalcBaseAngleRef.current = currentQRef.current.startAngleDeg ?? 0;
       setLevelThreeCannonDestroyed(false);
       pendingLevelThreeHitEnemyIdRef.current = null;
@@ -3849,6 +3900,7 @@ export default function ArcadeAngleScreen() {
     !isRecording &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
+  const showAnswerBanner = (IS_DEV || cheatAnswerUnlocked || demo.showAnswers) && !isRecording;
   const overlayBaseAngle =
     effectiveLevel === 3
       ? (
@@ -3861,7 +3913,10 @@ export default function ArcadeAngleScreen() {
         : 0;
   const activeArcRadius =
     effectiveLevel === 2 ? (getMissingSectorRadius(currentQ) ?? 52) : 52;
-  const arcSweep = (revealedAngle ?? aimForBeam) - overlayBaseAngle;
+  const arcSweep = shortestSignedAngleDelta(
+    overlayBaseAngle,
+    revealedAngle ?? aimForBeam,
+  );
   const hasStartedL2Interaction =
     effectiveLevel === 2 &&
     (dragging ||
@@ -4453,16 +4508,43 @@ export default function ArcadeAngleScreen() {
               return <KnownMarker key={i} x={p.x} y={p.y} label={egg.label} />;
             })}
             {effectiveLevel === 3 &&
-              levelThreeEnemyPoses.map(({ enemy, pose }) => (
-                <LevelThreeEnemySprite
-                  key={enemy.id}
-                  x={pose.x}
-                  y={pose.y}
-                  parachuting={pose.parachuting}
-                  landingImpactT={pose.landingImpactT}
-                  angleDeg={enemy.angleDeg}
-                />
-              ))}
+              levelThreeEnemyPoses.map(({ enemy, pose }) => {
+                const landingPoint = polarToXY(
+                  CX,
+                  CY,
+                  enemy.angleDeg,
+                  L3_BUG_LANDING_RADIUS,
+                );
+                const distToCannon = Math.hypot(pose.x - CX, pose.y - CY);
+                const approachOpacity = Math.max(
+                  0.16,
+                  Math.min(0.42, 1 - distToCannon / L3_BUG_LANDING_RADIUS),
+                );
+                return (
+                  <g key={enemy.id}>
+                    {!pose.parachuting && (
+                      <line
+                        x1={landingPoint.x}
+                        y1={landingPoint.y}
+                        x2={pose.x}
+                        y2={pose.y}
+                        stroke="rgba(186,230,253,0.9)"
+                        strokeWidth={1.6}
+                        strokeLinecap="round"
+                        opacity={approachOpacity}
+                        strokeDasharray="0.1 3.2"
+                      />
+                    )}
+                    <LevelThreeEnemySprite
+                      x={pose.x}
+                      y={pose.y}
+                      parachuting={pose.parachuting}
+                      landingImpactT={pose.landingImpactT}
+                      angleDeg={enemy.angleDeg}
+                    />
+                  </g>
+                );
+              })}
             {/* Target crosshair — above banner, below beam */}
             {effectiveLevel === 3
               ? showSceneActors &&
@@ -4645,7 +4727,7 @@ export default function ArcadeAngleScreen() {
                     />
                   </div>
                 )}
-                {showDevAnswer && (
+                {showDevAnswer && !showAnswerBanner && (
                   <div className="arcade-panel mt-1 px-2 py-1 text-[10px] font-black text-yellow-300">
                     {texts.generic.devAnswerPrefix} {currentQ.answer}°
                   </div>
@@ -4944,7 +5026,7 @@ export default function ArcadeAngleScreen() {
             className="mt-auto shrink-0 px-1 relative"
             style={{ paddingBottom: SAFE_AREA_BOTTOM_PAD }}
           >
-            {demo.showAnswers && (
+            {showAnswerBanner && (
               <div
                 className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
                 style={{
@@ -5032,7 +5114,7 @@ export default function ArcadeAngleScreen() {
           className="relative z-20"
           style={{ paddingTop: "4px", paddingBottom: SAFE_AREA_BOTTOM_PAD }}
         >
-          {demo.showAnswers && (
+            {showAnswerBanner && (
             <div
               className="arcade-panel px-3 py-2 text-center text-[1rem] font-bold leading-tight"
               style={{
