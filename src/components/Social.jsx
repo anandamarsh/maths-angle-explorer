@@ -15,13 +15,16 @@ const SHARE_URL        = texts.generic.shellShareUrl;
 const DEFAULT_DISCUSSIT_URL = import.meta.env.PROD
   ? 'https://discussit-widget.vercel.app'
   : 'http://localhost:5001';
-const LOCAL_DISCUSSIT_URL = (import.meta.env.VITE_DISCUSSIT_URL ?? DEFAULT_DISCUSSIT_URL).replace(/\/$/, '');
+const LOCAL_DISCUSSIT_URL = (import.meta.env.VITE_DISCUSSIT_URL ?? DEFAULT_DISCUSSIT_URL)
+  .trim()
+  .replace(/\/$/, '');
 
 function getCommentsPageUrl() {
   if (typeof window === 'undefined') return SHARE_URL;
   try {
     const url = new URL(window.location.href);
     url.searchParams.delete('level');
+    url.searchParams.delete('demo');
     return url.toString();
   } catch {
     return window.location.href;
