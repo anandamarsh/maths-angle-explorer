@@ -20,6 +20,7 @@ import {
   playGoldenEgg,
   playGameComplete,
   playTargetDeploy,
+  playTargetLand,
   playCannonFire,
   playExplosion,
   playTypewriterClick,
@@ -190,9 +191,9 @@ const L3_BUG_SPAWN_INTERVAL_MS = scaleDemoMs(2200);
 const L3_BUG_FALL_MS = scaleDemoMs(5700);
 const L3_BUG_CRAWL_MS = scaleDemoMs(90000);
 const L3_BUG_SPAWN_Y = -56;
-const L3_BUG_LANDING_RADIUS = 154;
+const L3_BUG_LANDING_RADIUS = TARGET_DISTANCE;
 const L3_BUG_DANGER_RADIUS = 18;
-const L3_MAX_BUGS = 3;
+const L3_MAX_BUGS = Number.POSITIVE_INFINITY;
 const L3_BUG_ANGLES = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330] as const;
 const BACKGROUND_TICK_MS = 50;
 
@@ -266,7 +267,7 @@ function getInstructionPrompt(
   if (level === 3) {
     if (gamePhase === "monster") return "Type the angle to track the soldier, then fire.";
     if (gamePhase === "platinum") return "Type the angle first, then press Fire.";
-    return "Shoot the soldiers befre they get you";
+    return "Shoot the soldiers before they get you";
   }
   if (gamePhase === "normal") {
     return t(level === 1 ? "level1.promptNormal" : "level2.promptNormal");
@@ -1281,20 +1282,26 @@ function GazeBeamDrag({
   baseAngle = 0,
   arcRadiusOverride,
   dottedRay = false,
+  showBaseArm = false,
+  baseArmColor = "rgba(203,213,225,0.75)",
 }: {
   gazeAngle: number;
   level: 1 | 2 | 3;
   baseAngle?: number;
   arcRadiusOverride?: number;
   dottedRay?: boolean;
+  showBaseArm?: boolean;
+  baseArmColor?: string;
 }) {
   const ep = clampedBeamEndpoint(gazeAngle);
+  const baseEp = clampedBeamEndpoint(baseAngle);
   const beamColor = "#38bdf8";
   const displaySweep = gazeAngle - baseAngle;
 
   // Arc: signed (handle negative angles for L1)
   const absAngle = Math.abs(displaySweep);
   const arcR = arcRadiusOverride ?? 52;
+  const isRightAngleSweep = Math.abs(absAngle - 90) < 0.5;
 
   // Build signed arc path for the main angle arc
   function signedArcPath(): string {
@@ -1325,16 +1332,70 @@ function GazeBeamDrag({
   const arrow = arcArrowhead();
   const compArcD = "";
   const suppArcD = "";
+  const rightAngleMarkerD = (() => {
+    if (!isRightAngleSweep) return "";
+    const startUnit = polarToXY(0, 0, baseAngle, 1);
+    const endUnit = polarToXY(0, 0, gazeAngle, 1);
+    const start = {
+      x: CX + startUnit.x * arcR,
+      y: CY + startUnit.y * arcR,
+    };
+    const corner = {
+      x: CX + (startUnit.x + endUnit.x) * arcR,
+      y: CY + (startUnit.y + endUnit.y) * arcR,
+    };
+    const end = {
+      x: CX + endUnit.x * arcR,
+      y: CY + endUnit.y * arcR,
+    };
+    return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} L ${corner.x.toFixed(2)} ${corner.y.toFixed(2)} L ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+  })();
 
   return (
     <g style={{ pointerEvents: "none" }}>
-      {arcD && (
+      {showBaseArm && absAngle >= 0.5 && (
+        <>
+          <line
+            x1={CX}
+            y1={CY}
+            x2={baseEp.x}
+            y2={baseEp.y}
+            stroke={baseArmColor}
+            strokeWidth={6}
+            strokeLinecap="round"
+            opacity={0.18}
+          />
+          <line
+            x1={CX}
+            y1={CY}
+            x2={baseEp.x}
+            y2={baseEp.y}
+            stroke={baseArmColor}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeDasharray="7 6"
+            opacity={0.9}
+          />
+        </>
+      )}
+      {!isRightAngleSweep && arcD && (
         <path
           d={arcD}
           stroke={beamColor}
           strokeWidth={2.2}
           fill="none"
           strokeLinecap="round"
+          strokeDasharray={dottedRay ? "7 6" : undefined}
+        />
+      )}
+      {rightAngleMarkerD && (
+        <path
+          d={rightAngleMarkerD}
+          stroke={beamColor}
+          strokeWidth={2.8}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           strokeDasharray={dottedRay ? "7 6" : undefined}
         />
       )}
@@ -1393,7 +1454,7 @@ function GazeBeamDrag({
       />
       <circle cx={ep.x} cy={ep.y} r={3.2} fill={beamColor} />
       {/* Arrowhead on arc */}
-      {arrow && (
+      {!isRightAngleSweep && arrow && (
         <g transform={`translate(${arrow.x}, ${arrow.y}) rotate(${arrow.rot})`}>
           <path d="M 0 -6 L 5 4 L 0 2 L -5 4 Z" fill={beamColor} />
         </g>
@@ -2113,6 +2174,7 @@ export default function ArcadeAngleScreen() {
   const levelThreeEnemiesRef = useRef<LevelThreeEnemy[]>([]);
   const levelThreeCalcBaseAngleRef = useRef(currentQ.startAngleDeg ?? 0);
   const levelThreeSpawnedCountRef = useRef(0);
+  const levelThreeLandedEnemyIdsRef = useRef<Set<string>>(new Set());
   const earnEggRef = useRef(() => {});
   const earnMonsterEggRef = useRef(() => {});
   const earnPlatinumEggRef = useRef(() => {});
@@ -2560,7 +2622,11 @@ export default function ArcadeAngleScreen() {
       const progress =
         gamePhase === "normal" ? eggsCollected : monsterEggs;
       const spawnLimit = demo.enabled ? 2 : Number.POSITIVE_INFINITY;
+      const now = getNowMs();
       if (progress >= stageTarget || currentEnemies.length >= L3_MAX_BUGS) {
+        return;
+      }
+      if (currentEnemies.some((enemy) => getLevelThreeEnemyPose(enemy, now).parachuting)) {
         return;
       }
       if (levelThreeSpawnedCountRef.current >= spawnLimit) return;
@@ -2571,7 +2637,7 @@ export default function ArcadeAngleScreen() {
         {
           id: `l3-bug-${Math.random().toString(36).slice(2, 9)}`,
           angleDeg: pickLevelThreeAngle(prev),
-          spawnedAt: getNowMs(),
+          spawnedAt: now,
         },
       ]);
     };
@@ -2580,6 +2646,28 @@ export default function ArcadeAngleScreen() {
     const interval = window.setInterval(spawnEnemy, L3_BUG_SPAWN_INTERVAL_MS);
     return () => window.clearInterval(interval);
   }, [demo.enabled, effectiveLevel, eggsCollected, gamePhase, isRecording, monsterEggs, screen, showMonsterAnnounce]);
+
+  useEffect(() => {
+    if (!isLevelThreeBugRound(effectiveLevel, gamePhase)) {
+      levelThreeLandedEnemyIdsRef.current.clear();
+      return;
+    }
+
+    const now = levelThreeNow;
+    const seen = levelThreeLandedEnemyIdsRef.current;
+    for (const enemy of levelThreeEnemies) {
+      const pose = getLevelThreeEnemyPose(enemy, now);
+      if (!pose.parachuting && !seen.has(enemy.id)) {
+        seen.add(enemy.id);
+        playTargetLand();
+      }
+    }
+
+    const activeIds = new Set(levelThreeEnemies.map((enemy) => enemy.id));
+    for (const enemyId of Array.from(seen)) {
+      if (!activeIds.has(enemyId)) seen.delete(enemyId);
+    }
+  }, [effectiveLevel, gamePhase, levelThreeEnemies, levelThreeNow]);
 
   useEffect(() => {
     if (!isLevelThreeBugRound(effectiveLevel, gamePhase)) return;
@@ -2593,7 +2681,7 @@ export default function ArcadeAngleScreen() {
     );
     const nextQuestion = {
       ...currentQRef.current,
-      prompt: "Shoot the soldiers befre they get you",
+      prompt: "Shoot the soldiers before they get you",
       answer: delta,
       hiddenAngleDeg: targetEnemy.angleDeg,
     };
@@ -2648,7 +2736,7 @@ export default function ArcadeAngleScreen() {
       setTypeIdx(999);
       return;
     } // L3: show all at once
-    const text = getInstructionPrompt(level, gamePhase, t);
+    const text = getInstructionPrompt(effectiveLevel, gamePhase, t);
     if (isAutopilotRef.current) {
       // Skip animation so autopilot never waits on a throttled setInterval
       setTypeIdx(text.length);
@@ -2810,7 +2898,9 @@ export default function ArcadeAngleScreen() {
               -180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90,
               120, 135, 150, 180,
             ]
-          : [q.hiddenAngleDeg];
+          : q.hiddenAngleDeg == null
+            ? []
+            : [closestEquivalentAngle(q.hiddenAngleDeg, angle)];
       const snapped = snapAngleValue(angle, SNAP_TARGETS, 5);
       if (snapped !== angle) {
         if (snapped !== gazeAngleRef.current) playSnap();
@@ -3534,7 +3624,7 @@ export default function ArcadeAngleScreen() {
 
       const shotQuestion = {
         ...currentQRef.current,
-        prompt: "Shoot the soldiers befre they get you",
+        prompt: "Shoot the soldiers before they get you",
         hiddenAngleDeg: targetEnemy?.enemy.angleDeg ?? currentQRef.current.hiddenAngleDeg,
       };
       currentQRef.current = shotQuestion;
@@ -3759,17 +3849,30 @@ export default function ArcadeAngleScreen() {
     !isRecording &&
     panelVisible &&
     (currentQ.promptLines ? true : typeIdx >= promptText.length);
-  const baseAngle = effectiveLevel === 2 ? (currentQ.startAngleDeg ?? 0) : 0;
+  const overlayBaseAngle =
+    effectiveLevel === 3
+      ? (
+          (isFiring !== null || spinAnim !== null || revealedAngle !== null
+            ? pendingLevelThreeReportStartRef.current
+            : null) ?? levelThreeCalcBaseAngleRef.current
+        )
+      : effectiveLevel === 2
+        ? (currentQ.startAngleDeg ?? 0)
+        : 0;
   const activeArcRadius =
     effectiveLevel === 2 ? (getMissingSectorRadius(currentQ) ?? 52) : 52;
-  const arcSweep = (revealedAngle ?? aimForBeam) - baseAngle;
+  const arcSweep = (revealedAngle ?? aimForBeam) - overlayBaseAngle;
   const hasStartedL2Interaction =
     effectiveLevel === 2 &&
     (dragging ||
       answer.trim() !== "" ||
-      Math.abs(gazeAngle - baseAngle) > 0.5 ||
+      Math.abs(gazeAngle - overlayBaseAngle) > 0.5 ||
       isFiring !== null ||
       spinAnim !== null);
+  const overlayAnswerDeg =
+    effectiveLevel === 3 && pendingLevelThreeReportCorrectRef.current !== null
+      ? overlayBaseAngle + pendingLevelThreeReportCorrectRef.current
+      : (revealedAngle ?? currentQ.answer);
 
   const parsedAnswer = parseFloat(answer.trim());
   const isOpeningTutorialQuestion =
@@ -3854,7 +3957,7 @@ export default function ArcadeAngleScreen() {
       ? "levelComplete" as const
       : effectiveLevel === 3 && gamePhase === "platinum" && !levelThreeTargetReady
         ? "feedback" as const
-      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null || typeIdx < getInstructionPrompt(level, gamePhase, t).length)
+      : (sceneBusy || showMonsterAnnounce || flash !== null || explosion !== null || typeIdx < getInstructionPrompt(effectiveLevel, gamePhase, t).length)
         ? "feedback" as const
         : "aiming" as const;
 
@@ -4425,8 +4528,10 @@ export default function ArcadeAngleScreen() {
               <GazeBeamDrag
                 gazeAngle={aimForBeam}
                 level={level}
-                baseAngle={baseAngle}
+                baseAngle={overlayBaseAngle}
                 arcRadiusOverride={activeArcRadius}
+                showBaseArm={effectiveLevel === 3}
+                baseArmColor="rgba(226,232,240,0.78)"
               />
             )}
             {showCannonDragHint && level === 1 && (
@@ -4463,8 +4568,8 @@ export default function ArcadeAngleScreen() {
               <LiveAngleLabel
                 gazeAngle={aimForBeam}
                 revealed={revealedAngle !== null}
-                answerDeg={revealedAngle ?? currentQ.answer}
-                baseAngle={baseAngle}
+                answerDeg={overlayAnswerDeg}
+                baseAngle={overlayBaseAngle}
               />
             )}
           </svg>
@@ -4497,7 +4602,7 @@ export default function ArcadeAngleScreen() {
                   background: "rgba(2,6,23,0.7)",
                   borderTop: "1px solid rgba(56,189,248,0.12)",
                   minHeight: "3rem",
-                  paddingLeft: "7rem",
+                  paddingLeft: "10rem",
                   paddingRight: "0.75rem",
                 }}
               >
@@ -5060,7 +5165,7 @@ export default function ArcadeAngleScreen() {
             {monsterRoundName}
           </div>
           <div
-            className="mt-4 px-6 text-center text-base font-black whitespace-nowrap"
+            className="mt-4 max-w-[min(92vw,28rem)] px-6 text-center text-base font-black leading-snug"
             style={{
               color: isPlatinum ? "#cbd5e1" : "#fef08a",
               animation: `round-announce-content ${ROUND_ANNOUNCE_MS}ms ease-in-out both`,

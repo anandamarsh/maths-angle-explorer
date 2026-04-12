@@ -607,6 +607,38 @@ export function playTargetDeploy() {
   noiseBurst(t, 380, 0.06, 0.42);
 }
 
+/** Heavy bang — soldier touches down and parachute disappears. */
+export function playTargetLand() {
+  const c = ac();
+  const t = c.currentTime;
+  const boom = c.createOscillator();
+  const boomGain = c.createGain();
+  boom.type = "sawtooth";
+  boom.frequency.setValueAtTime(120, t);
+  boom.frequency.exponentialRampToValueAtTime(38, t + 0.26);
+  boom.connect(boomGain);
+  boomGain.connect(c.destination);
+  boomGain.gain.setValueAtTime(0.55, t);
+  boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+  boom.start(t);
+  boom.stop(t + 0.28);
+
+  const snap = c.createOscillator();
+  const snapGain = c.createGain();
+  snap.type = "square";
+  snap.frequency.setValueAtTime(260, t);
+  snap.frequency.exponentialRampToValueAtTime(110, t + 0.08);
+  snap.connect(snapGain);
+  snapGain.connect(c.destination);
+  snapGain.gain.setValueAtTime(0.22, t);
+  snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  snap.start(t);
+  snap.stop(t + 0.09);
+
+  noiseBurst(t, 140, 0.18, 0.18);
+  noiseBurst(t + 0.015, 700, 0.08, 0.06);
+}
+
 /** Rocket launch — cannon fires a shot. */
 export function playCannonFire() {
   const c = ac();
