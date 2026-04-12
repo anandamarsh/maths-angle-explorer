@@ -3562,7 +3562,7 @@ export default function ArcadeAngleScreen() {
       return;
     }
     const parsed = parseFloat(v);
-    const hasLockedTypedAngle = !isNaN(parsed) && Math.abs(parsed) > 0;
+    const hasLockedTypedAngle = v.trim() !== "" && !isNaN(parsed);
     if (
       level === 1 &&
       gamePhase !== "normal" &&
