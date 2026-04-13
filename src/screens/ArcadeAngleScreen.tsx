@@ -2932,6 +2932,9 @@ export default function ArcadeAngleScreen() {
       const SNAP_TARGETS =
         effectiveLevel === 1
           ? [
+              ...(q.hiddenAngleDeg == null
+                ? []
+                : [closestEquivalentAngle(q.hiddenAngleDeg, angle)]),
               -180, -150, -135, -120, -90, -60, -45, -30, 0, 30, 45, 60, 90,
               120, 135, 150, 180,
             ]
