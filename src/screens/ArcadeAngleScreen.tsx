@@ -307,7 +307,10 @@ function angleDiffDeg(a: number, b: number): number {
 }
 
 function shortestSignedAngleDelta(from: number, to: number): number {
-  return ((to - from + 540) % 360) - 180;
+  const rawDelta = to - from;
+  const wrapped = ((rawDelta + 540) % 360) - 180;
+  if (wrapped === -180 && rawDelta > 0) return 180;
+  return wrapped;
 }
 
 function closestEquivalentAngle(raw: number, reference: number): number {
@@ -1389,20 +1392,21 @@ function LiveAngleLabel({
   revealed,
   answerDeg,
   baseAngle = 0,
+  preferredDisplayAngle,
 }: {
   gazeAngle: number;
   revealed: boolean;
   answerDeg: number;
   baseAngle?: number;
+  preferredDisplayAngle?: number | null;
 }) {
   const displayAnswer = shortestSignedAngleDelta(baseAngle, answerDeg);
-  const arcAngle = revealed
-    ? displayAnswer
-    : shortestSignedAngleDelta(baseAngle, gazeAngle);
+  const arcAngle = preferredDisplayAngle ??
+    (revealed
+      ? displayAnswer
+      : shortestSignedAngleDelta(baseAngle, gazeAngle));
   if (Math.abs(arcAngle) < 1 && !revealed) return null;
-  const text = revealed
-    ? `${Math.round(displayAnswer)}°`
-    : `${Math.round(arcAngle)}°`;
+  const text = `${Math.round(arcAngle)}°`;
   // Keep the live sweep label away from the beam in L2.
   const midAngle = baseAngle + arcAngle / 2;
   const labelRadius =
@@ -1600,12 +1604,81 @@ function CoordAxes() {
   );
 }
 
+function ProtractorOverlay() {
+  const lineRadius = 156;
+  const textRadius = 171;
+  const angles = Array.from({ length: 12 }, (_, index) => index * 30);
+
+  return (
+    <g style={{ pointerEvents: "none" }} opacity={0.98}>
+      {angles.map((angle) => {
+        const lineEnd = polarToXY(CX, CY, angle, lineRadius);
+        const labelPoint = polarToXY(CX, CY, angle, textRadius);
+        const isAxis = angle % 90 === 0;
+        const negativeEquivalent = angle === 0 ? null : angle - 360;
+        const labelRotation = -angle;
+        return (
+          <g key={`protractor-${angle}`}>
+            <line
+              x1={CX}
+              y1={CY}
+              x2={lineEnd.x}
+              y2={lineEnd.y}
+              stroke={isAxis ? "rgba(125,211,252,0.34)" : "rgba(226,232,240,0.18)"}
+              strokeWidth={isAxis ? 1.5 : 1}
+            />
+            <text
+              x={labelPoint.x}
+              y={labelPoint.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              transform={`rotate(${labelRotation} ${labelPoint.x} ${labelPoint.y})`}
+            >
+              <tspan
+                x={labelPoint.x}
+                dy={negativeEquivalent !== null ? "-0.58em" : "0"}
+                fontSize={isAxis ? 12 : 11}
+                fill="#f8fafc"
+                fontFamily="monospace"
+                fontWeight="900"
+                stroke="rgba(2,6,23,0.92)"
+                strokeWidth={3}
+                paintOrder="stroke"
+                letterSpacing="0.02em"
+              >
+                {angle}°
+              </tspan>
+              {negativeEquivalent !== null && (
+                <tspan
+                  x={labelPoint.x}
+                  dy="1.28em"
+                  fontSize={10}
+                  fill="#fde047"
+                  fontFamily="monospace"
+                  fontWeight="900"
+                  stroke="rgba(2,6,23,0.92)"
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  letterSpacing="0.02em"
+                >
+                  {negativeEquivalent}°
+                </tspan>
+              )}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 /** Bright aim beam + sector arc — shown while actively aiming or firing. */
 function GazeBeamDrag({
   gazeAngle,
   level,
   baseAngle = 0,
   arcRadiusOverride,
+  preferredDisplaySweep,
   dottedRay = false,
   showBaseArm = false,
   baseArmColor = "rgba(203,213,225,0.75)",
@@ -1614,6 +1687,7 @@ function GazeBeamDrag({
   level: 1 | 2 | 3;
   baseAngle?: number;
   arcRadiusOverride?: number;
+  preferredDisplaySweep?: number | null;
   dottedRay?: boolean;
   showBaseArm?: boolean;
   baseArmColor?: string;
@@ -1621,7 +1695,8 @@ function GazeBeamDrag({
   const ep = clampedBeamEndpoint(gazeAngle);
   const baseEp = clampedBeamEndpoint(baseAngle);
   const beamColor = LEVEL_CANVAS_THEME[level].beam;
-  const displaySweep = shortestSignedAngleDelta(baseAngle, gazeAngle);
+  const displaySweep =
+    preferredDisplaySweep ?? shortestSignedAngleDelta(baseAngle, gazeAngle);
 
   // Arc: signed (handle negative angles for L1)
   const absAngle = Math.abs(displaySweep);
@@ -4733,6 +4808,17 @@ export default function ArcadeAngleScreen() {
       : (revealedAngle ?? currentQ.answer);
 
   const parsedAnswer = parseFloat(answer.trim());
+  const preferredLiveAngle =
+    !currentQ.promptLines && answer.trim() !== "" && !isNaN(parsedAnswer)
+      ? parsedAnswer
+      : null;
+  const preferredMonsterL1Sweep =
+    level === 1 &&
+    isMonster &&
+    preferredLiveAngle !== null &&
+    (isFiring !== null || revealedAngle !== null)
+      ? preferredLiveAngle
+      : null;
   const isOpeningTutorialQuestion =
     openingTutorialEnabled &&
     gamePhase === "normal" &&
@@ -4763,15 +4849,23 @@ export default function ArcadeAngleScreen() {
       spinAnim !== null ||
       (!isPlatinum && answer.trim() !== "" && !isNaN(parsedAnswer)));
   const showCoordAxes =
-    (effectiveLevel === 1 || effectiveLevel === 3) &&
+    (effectiveLevel === 1 || (effectiveLevel === 2 && gamePhase === "normal") || effectiveLevel === 3) &&
     showSceneActors &&
     introPhase === "ready" &&
     (dragging || Math.abs(arcSweep) >= 0.5);
+  const showProtractor =
+    ((effectiveLevel === 1 && gamePhase === "normal") ||
+      (effectiveLevel === 2 && gamePhase === "normal")) &&
+    showCoordAxes;
   const showAngleOverlay =
     isAiming &&
     introPhase === "ready" &&
     Math.abs(arcSweep) >= 0.5 &&
-    ((!isMonster && !isPlatinum) || revealedAngle !== null);
+    ((level === 1 && isMonster)
+      ? (isFiring !== null || revealedAngle !== null)
+      : ((!isMonster && !isPlatinum) ||
+          (level === 1 && isPlatinum) ||
+          revealedAngle !== null));
 
   // Fire only enabled when typed value matches current aim (confirms the user has read the angle)
   const canFire =
@@ -5303,6 +5397,7 @@ export default function ArcadeAngleScreen() {
             {effectiveLevel === 3 && <L3Scene />}
 
             {/* Coordinate axes — L1 only */}
+            {showProtractor && <ProtractorOverlay />}
             {showCoordAxes && <CoordAxes />}
 
             {/* Known angle markers */}
@@ -5415,11 +5510,12 @@ export default function ArcadeAngleScreen() {
                 <GazeBeamDrag
                   gazeAngle={aimForBeam}
                   level={level}
-                baseAngle={overlayBaseAngle}
-                arcRadiusOverride={activeArcRadius}
-                showBaseArm={effectiveLevel === 3}
-                baseArmColor="rgba(226,232,240,0.78)"
-              />
+                  baseAngle={overlayBaseAngle}
+                  arcRadiusOverride={activeArcRadius}
+                  preferredDisplaySweep={preferredMonsterL1Sweep}
+                  showBaseArm={effectiveLevel === 3}
+                  baseArmColor="rgba(226,232,240,0.78)"
+                />
             )}
             {showCannonDragHint && level === 1 && (
               <g opacity={tutorialHintOpacity}>
@@ -5457,6 +5553,7 @@ export default function ArcadeAngleScreen() {
                 revealed={revealedAngle !== null}
                 answerDeg={overlayAnswerDeg}
                 baseAngle={overlayBaseAngle}
+                preferredDisplayAngle={preferredMonsterL1Sweep ?? preferredLiveAngle}
               />
             )}
           </svg>
