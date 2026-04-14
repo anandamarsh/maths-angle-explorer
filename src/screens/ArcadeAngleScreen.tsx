@@ -2664,6 +2664,10 @@ export default function ArcadeAngleScreen() {
   const [level, setLevel] = useState<1 | 2 | 3>(initialLevel);
   const [unlockedLevel, setUnlockedLevel] = useState<1 | 2 | 3>(initialLevel);
   const effectiveLevel = gameplayLevel(level);
+  const levelLifecycleRef = useRef<{
+    level: 1 | 2 | 3;
+    finished: boolean;
+  } | null>(null);
   const [screen, setScreen] = useState<"playing" | "won" | "gameover">(
     "playing",
   );
@@ -2751,6 +2755,45 @@ export default function ArcadeAngleScreen() {
     startSession();
     return null;
   });
+
+  const finishTrackedLevel = useCallback(
+    (endReason: string, payload: Record<string, unknown> = {}) => {
+      const current = levelLifecycleRef.current;
+      if (!current || current.finished) {
+        return;
+      }
+
+      current.finished = true;
+      sendEmbeddedAnalyticsEvent("level_finished", {
+        level: current.level,
+        endReason,
+        ...payload,
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    levelLifecycleRef.current = {
+      level,
+      finished: false,
+    };
+    sendEmbeddedAnalyticsEvent("level_started", { level });
+
+    return () => {
+      finishTrackedLevel("shell-exit");
+    };
+  }, [finishTrackedLevel, level]);
+
+  useEffect(() => {
+    if (screen === "playing") {
+      return;
+    }
+
+    finishTrackedLevel(screen === "won" ? "level-complete" : "game-complete", {
+      screen,
+    });
+  }, [finishTrackedLevel, screen]);
 
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) return;
