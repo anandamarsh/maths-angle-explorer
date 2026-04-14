@@ -69,6 +69,20 @@ During a drag:
 - `playSnap()` fires on each snap transition
 - `playAngleTick()` fires every 10ms tick while dragging
 
+### Dev screenshot snip overlay
+
+In localhost dev mode only, the scene also supports a square screenshot snip
+overlay:
+
+- a second toolbar icon toggles the snip UI beside the full-scene camera button
+- the selector is positioned in client-pixel space over the rendered SVG, not in
+  SVG units, so it tracks the visible viewport size
+- dragging moves the whole selector
+- dragging the resize handle changes width and height together so the crop always
+  remains square
+- capture uses the same cloned-SVG render path as the full-scene exporter, then
+  crops the PNG to the selected square bounds before download/share
+
 ### Type to aim
 
 The numeric keypad updates `answer` (string). The angle is parsed as a float when

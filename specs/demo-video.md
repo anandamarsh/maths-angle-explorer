@@ -204,6 +204,17 @@ If the user stops sharing from browser UI, or if recording ends normally:
 - appears next to the screenshot button
 - hidden while recording is active
 
+### Screenshot tools
+
+- localhost dev only
+- the existing camera button still downloads the full SVG scene as a PNG
+- a second button appears beside it with a dotted square camera icon
+- pressing that button toggles a square snip overlay on top of the scene
+- the overlay starts centred, can be dragged, and can be resized while staying a
+  square
+- a floating camera button on the selection’s top-right corner downloads exactly
+  the selected square crop as a PNG
+
 ### Recording indicator
 
 While recording is active, a small pulsing red dot appears in the top-left

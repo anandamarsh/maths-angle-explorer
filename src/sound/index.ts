@@ -140,6 +140,14 @@ export function playButton() {
   tone(783.99, t + 0.04, 0.05, 0.045, "square");
 }
 
+export function playCameraShutter() {
+  const t = ac().currentTime;
+  noiseBurst(t, 1800, 0.12, 0.025);
+  noiseBurst(t + 0.018, 2600, 0.1, 0.02);
+  tone(1244.51, t, 0.028, 0.055, "square");
+  tone(830.61, t + 0.03, 0.04, 0.05, "triangle");
+}
+
 export function playFlashDrop(ok: boolean) {
   const t = ac().currentTime;
   tone(ok ? 740 : 440, t, 0.08, 0.1, "triangle");
@@ -213,6 +221,8 @@ interface MusicPattern {
   bassVol?: number;
   melodyType?: OscillatorType;
   bassType?: OscillatorType;
+  groove?: number[];
+  accentEvery?: number;
 }
 
 const MUSIC_PATTERNS: MusicPattern[] = [
@@ -231,6 +241,8 @@ const MUSIC_PATTERNS: MusicPattern[] = [
     bassVol: 0.05,
     melodyType: "square",
     bassType: "square",
+    groove: [1, 0.92, 1.08, 0.96],
+    accentEvery: 4,
   },
   // "Star Sprint" — C major scale run ascending/descending, 215 BPM
   {
@@ -247,6 +259,8 @@ const MUSIC_PATTERNS: MusicPattern[] = [
     bassVol: 0.05,
     melodyType: "square",
     bassType: "triangle",
+    groove: [1, 1, 0.88, 1.12],
+    accentEvery: 8,
   },
   // "Power Up" — D major I-V (D→A) arpeggios, 205 BPM
   {
@@ -263,6 +277,8 @@ const MUSIC_PATTERNS: MusicPattern[] = [
     bassVol: 0.05,
     melodyType: "square",
     bassType: "square",
+    groove: [1, 0.94, 1.06, 0.94],
+    accentEvery: 4,
   },
   // "Coin Collect" — Am→F→C→G (vi-IV-I-V) arpeggios, 210 BPM
   {
@@ -279,6 +295,8 @@ const MUSIC_PATTERNS: MusicPattern[] = [
     bassVol: 0.05,
     melodyType: "square",
     bassType: "square",
+    groove: [1, 0.9, 1.04, 1.06],
+    accentEvery: 8,
   },
   // "Boss Run" — G major I-IV-V (G→C→D) arpeggios, 220 BPM
   {
@@ -295,6 +313,8 @@ const MUSIC_PATTERNS: MusicPattern[] = [
     bassVol: 0.05,
     melodyType: "square",
     bassType: "square",
+    groove: [1, 0.86, 1.12, 0.96],
+    accentEvery: 4,
   },
   // "Galaxy Run" — Em→C→G→D (i-VI-III-VII) arpeggios, 215 BPM
   {
@@ -311,6 +331,8 @@ const MUSIC_PATTERNS: MusicPattern[] = [
     bassVol: 0.05,
     melodyType: "square",
     bassType: "square",
+    groove: [1, 0.95, 1.08, 0.92],
+    accentEvery: 8,
   },
 ];
 
@@ -347,13 +369,40 @@ function tick() {
   const t = ac().currentTime;
   const beat = 60 / currentPattern.bpm;
   const { melody, bass, melodyVol = 0.05, bassVol = 0.04,
-          melodyType = "square", bassType = "triangle" } = currentPattern;
+          melodyType = "square", bassType = "triangle", groove, accentEvery = 0 } = currentPattern;
+  const grooveFactor = groove?.[step % groove.length] ?? 1;
+  const accent = accentEvery > 0 && step % accentEvery === 0;
+  const melodyStep = melody[step];
+  const bassStep = bass[step];
 
-  if (melody[step]) musicTone(melody[step], t, beat * 0.7, melodyVol, melodyType);
-  if (bass[step]) musicTone(bass[step], t, beat * 0.9, bassVol, bassType);
+  if (melodyStep) {
+    musicTone(
+      melodyStep,
+      t,
+      beat * (accent ? 0.84 : 0.68),
+      melodyVol * (accent ? 1.18 : 1),
+      melodyType,
+    );
+    if (accent && step % 8 === 0) {
+      musicTone(melodyStep / 2, t, beat * 0.38, melodyVol * 0.36, "triangle");
+    }
+  }
+  if (bassStep) {
+    musicTone(
+      bassStep,
+      t,
+      beat * (accent ? 0.98 : 0.86),
+      bassVol * (accent ? 1.08 : 1),
+      bassType,
+    );
+  }
 
   step = (step + 1) % melody.length;
-  bgTimer = setTimeout(tick, beat * 1000);
+  if (step === 0 && Math.random() < 0.35) {
+    const others = MUSIC_PATTERNS.filter((p) => p !== currentPattern);
+    currentPattern = others[Math.floor(Math.random() * others.length)];
+  }
+  bgTimer = setTimeout(tick, beat * grooveFactor * 1000);
 }
 
 export function startMusic() {

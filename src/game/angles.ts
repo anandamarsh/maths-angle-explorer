@@ -7,6 +7,7 @@ import { createLevelTwoPlatinumQuestion } from "../calculations/level-2/platinum
 import { createLevelThreeMonsterQuestion } from "../calculations/level-3/monster.ts";
 import { createLevelThreeNormalQuestion } from "../calculations/level-3/normal.ts";
 import { createLevelThreePlatinumQuestion } from "../calculations/level-3/platinum.ts";
+import { resetLevelOneQuestionSequence } from "../calculations/shared.ts";
 import type { AngleQuestion, AngleSector, GameRound, KnownEgg } from "../calculations/types.ts";
 
 /**
@@ -33,6 +34,10 @@ export function makeL3Question(): AngleQuestion {
 
 export function makeMonsterL3Question(): AngleQuestion {
   return createLevelThreeMonsterQuestion();
+}
+
+export function resetLevelOneQuestionOrder() {
+  resetLevelOneQuestionSequence();
 }
 
 export function makeQuestion(level: 1 | 2 | 3, round: GameRound = "normal"): AngleQuestion {

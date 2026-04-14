@@ -1,11 +1,12 @@
 import { texts } from "../texts.ts";
 import type { AngleQuestion, AngleSector } from "./types.ts";
 
-const L1_KEY_ANGLES = [
-  30, 45, 60, 90,
-  120, 135, 150, 180,
-  210, 225, 240, 270,
-  300, 315, 330,
+const L1_ACUTE_ANGLES = [30, 45, 60] as const;
+const L1_QUADRANT_GROUPS = [
+  [30, 45, 60, 90],
+  [120, 135, 150, 180],
+  [210, 225, 240, 270],
+  [300, 315, 330],
 ] as const;
 
 type L2SetType = {
@@ -21,6 +22,8 @@ const L2_SET_TYPES: L2SetType[] = [
 ];
 
 let idCounter = 0;
+let levelOneQuestionIndex = 0;
+let levelOneQuadrantCounts = [0, 0, 0, 0];
 
 export function pick<T>(arr: readonly T[], random: () => number = Math.random): T {
   return arr[Math.floor(random() * arr.length)];
@@ -37,6 +40,11 @@ export function sum(values: number[]): number {
 export function createQuestionId(): string {
   idCounter += 1;
   return `q${idCounter}_${Date.now()}`;
+}
+
+export function resetLevelOneQuestionSequence() {
+  levelOneQuestionIndex = 0;
+  levelOneQuadrantCounts = [0, 0, 0, 0];
 }
 
 /**
@@ -68,7 +76,22 @@ export function buildSectorSet(
 }
 
 export function createLevelOneQuestion(random: () => number = Math.random): AngleQuestion {
-  const target = pick(L1_KEY_ANGLES, random);
+  let target: number;
+
+  if (levelOneQuestionIndex === 0) {
+    target = pick(L1_ACUTE_ANGLES, random);
+    levelOneQuadrantCounts[0] += 1;
+  } else {
+    const minCount = Math.min(...levelOneQuadrantCounts);
+    const candidateQuadrants = L1_QUADRANT_GROUPS
+      .map((angles, index) => ({ angles, index }))
+      .filter(({ index }) => levelOneQuadrantCounts[index] === minCount);
+    const chosenQuadrant = pick(candidateQuadrants, random);
+    target = pick(chosenQuadrant.angles, random);
+    levelOneQuadrantCounts[chosenQuadrant.index] += 1;
+  }
+  levelOneQuestionIndex += 1;
+
   return {
     id: createQuestionId(),
     level: 1,

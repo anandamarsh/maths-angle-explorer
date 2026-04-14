@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import { createPortal } from "react-dom";
-import { makeQuestion, type AngleQuestion } from "../game/angles";
+import { makeQuestion, resetLevelOneQuestionOrder, type AngleQuestion } from "../game/angles";
 import DemoIntroOverlay from "../components/DemoIntroOverlay";
 import {
   startMusic,
@@ -10,6 +10,7 @@ import {
   toggleMute,
   isMuted,
   playButton,
+  playCameraShutter,
   playFlashDrop,
   playCorrect,
   playWrong,
@@ -144,19 +145,89 @@ const LEVEL_BG: Record<string, { bg: string; glow: string; tint: string }> = {
     glow: "#94a3b8",
     tint: "rgba(148,163,184,0.07)",
   },
-  "2-normal": { bg: "#071510", glow: "#14532d", tint: "transparent" },
-  "2-monster": { bg: "#180a00", glow: "#92400e", tint: "rgba(234,88,12,0.1)" },
+  "2-normal": { bg: "#1b1024", glow: "#7c3aed", tint: "transparent" },
+  "2-monster": { bg: "#24110b", glow: "#ea580c", tint: "rgba(234,88,12,0.1)" },
   "2-platinum": {
-    bg: "#0a0c14",
-    glow: "#94a3b8",
-    tint: "rgba(148,163,184,0.07)",
+    bg: "#16111f",
+    glow: "#c4b5fd",
+    tint: "rgba(196,181,253,0.08)",
   },
-  "3-normal": { bg: "#07161a", glow: "#134e4a", tint: "transparent" },
-  "3-monster": { bg: "#1a0508", glow: "#7f1d1d", tint: "rgba(220,38,38,0.1)" },
+  "3-normal": { bg: "#1a0f08", glow: "#f97316", tint: "transparent" },
+  "3-monster": { bg: "#220b02", glow: "#dc2626", tint: "rgba(220,38,38,0.1)" },
   "3-platinum": {
-    bg: "#090c16",
-    glow: "#94a3b8",
-    tint: "rgba(148,163,184,0.07)",
+    bg: "#180f0b",
+    glow: "#fdba74",
+    tint: "rgba(251,146,60,0.08)",
+  },
+};
+
+const LEVEL_CANVAS_THEME: Record<1 | 2 | 3, {
+  beam: string;
+  beamGhost: string;
+  target: string;
+  targetGlow: string;
+  targetFill: string;
+  wheelFill: string;
+  wheelStroke: string;
+  wheelHub: string;
+  wheelLine: string;
+  bodyFill: string;
+  bodyStroke: string;
+  barrelStroke: string;
+  pivotFill: string;
+  pivotStroke: string;
+  pivotCore: string;
+}> = {
+  1: {
+    beam: "#7dd3fc",
+    beamGhost: "#a5f3fc",
+    target: "#f97316",
+    targetGlow: "rgba(251,146,60,0.55)",
+    targetFill: "rgba(249,115,22,0.12)",
+    wheelFill: "#052e16",
+    wheelStroke: "#15803d",
+    wheelHub: "#14532d",
+    wheelLine: "#166534",
+    bodyFill: "#052e16",
+    bodyStroke: "#16a34a",
+    barrelStroke: "#4ade80",
+    pivotFill: "#14532d",
+    pivotStroke: "#22c55e",
+    pivotCore: "#86efac",
+  },
+  2: {
+    beam: "#f9a8d4",
+    beamGhost: "#f5d0fe",
+    target: "#22d3ee",
+    targetGlow: "rgba(34,211,238,0.55)",
+    targetFill: "rgba(34,211,238,0.12)",
+    wheelFill: "#2e1065",
+    wheelStroke: "#a855f7",
+    wheelHub: "#581c87",
+    wheelLine: "#7e22ce",
+    bodyFill: "#3b0764",
+    bodyStroke: "#c084fc",
+    barrelStroke: "#e9d5ff",
+    pivotFill: "#581c87",
+    pivotStroke: "#d8b4fe",
+    pivotCore: "#f5d0fe",
+  },
+  3: {
+    beam: "#fde047",
+    beamGhost: "#fef08a",
+    target: "#67e8f9",
+    targetGlow: "rgba(103,232,249,0.55)",
+    targetFill: "rgba(103,232,249,0.12)",
+    wheelFill: "#431407",
+    wheelStroke: "#ea580c",
+    wheelHub: "#7c2d12",
+    wheelLine: "#c2410c",
+    bodyFill: "#7c2d12",
+    bodyStroke: "#fb923c",
+    barrelStroke: "#fed7aa",
+    pivotFill: "#9a3412",
+    pivotStroke: "#fdba74",
+    pivotCore: "#ffedd5",
   },
 };
 
@@ -168,6 +239,20 @@ const BEAM_LEN = 150;
 const EGG_RADIUS = 130;
 const DEPLOY_MS = scaleDemoMs(900);
 const SHOT_MS = scaleDemoMs(380);
+
+type SnipSelection = {
+  x: number;
+  y: number;
+  size: number;
+};
+
+type SnipDragState = {
+  mode: "move" | "resize";
+  pointerId: number;
+  startX: number;
+  startY: number;
+  initial: SnipSelection;
+};
 const SPIN_MS = scaleDemoMs(600);
 const HIT_RESOLVE_MS = scaleDemoMs(1000);
 const PLATINUM_REVEAL_MS = scaleDemoMs(500);
@@ -454,24 +539,190 @@ function isPointOnAimRay(svgX: number, svgY: number, aimAngle: number) {
 function CannonSprite({
   aimAngle,
   dragging,
+  level,
   variant = "normal",
 }: {
   aimAngle: number;
   dragging: boolean;
+  level: 1 | 2 | 3;
   variant?: "normal" | "ghost";
 }) {
   const barrelRot = -aimAngle; // math CCW → SVG CW
   const isGhost = variant === "ghost";
-  const wheelFill = "#052e16";
-  const wheelStroke = "#15803d";
-  const wheelHub = "#14532d";
-  const wheelLine = "#166534";
-  const bodyFill = "#052e16";
-  const bodyStroke = "#16a34a";
-  const barrelStroke = isGhost ? "#67e8f9" : "#4ade80";
-  const pivotFill = "#14532d";
-  const pivotStroke = isGhost ? "#67e8f9" : "#22c55e";
-  const pivotCore = isGhost ? "#67e8f9" : "#86efac";
+  const theme = LEVEL_CANVAS_THEME[level];
+  const barrelStroke = isGhost ? theme.beamGhost : theme.barrelStroke;
+  const pivotStroke = isGhost ? theme.beamGhost : theme.pivotStroke;
+  const pivotCore = isGhost ? theme.beamGhost : theme.pivotCore;
+  const glowStyle = dragging
+    ? { filter: `drop-shadow(0 0 7px ${barrelStroke})` }
+    : undefined;
+
+  if (level === 2) {
+    return (
+      <g
+        opacity={isGhost ? 0.82 : 1}
+        style={
+          isGhost
+            ? { filter: "drop-shadow(0 0 10px rgba(221,214,254,0.42))" }
+            : undefined
+        }
+      >
+        <ellipse cx={0} cy={19} rx={31} ry={8} fill="rgba(0,0,0,0.4)" />
+        <path
+          d="M -26 17 L -6 5 L 6 5 L 26 17"
+          fill="none"
+          stroke="#3f2a1d"
+          strokeWidth={7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M -14 18 L -2 7 M 14 18 L 2 7"
+          fill="none"
+          stroke="#7c5a3a"
+          strokeWidth={4}
+          strokeLinecap="round"
+        />
+        <rect
+          x={-12}
+          y={0}
+          width={24}
+          height={8}
+          rx={3}
+          fill="#5b3b22"
+          stroke="#d6b98b"
+          strokeWidth={1.5}
+        />
+        <g transform={`rotate(${barrelRot})`}>
+          <path
+            d="M -6 -8 L 24 -8 Q 37 -8 46 -1 L 50 0 L 46 1 Q 37 8 24 8 L -6 8 Z"
+            fill="#5b3b22"
+            stroke="#e9d5ff"
+            strokeWidth={2}
+            style={glowStyle}
+          />
+          <rect
+            x={-10}
+            y={-10}
+            width={9}
+            height={20}
+            rx={3}
+            fill="#4c1d95"
+            stroke={barrelStroke}
+            strokeWidth={2}
+          />
+          <path
+            d="M 12 -5 L 33 -5 M 10 0 L 35 0 M 12 5 L 33 5"
+            stroke="#c084fc"
+            strokeWidth={1.2}
+            strokeLinecap="round"
+            opacity={0.75}
+          />
+          <circle cx={46} cy={0} r={4.5} fill="#2e1065" stroke={barrelStroke} strokeWidth={2} />
+        </g>
+        <circle
+          cx={0}
+          cy={4}
+          r={6.5}
+          fill="#4c1d95"
+          stroke={pivotStroke}
+          strokeWidth={1.5}
+        />
+        <circle cx={0} cy={4} r={2.7} fill={pivotCore} />
+      </g>
+    );
+  }
+
+  if (level === 3) {
+    return (
+      <g
+        opacity={isGhost ? 0.82 : 1}
+        style={
+          isGhost
+            ? { filter: "drop-shadow(0 0 10px rgba(253,186,116,0.42))" }
+            : undefined
+        }
+      >
+        <ellipse cx={0} cy={22} rx={36} ry={8} fill="rgba(0,0,0,0.44)" />
+        <path
+          d="M -25 14 L -22 2 L 22 2 L 25 14 L 12 18 L -12 18 Z"
+          fill="#312e2b"
+          stroke="#94a3b8"
+          strokeWidth={1.8}
+        />
+        <path
+          d="M -12 4 L -12 18 M 12 4 L 12 18"
+          stroke="#1c1917"
+          strokeWidth={3}
+          strokeLinecap="round"
+        />
+        <rect
+          x={-16}
+          y={-1}
+          width={32}
+          height={8}
+          rx={2}
+          fill="#44403c"
+          stroke="#cbd5e1"
+          strokeWidth={1.2}
+        />
+        <g transform={`rotate(${barrelRot})`}>
+          <rect
+            x={-14}
+            y={-12}
+            width={20}
+            height={24}
+            rx={4}
+            fill="#1f2937"
+            stroke="#93c5fd"
+            strokeWidth={1.6}
+          />
+          <rect
+            x={2}
+            y={-8}
+            width={34}
+            height={16}
+            rx={4}
+            fill="#334155"
+            stroke={barrelStroke}
+            strokeWidth={2}
+            style={glowStyle}
+          />
+          <rect
+            x={30}
+            y={-10}
+            width={18}
+            height={20}
+            rx={4}
+            fill="#475569"
+            stroke="#e2e8f0"
+            strokeWidth={1.8}
+          />
+          <rect
+            x={45}
+            y={-7}
+            width={10}
+            height={14}
+            rx={2}
+            fill="#0f172a"
+            stroke={barrelStroke}
+            strokeWidth={1.4}
+          />
+          <path d="M 8 -4 L 28 -4 M 8 0 L 32 0 M 8 4 L 28 4" stroke="#0f172a" strokeWidth={1.2} strokeLinecap="round" opacity={0.45} />
+        </g>
+        <circle
+          cx={0}
+          cy={2}
+          r={8.5}
+          fill="#1f2937"
+          stroke={pivotStroke}
+          strokeWidth={1.6}
+        />
+        <circle cx={0} cy={2} r={3.1} fill={pivotCore} />
+      </g>
+    );
+  }
+
   return (
     <g
       opacity={isGhost ? 0.82 : 1}
@@ -490,17 +741,17 @@ function CannonSprite({
             cx={wx}
             cy={13}
             r={10}
-            fill={wheelFill}
-            stroke={wheelStroke}
+            fill={theme.wheelFill}
+            stroke={theme.wheelStroke}
             strokeWidth={2.5}
           />
-          <circle cx={wx} cy={13} r={4} fill={wheelHub} />
+          <circle cx={wx} cy={13} r={4} fill={theme.wheelHub} />
           <line
             x1={wx}
             y1={3}
             x2={wx}
             y2={23}
-            stroke={wheelLine}
+            stroke={theme.wheelLine}
             strokeWidth={1.5}
           />
           <line
@@ -508,7 +759,7 @@ function CannonSprite({
             y1={13}
             x2={wx + 10}
             y2={13}
-            stroke={wheelLine}
+            stroke={theme.wheelLine}
             strokeWidth={1.5}
           />
         </g>
@@ -520,8 +771,8 @@ function CannonSprite({
         width={40}
         height={20}
         rx={5}
-        fill={bodyFill}
-        stroke={bodyStroke}
+        fill={theme.bodyFill}
+        stroke={theme.bodyStroke}
         strokeWidth={2}
       />
       {/* Barrel (rotates) */}
@@ -532,14 +783,10 @@ function CannonSprite({
           width={48}
           height={14}
           rx={4}
-          fill={bodyFill}
+          fill={theme.bodyFill}
           stroke={barrelStroke}
           strokeWidth={2}
-          style={
-            dragging
-              ? { filter: `drop-shadow(0 0 7px ${barrelStroke})` }
-              : undefined
-          }
+          style={glowStyle}
         />
         {/* Muzzle ring */}
         <rect
@@ -548,7 +795,7 @@ function CannonSprite({
           width={10}
           height={16}
           rx={3}
-          fill={bodyFill}
+          fill={theme.bodyFill}
           stroke={barrelStroke}
           strokeWidth={2}
         />
@@ -558,7 +805,7 @@ function CannonSprite({
         cx={0}
         cy={0}
         r={7}
-        fill={pivotFill}
+        fill={theme.pivotFill}
         stroke={pivotStroke}
         strokeWidth={1.5}
       />
@@ -616,7 +863,7 @@ function CannonDragHint({
   return (
     <g style={{ pointerEvents: "none" }}>
       <g transform={`translate(${CX}, ${CY})`}>
-        <CannonSprite aimAngle={hintAngle} dragging={false} variant="ghost" />
+        <CannonSprite aimAngle={hintAngle} dragging={false} level={1} variant="ghost" />
       </g>
       <FingerHintSprite x={endpoint.x} y={endpoint.y} />
       <g transform={`translate(${endpoint.x} ${endpoint.y + 52})`}>
@@ -728,18 +975,25 @@ function FireRayHint({ aimAngle }: { aimAngle: number }) {
 }
 
 /** Target crosshair — replaces mystery egg. */
-function TargetSprite({ pulse }: { pulse?: boolean }) {
-  const col = pulse ? "#f97316" : "#ef4444";
+function TargetSprite({
+  level,
+  pulse,
+}: {
+  level: 1 | 2 | 3;
+  pulse?: boolean;
+}) {
+  const theme = LEVEL_CANVAS_THEME[level];
+  const col = theme.target;
   const glow = pulse
-    ? `drop-shadow(0 0 7px ${col}) drop-shadow(0 0 18px rgba(239,68,68,0.5))`
-    : `drop-shadow(0 0 3px ${col})`;
+    ? `drop-shadow(0 0 7px ${col}) drop-shadow(0 0 18px ${theme.targetGlow})`
+    : `drop-shadow(0 0 4px ${theme.targetGlow})`;
   return (
     <g style={{ filter: glow }}>
       <circle
         cx={0}
         cy={0}
         r={14}
-        fill="rgba(239,68,68,0.08)"
+        fill={theme.targetFill}
         stroke={col}
         strokeWidth={2.5}
       />
@@ -789,19 +1043,74 @@ function L3Scene() {
   return (
     <g>
       <defs>
+        <linearGradient id="l3-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(251,146,60,0.2)" />
+          <stop offset="100%" stopColor="rgba(120,53,15,0)" />
+        </linearGradient>
         <linearGradient id="l3-ground" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0b2f31" />
-          <stop offset="100%" stopColor="#051518" />
+          <stop offset="0%" stopColor="#6b3418" />
+          <stop offset="100%" stopColor="#2a140c" />
+        </linearGradient>
+        <linearGradient id="l3-mountain" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#cbd5e1" />
+          <stop offset="100%" stopColor="#475569" />
         </linearGradient>
       </defs>
       <rect x={0} y={0} width={W} height={H} fill="transparent" />
-      <circle cx={86} cy={58} r={42} fill="rgba(45,212,191,0.08)" />
-      <circle cx={416} cy={84} r={34} fill="rgba(20,184,166,0.08)" />
+      <rect x={0} y={0} width={W} height={H} fill="url(#l3-sky)" />
+      <circle cx={90} cy={60} r={34} fill="rgba(255,237,213,0.2)" />
+      <path
+        d="M 0 190 L 70 112 L 138 190 Z"
+        fill="url(#l3-mountain)"
+        opacity={0.58}
+      />
+      <path
+        d="M 60 190 L 166 78 L 280 190 Z"
+        fill="url(#l3-mountain)"
+        opacity={0.88}
+      />
+      <path
+        d="M 210 190 L 320 96 L 438 190 Z"
+        fill="url(#l3-mountain)"
+        opacity={0.72}
+      />
+      <path
+        d="M 330 190 L 420 118 L 500 190 Z"
+        fill="url(#l3-mountain)"
+        opacity={0.52}
+      />
+      <path
+        d="M 138 106 L 166 78 L 194 106 L 184 106 L 166 89 L 148 106 Z"
+        fill="#f8fafc"
+        opacity={0.95}
+      />
+      <path
+        d="M 294 118 L 320 96 L 346 118 L 336 118 L 320 103 L 304 118 Z"
+        fill="#f8fafc"
+        opacity={0.8}
+      />
+      <path
+        d={`M 0 ${H - 80} C 72 ${H - 110}, 152 ${H - 28}, 240 ${H - 48} S 390 ${H - 114}, ${W} ${H - 72} L ${W} ${H} L 0 ${H} Z`}
+        fill="#3f1d11"
+        opacity={0.5}
+      />
       <path
         d={`M 0 ${H - 58} C 86 ${H - 82}, 154 ${H - 14}, 240 ${H - 40} S 396 ${H - 86}, ${W} ${H - 50} L ${W} ${H} L 0 ${H} Z`}
         fill="url(#l3-ground)"
         opacity={0.95}
       />
+      <path
+        d={`M 26 ${H - 48} L 54 ${H - 92} L 74 ${H - 48} Z`}
+        fill="#2f1b12"
+        opacity={0.95}
+      />
+      <rect x={47} y={H - 72} width={6} height={24} fill="#1c0f0a" />
+      <path
+        d={`M ${W - 76} ${H - 42} L ${W - 54} ${H - 84} L ${W - 32} ${H - 42} Z`}
+        fill="#2f1b12"
+        opacity={0.82}
+      />
+      <rect x={W - 57} y={H - 68} width={5} height={26} fill="#1c0f0a" />
       <ellipse cx={CX} cy={CY + 22} rx={46} ry={12} fill="rgba(0,0,0,0.42)" />
     </g>
   );
@@ -1294,7 +1603,7 @@ function CoordAxes() {
 /** Bright aim beam + sector arc — shown while actively aiming or firing. */
 function GazeBeamDrag({
   gazeAngle,
-  level: _level,
+  level,
   baseAngle = 0,
   arcRadiusOverride,
   dottedRay = false,
@@ -1311,7 +1620,7 @@ function GazeBeamDrag({
 }) {
   const ep = clampedBeamEndpoint(gazeAngle);
   const baseEp = clampedBeamEndpoint(baseAngle);
-  const beamColor = "#38bdf8";
+  const beamColor = LEVEL_CANVAS_THEME[level].beam;
   const displaySweep = shortestSignedAngleDelta(baseAngle, gazeAngle);
 
   // Arc: signed (handle negative angles for L1)
@@ -1482,36 +1791,260 @@ function GazeBeamDrag({
 /** Level 1 scene: starfield + distant mountains. */
 function L1Scene() {
   const stars = [
-    [30, 20],
-    [90, 45],
-    [165, 18],
-    [240, 35],
-    [320, 12],
-    [400, 38],
-    [458, 22],
-    [50, 80],
-    [130, 95],
-    [205, 68],
-    [290, 85],
-    [375, 72],
-    [455, 92],
-    [15, 130],
-    [100, 148],
-    [180, 125],
-    [265, 145],
-    [345, 130],
-    [430, 148],
-    [40, 190],
-    [120, 205],
-    [200, 192],
-    [330, 200],
-    [415, 210],
-    [470, 188],
+    { x: 34, y: 22, r: 1.1, twinkle: "1.9s", delay: "-0.4s" },
+    { x: 102, y: 36, r: 0.9, twinkle: "2.6s", delay: "-1.2s" },
+    { x: 164, y: 20, r: 1.4, twinkle: "2.1s", delay: "-0.8s" },
+    { x: 214, y: 46, r: 0.8, twinkle: "2.9s", delay: "-1.6s" },
+    { x: 286, y: 26, r: 1.2, twinkle: "2.3s", delay: "-0.2s" },
+    { x: 354, y: 18, r: 1.1, twinkle: "3.2s", delay: "-2.1s" },
+    { x: 430, y: 30, r: 0.9, twinkle: "2.4s", delay: "-1.4s" },
+    { x: 52, y: 88, r: 0.85, twinkle: "2.7s", delay: "-0.6s" },
+    { x: 132, y: 104, r: 1.15, twinkle: "2.2s", delay: "-1s" },
+    { x: 202, y: 80, r: 0.95, twinkle: "3s", delay: "-2.2s" },
+    { x: 274, y: 96, r: 1.25, twinkle: "2.5s", delay: "-0.9s" },
+    { x: 342, y: 74, r: 0.85, twinkle: "2.8s", delay: "-1.8s" },
+    { x: 412, y: 90, r: 1, twinkle: "2.1s", delay: "-0.3s" },
+    { x: 30, y: 146, r: 1.2, twinkle: "2.4s", delay: "-1.5s" },
+    { x: 92, y: 158, r: 0.75, twinkle: "3.1s", delay: "-2.6s" },
+    { x: 178, y: 134, r: 1.05, twinkle: "2s", delay: "-0.7s" },
+    { x: 254, y: 152, r: 0.9, twinkle: "2.6s", delay: "-1.9s" },
+    { x: 328, y: 132, r: 1.3, twinkle: "2.3s", delay: "-0.5s" },
+    { x: 404, y: 154, r: 0.85, twinkle: "3.3s", delay: "-2.4s" },
+    { x: 454, y: 126, r: 1.1, twinkle: "2.2s", delay: "-1.1s" },
   ];
   return (
     <g opacity={0.55}>
-      {stars.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 1.5 : 1} fill="white" />
+      <defs>
+        <radialGradient id="l1-moon-glow">
+          <stop offset="0%" stopColor="rgba(226,232,240,0.55)" />
+          <stop offset="100%" stopColor="rgba(226,232,240,0)" />
+        </radialGradient>
+        <radialGradient id="l1-planet-a">
+          <stop offset="0%" stopColor="#fcd34d" />
+          <stop offset="100%" stopColor="#f59e0b" />
+        </radialGradient>
+        <radialGradient id="l1-planet-b">
+          <stop offset="0%" stopColor="#a5f3fc" />
+          <stop offset="100%" stopColor="#0ea5e9" />
+        </radialGradient>
+        <radialGradient id="l1-planet-c">
+          <stop offset="0%" stopColor="#f9a8d4" />
+          <stop offset="100%" stopColor="#a21caf" />
+        </radialGradient>
+        <radialGradient id="l1-planet-d">
+          <stop offset="0%" stopColor="#c4b5fd" />
+          <stop offset="100%" stopColor="#4338ca" />
+        </radialGradient>
+        <radialGradient id="l1-nebula-a">
+          <stop offset="0%" stopColor="rgba(96,165,250,0.18)" />
+          <stop offset="100%" stopColor="rgba(96,165,250,0)" />
+        </radialGradient>
+        <radialGradient id="l1-nebula-b">
+          <stop offset="0%" stopColor="rgba(244,114,182,0.15)" />
+          <stop offset="100%" stopColor="rgba(244,114,182,0)" />
+        </radialGradient>
+      </defs>
+      <ellipse cx={148} cy={74} rx={42} ry={18} fill="url(#l1-nebula-a)" opacity={0.55} transform="rotate(-18 148 74)" />
+      <ellipse cx={316} cy={118} rx={54} ry={16} fill="url(#l1-nebula-b)" opacity={0.42} transform="rotate(14 316 118)" />
+      <ellipse cx={92} cy={238} rx={38} ry={14} fill="url(#l1-nebula-b)" opacity={0.28} transform="rotate(22 92 238)" />
+      <ellipse cx={386} cy={246} rx={48} ry={15} fill="url(#l1-nebula-a)" opacity={0.24} transform="rotate(-16 386 246)" />
+      <circle cx={386} cy={62} r={26} fill="url(#l1-moon-glow)" opacity={0.8} />
+      <circle cx={386} cy={62} r={14} fill="#e2e8f0" opacity={0.95} />
+      <circle cx={380} cy={58} r={3} fill="rgba(148,163,184,0.35)" />
+      <circle cx={392} cy={67} r={2.2} fill="rgba(148,163,184,0.28)" />
+      <g opacity={0.92}>
+        <circle cx={96} cy={54} r={9} fill="url(#l1-planet-a)" />
+        <ellipse
+          cx={96}
+          cy={54}
+          rx={15}
+          ry={4}
+          fill="none"
+          stroke="rgba(253,224,71,0.65)"
+          strokeWidth={1.4}
+          transform="rotate(-14 96 54)"
+        />
+      </g>
+      <g opacity={0.85}>
+        <circle cx={272} cy={34} r={6} fill="url(#l1-planet-b)" />
+        <circle cx={269} cy={31} r={1.2} fill="rgba(255,255,255,0.55)" />
+      </g>
+      <g opacity={0.78}>
+        <circle cx={182} cy={58} r={4.8} fill="url(#l1-planet-c)" />
+        <ellipse
+          cx={182}
+          cy={58}
+          rx={9}
+          ry={2.4}
+          fill="none"
+          stroke="rgba(249,168,212,0.45)"
+          strokeWidth={1}
+          transform="rotate(24 182 58)"
+        />
+      </g>
+      <g opacity={0.72}>
+        <circle cx={334} cy={44} r={4.2} fill="url(#l1-planet-d)" />
+        <circle cx={332.5} cy={42.4} r={0.9} fill="rgba(255,255,255,0.45)" />
+      </g>
+      <g opacity={0.7}>
+        <circle cx={72} cy={246} r={5.4} fill="url(#l1-planet-b)" />
+        <circle cx={69.8} cy={243.8} r={1} fill="rgba(255,255,255,0.45)" />
+      </g>
+      <g opacity={0.68}>
+        <circle cx={416} cy={232} r={6.4} fill="url(#l1-planet-c)" />
+        <ellipse
+          cx={416}
+          cy={232}
+          rx={11}
+          ry={2.8}
+          fill="none"
+          stroke="rgba(249,168,212,0.34)"
+          strokeWidth={1}
+          transform="rotate(-18 416 232)"
+        />
+      </g>
+      <g opacity={0.58}>
+        <circle cx={156} cy={286} r={4.2} fill="url(#l1-planet-d)" />
+        <circle cx={154.5} cy={284.4} r={0.8} fill="rgba(255,255,255,0.38)" />
+      </g>
+      <g opacity={0.54}>
+        <circle cx={336} cy={286} r={4.8} fill="url(#l1-planet-a)" />
+        <ellipse
+          cx={336}
+          cy={286}
+          rx={8}
+          ry={2.2}
+          fill="none"
+          stroke="rgba(253,224,71,0.28)"
+          strokeWidth={0.9}
+          transform="rotate(12 336 286)"
+        />
+      </g>
+      <g opacity={0.5}>
+        <ellipse
+          cx={234}
+          cy={86}
+          rx={18}
+          ry={6}
+          fill="none"
+          stroke="rgba(191,219,254,0.36)"
+          strokeWidth={1.2}
+          transform="rotate(18 234 86)"
+        />
+        <ellipse
+          cx={234}
+          cy={86}
+          rx={10}
+          ry={3}
+          fill="none"
+          stroke="rgba(125,211,252,0.28)"
+          strokeWidth={1}
+          transform="rotate(18 234 86)"
+        />
+      </g>
+      <g opacity={0.46}>
+        <ellipse
+          cx={428}
+          cy={108}
+          rx={16}
+          ry={5}
+          fill="none"
+          stroke="rgba(253,224,71,0.28)"
+          strokeWidth={1.1}
+          transform="rotate(-22 428 108)"
+        />
+        <ellipse
+          cx={428}
+          cy={108}
+          rx={8.5}
+          ry={2.5}
+          fill="none"
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth={0.9}
+          transform="rotate(-22 428 108)"
+        />
+      </g>
+      <g opacity={0.36}>
+        <ellipse
+          cx={120}
+          cy={282}
+          rx={14}
+          ry={4.5}
+          fill="none"
+          stroke="rgba(191,219,254,0.24)"
+          strokeWidth={1}
+          transform="rotate(-12 120 282)"
+        />
+        <ellipse
+          cx={120}
+          cy={282}
+          rx={7}
+          ry={2.2}
+          fill="none"
+          stroke="rgba(255,255,255,0.15)"
+          strokeWidth={0.8}
+          transform="rotate(-12 120 282)"
+        />
+      </g>
+      <g opacity={0.34}>
+        <ellipse
+          cx={392}
+          cy={198}
+          rx={16}
+          ry={5}
+          fill="none"
+          stroke="rgba(125,211,252,0.22)"
+          strokeWidth={1}
+          transform="rotate(26 392 198)"
+        />
+        <ellipse
+          cx={392}
+          cy={198}
+          rx={8}
+          ry={2.3}
+          fill="none"
+          stroke="rgba(255,255,255,0.12)"
+          strokeWidth={0.8}
+          transform="rotate(26 392 198)"
+        />
+      </g>
+      {stars.map((star, i) => (
+        <circle
+          key={i}
+          cx={star.x}
+          cy={star.y}
+          r={star.r}
+          fill="white"
+          opacity={0.72}
+          style={{
+            animation: `star-twinkle ${star.twinkle} ease-in-out infinite`,
+            animationDelay: star.delay,
+          }}
+        />
+      ))}
+      {[
+        { x: 148, y: 44, len: 10, delay: "-3.4s", duration: "11s" },
+        { x: 318, y: 96, len: 8, delay: "-7.1s", duration: "13s" },
+      ].map((shoot, i) => (
+        <g
+          key={`shoot-${i}`}
+          style={{
+            animation: `shooting-star ${shoot.duration} linear infinite`,
+            animationDelay: shoot.delay,
+            transformOrigin: `${shoot.x}px ${shoot.y}px`,
+          }}
+        >
+          <line
+            x1={shoot.x}
+            y1={shoot.y}
+            x2={shoot.x + shoot.len}
+            y2={shoot.y - shoot.len * 0.45}
+            stroke="rgba(255,255,255,0.85)"
+            strokeWidth={1}
+            strokeLinecap="round"
+          />
+          <circle cx={shoot.x} cy={shoot.y} r={1.1} fill="rgba(255,255,255,0.95)" />
+        </g>
       ))}
       <path
         d={`M0 ${H} C30 305 80 252 140 252 C185 252 222 224 268 228 C300 231 350 212 400 220 C430 225 455 208 480 215 L480 ${H} Z`}
@@ -1538,6 +2071,39 @@ function L2Scene({
   const activeTo = activeSector?.toAngle;
   return (
     <g>
+      <defs>
+        <linearGradient id="l2-hill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1f5f36" />
+          <stop offset="100%" stopColor="#12311e" />
+        </linearGradient>
+      </defs>
+      <circle cx={78} cy={54} r={28} fill="rgba(254,240,138,0.12)" />
+      <circle cx={420} cy={64} r={20} fill="rgba(255,255,255,0.08)" />
+      <path
+        d={`M 0 ${H - 70} C 44 ${H - 102}, 92 ${H - 36}, 146 ${H - 70} S 244 ${H - 104}, 304 ${H - 74} S 414 ${H - 28}, ${W} ${H - 70} L ${W} ${H} L 0 ${H} Z`}
+        fill="url(#l2-hill)"
+        opacity={0.92}
+      />
+      <path
+        d={`M 0 ${H - 40} C 56 ${H - 64}, 138 ${H - 10}, 218 ${H - 34} S 376 ${H - 76}, ${W} ${H - 26} L ${W} ${H} L 0 ${H} Z`}
+        fill="#0f2416"
+        opacity={0.95}
+      />
+      {[
+        { x: 26, y: H - 54, s: 1 },
+        { x: 82, y: H - 62, s: 1.15 },
+        { x: 140, y: H - 44, s: 0.92 },
+        { x: 350, y: H - 58, s: 1.05 },
+        { x: 410, y: H - 48, s: 0.9 },
+      ].map((tree, i) => (
+        <g key={i} transform={`translate(${tree.x} ${tree.y}) scale(${tree.s})`} opacity={0.86}>
+          <rect x={-2.5} y={10} width={5} height={16} rx={2} fill="#4a2d16" />
+          <circle cx={0} cy={6} r={11} fill="#14532d" />
+          <circle cx={-8} cy={11} r={8} fill="#166534" />
+          <circle cx={8} cy={11} r={8} fill="#15803d" />
+        </g>
+      ))}
+      <ellipse cx={CX} cy={CY + 22} rx={52} ry={13} fill="rgba(0,0,0,0.28)" />
       {dividerAngles.map((angle, i) => {
         const end = polarToXY(
           CX,
@@ -2101,6 +2667,9 @@ export default function ArcadeAngleScreen() {
   const [tutorialHintVisible, setTutorialHintVisible] = useState(false);
   const [tutorialHintOpacity, setTutorialHintOpacity] = useState(0);
   const [openingTutorialEnabled, setOpeningTutorialEnabled] = useState(true);
+  const [snipMode, setSnipMode] = useState(false);
+  const [snipSelection, setSnipSelection] = useState<SnipSelection | null>(null);
+  const [captureFlashVisible, setCaptureFlashVisible] = useState(false);
 
   const [revealedAngle, setRevealedAngle] = useState<number | null>(null);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(() => {
@@ -2179,7 +2748,9 @@ export default function ArcadeAngleScreen() {
   const svgRef = useRef<SVGSVGElement>(null);
   const fireButtonRef = useRef<HTMLButtonElement>(null);
   const draggingRef = useRef(false);
+  const snipDragRef = useRef<SnipDragState | null>(null);
   const flashTimerRef = useRef<number | null>(null);
+  const captureFlashTimerRef = useRef<number | null>(null);
   const platinumRevealTimerRef = useRef<number | null>(null);
   const lastTickAngleRef = useRef(-999);
   const gazeAngleRef = useRef(currentQ.startAngleDeg ?? 0); // always in sync with gazeAngle state
@@ -2426,10 +2997,27 @@ export default function ArcadeAngleScreen() {
 
   async function handleCaptureScene() {
     if (!IS_LOCALHOST_DEV) return;
-    const svg = svgRef.current;
-    if (!svg) return;
 
     try {
+      const pngBlob = await renderScenePngBlob();
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      await shareOrDownloadPng({
+        pngBlob,
+        fileName: `angle-explorer-scene-${stamp}.png`,
+        title: "Angle Explorer scene",
+        text: "Save or share this Angle Explorer scene.",
+        successMessage: "Scene downloaded",
+      });
+    } catch {
+      showFlash("Capture failed", false);
+    }
+  }
+
+  async function renderScenePngBlob(scale = 2) {
+    const svg = svgRef.current;
+    if (!svg) throw new Error("Scene not ready");
+
+    return await new Promise<Blob>((resolve, reject) => {
       const clone = svg.cloneNode(true) as SVGSVGElement;
       clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
@@ -2449,75 +3037,225 @@ export default function ArcadeAngleScreen() {
       const url = URL.createObjectURL(blob);
 
       const img = new Image();
-      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = W * scale;
+        canvas.height = H * scale;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          reject(new Error("Canvas context unavailable"));
+          return;
+        }
+        ctx.setTransform(scale, 0, 0, scale, 0, 0);
+        ctx.drawImage(img, 0, 0, W, H);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((blobOut) => {
+          if (!blobOut) {
+            reject(new Error("Unable to encode PNG"));
+            return;
+          }
+          resolve(blobOut);
+        }, "image/png");
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Unable to render scene snapshot"));
+      };
+      img.src = url;
+    });
+  }
+
+  async function shareOrDownloadPng({
+    pngBlob,
+    fileName,
+    title,
+    text,
+    successMessage,
+  }: {
+    pngBlob: Blob;
+    fileName: string;
+    title: string;
+    text: string;
+    successMessage: string;
+  }) {
+    const nav = navigator as Navigator & {
+      share?: (data: ShareData) => Promise<void>;
+      canShare?: (data?: ShareData) => boolean;
+    };
+    const file = new File([pngBlob], fileName, { type: "image/png" });
+    const shareData: ShareData = {
+      files: [file],
+      title,
+      text,
+    };
+
+    if (
+      canUseNativeShare() &&
+      typeof nav.share === "function" &&
+      (!nav.canShare || nav.canShare(shareData))
+    ) {
+      try {
+        await nav.share(shareData);
+        showFlash("Image ready to share", true);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    const pngUrl = URL.createObjectURL(pngBlob);
+    const link = document.createElement("a");
+    link.href = pngUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    URL.revokeObjectURL(pngUrl);
+    link.remove();
+    showFlash(successMessage, true);
+  }
+
+  function clampSnipSelection(next: SnipSelection) {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return next;
+
+    const maxSize = Math.max(72, Math.min(rect.width, rect.height));
+    const size = Math.max(72, Math.min(next.size, maxSize));
+    return {
+      x: Math.min(Math.max(0, next.x), rect.width - size),
+      y: Math.min(Math.max(0, next.y), rect.height - size),
+      size,
+    };
+  }
+
+  function makeDefaultSnipSelection() {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const size = Math.max(96, Math.min(Math.min(rect.width, rect.height) * 0.48, 220));
+    return {
+      x: (rect.width - size) / 2,
+      y: (rect.height - size) / 2,
+      size,
+    } satisfies SnipSelection;
+  }
+
+  function toggleSnipMode() {
+    if (!IS_LOCALHOST_DEV) return;
+    setSnipMode((active) => {
+      const next = !active;
+      if (next && !snipSelection) {
+        const initial = makeDefaultSnipSelection();
+        if (initial) setSnipSelection(initial);
+      }
+      return next;
+    });
+  }
+
+  function closeSnipMode() {
+    snipDragRef.current = null;
+    setSnipMode(false);
+  }
+
+  function triggerCaptureFlash() {
+    playCameraShutter();
+    setCaptureFlashVisible(true);
+    if (captureFlashTimerRef.current) clearTimeout(captureFlashTimerRef.current);
+    captureFlashTimerRef.current = window.setTimeout(
+      () => setCaptureFlashVisible(false),
+      scaleDemoMs(180),
+    );
+  }
+
+  async function handleCaptureSnip() {
+    if (!IS_LOCALHOST_DEV || !snipSelection) return;
+
+    try {
+      triggerCaptureFlash();
+      const fullBlob = await renderScenePngBlob(4);
+      const imageUrl = URL.createObjectURL(fullBlob);
+      const img = new Image();
+      const croppedBlob = await new Promise<Blob>((resolve, reject) => {
         img.onload = () => {
-          const scale = 2;
+          const svg = svgRef.current;
+          const rect = svg?.getBoundingClientRect();
+          if (!svg || !rect) {
+            URL.revokeObjectURL(imageUrl);
+            reject(new Error("Scene bounds unavailable"));
+            return;
+          }
+
+          const topLeft = toSVGPoint(
+            svg,
+            rect.left + snipSelection.x,
+            rect.top + snipSelection.y,
+          );
+          const bottomRight = toSVGPoint(
+            svg,
+            rect.left + snipSelection.x + snipSelection.size,
+            rect.top + snipSelection.y + snipSelection.size,
+          );
+          const sourceX = Math.max(0, (topLeft.x / W) * img.width);
+          const sourceY = Math.max(0, (topLeft.y / H) * img.height);
+          const sourceWidth = Math.min(
+            img.width - sourceX,
+            Math.max(1, ((bottomRight.x - topLeft.x) / W) * img.width),
+          );
+          const sourceHeight = Math.min(
+            img.height - sourceY,
+            Math.max(1, ((bottomRight.y - topLeft.y) / H) * img.height),
+          );
+          const sourceSize = Math.max(1, Math.min(sourceWidth, sourceHeight));
+
           const canvas = document.createElement("canvas");
-          canvas.width = W * scale;
-          canvas.height = H * scale;
+          canvas.width = Math.max(1, Math.round(sourceSize));
+          canvas.height = canvas.width;
           const ctx = canvas.getContext("2d");
           if (!ctx) {
+            URL.revokeObjectURL(imageUrl);
             reject(new Error("Canvas context unavailable"));
             return;
           }
-          ctx.setTransform(scale, 0, 0, scale, 0, 0);
-          ctx.drawImage(img, 0, 0, W, H);
-          URL.revokeObjectURL(url);
+
+          ctx.drawImage(
+            img,
+            sourceX,
+            sourceY,
+            sourceSize,
+            sourceSize,
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
+          URL.revokeObjectURL(imageUrl);
           canvas.toBlob((blobOut) => {
             if (!blobOut) {
-              reject(new Error("Unable to encode PNG"));
+              reject(new Error("Unable to encode cropped PNG"));
               return;
             }
             resolve(blobOut);
           }, "image/png");
         };
         img.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(new Error("Unable to render scene snapshot"));
+          URL.revokeObjectURL(imageUrl);
+          reject(new Error("Unable to render cropped snapshot"));
         };
-        img.src = url;
+        img.src = imageUrl;
       });
 
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const fileName = `angle-explorer-scene-${stamp}.png`;
-      const nav = navigator as Navigator & {
-        share?: (data: ShareData) => Promise<void>;
-        canShare?: (data?: ShareData) => boolean;
-      };
-      const file = new File([pngBlob], fileName, { type: "image/png" });
-      const shareData: ShareData = {
-        files: [file],
-        title: "Angle Explorer scene",
-        text: "Save or share this Angle Explorer scene.",
-      };
-
-      if (
-        canUseNativeShare() &&
-        typeof nav.share === "function" &&
-        (!nav.canShare || nav.canShare(shareData))
-      ) {
-        try {
-          await nav.share(shareData);
-          showFlash("Image ready to share", true);
-          return;
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return;
-          }
-        }
-      }
-
-      const pngUrl = URL.createObjectURL(pngBlob);
-      const link = document.createElement("a");
-      link.href = pngUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(pngUrl);
-      showFlash("Scene downloaded", true);
+      await shareOrDownloadPng({
+        pngBlob: croppedBlob,
+        fileName: `angle-explorer-square-snip-${stamp}.png`,
+        title: "Angle Explorer square snip",
+        text: "Save or share this square Angle Explorer crop.",
+        successMessage: "Square snip downloaded",
+      });
+      closeSnipMode();
     } catch {
-      showFlash("Capture failed", false);
+      showFlash("Square snip failed", false);
     }
   }
 
@@ -3006,7 +3744,67 @@ export default function ArcadeAngleScreen() {
     };
   }, [moveGaze]);
 
+  useEffect(() => {
+    if (!snipMode) {
+      snipDragRef.current = null;
+      return;
+    }
+
+    function onMove(e: PointerEvent) {
+      const drag = snipDragRef.current;
+      if (!drag) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
+      if (drag.mode === "move") {
+        setSnipSelection(clampSnipSelection({
+          ...drag.initial,
+          x: drag.initial.x + dx,
+          y: drag.initial.y + dy,
+        }));
+        return;
+      }
+
+      const delta = Math.max(dx, dy);
+      setSnipSelection(clampSnipSelection({
+        ...drag.initial,
+        size: drag.initial.size + delta,
+      }));
+    }
+
+    function onUp(e: PointerEvent) {
+      if (snipDragRef.current?.pointerId !== e.pointerId) return;
+      snipDragRef.current = null;
+    }
+
+    function onResize() {
+      setSnipSelection((current) => {
+        if (!current) return makeDefaultSnipSelection();
+        return clampSnipSelection(current);
+      });
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      closeSnipMode();
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [snipMode]);
+
   function startDrag(e: React.PointerEvent) {
+    if (snipMode) return;
     if (sceneBusy) return;
     if (!svgRef.current) return;
     const { x, y } = toSVGPoint(svgRef.current, e.clientX, e.clientY);
@@ -3446,6 +4244,9 @@ export default function ArcadeAngleScreen() {
     const lv = targetLevel ?? level;
     submitLockRef.current = false;
     if (targetLevel) setLevel(targetLevel);
+    if (gameplayLevel(lv) === 1) {
+      resetLevelOneQuestionOrder();
+    }
     const firstQ = makeQuestion(lv, "normal");
     setScreen("playing");
     setCurrentQ(firstQ);
@@ -4565,6 +5366,7 @@ export default function ArcadeAngleScreen() {
                     return (
                     <g key={`crosshair-${enemy.id}`} transform={`translate(${landingPoint.x}, ${landingPoint.y})`}>
                       <TargetSprite
+                        level={level}
                         pulse={
                           introPhase === "ready" &&
                           revealedAngle === null &&
@@ -4580,6 +5382,7 @@ export default function ArcadeAngleScreen() {
                 revealedAngle === null && (
                   <g transform={`translate(${targetX}, ${targetY})`}>
                     <TargetSprite
+                      level={level}
                       pulse={
                         introPhase === "ready" &&
                         revealedAngle === null &&
@@ -4609,9 +5412,9 @@ export default function ArcadeAngleScreen() {
 
             {/* Aim beam — always visible as part of the cannon */}
             {showSceneActors && !levelThreeCannonDestroyed && (
-              <GazeBeamDrag
-                gazeAngle={aimForBeam}
-                level={level}
+                <GazeBeamDrag
+                  gazeAngle={aimForBeam}
+                  level={level}
                 baseAngle={overlayBaseAngle}
                 arcRadiusOverride={activeArcRadius}
                 showBaseArm={effectiveLevel === 3}
@@ -4632,7 +5435,7 @@ export default function ArcadeAngleScreen() {
             {/* Cannon */}
             {showSceneActors && !levelThreeCannonDestroyed && (
               <g transform={`translate(${CX}, ${CY})`}>
-                <CannonSprite aimAngle={revealGaze} dragging={dragging} />
+                <CannonSprite aimAngle={revealGaze} dragging={dragging} level={level} />
               </g>
             )}
 
@@ -4657,6 +5460,89 @@ export default function ArcadeAngleScreen() {
               />
             )}
           </svg>
+
+          {IS_LOCALHOST_DEV && snipMode && snipSelection && (
+            <div className="pointer-events-auto absolute inset-0 z-[82]">
+              <div className="absolute inset-0 bg-black/10" />
+              <div
+                className="absolute rounded-2xl"
+                style={{
+                  left: snipSelection.x,
+                  top: snipSelection.y,
+                  width: snipSelection.size,
+                  height: snipSelection.size,
+                  border: "2px dashed rgba(255,255,255,0.95)",
+                  boxShadow: "0 0 0 9999px rgba(2,6,23,0.22)",
+                  background: "rgba(255,255,255,0.03)",
+                }}
+              >
+                <button
+                  type="button"
+                  title="Capture square snip"
+                  onClick={handleCaptureSnip}
+                  className="arcade-button absolute -left-3 -top-3 z-[2] h-10 w-10 p-1.5"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" className="h-full w-full">
+                    <path
+                      d="M7 7h2l1.2-2h3.6L15 7h2a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="12.5" r="3.25" stroke="white" strokeWidth="2" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Close square snip"
+                  title="Close square snip"
+                  onClick={closeSnipMode}
+                  className="arcade-button absolute -right-3 -top-3 z-[2] flex h-10 w-10 items-center justify-center p-1.5"
+                >
+                  <CloseIcon className="h-full w-full" sx={{ color: "#fff" }} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Move square snip"
+                  title="Drag to move"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    snipDragRef.current = {
+                      mode: "move",
+                      pointerId: e.pointerId,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      initial: snipSelection,
+                    };
+                  }}
+                  className="absolute inset-0 cursor-move rounded-2xl"
+                  style={{ background: "transparent" }}
+                />
+                <button
+                  type="button"
+                  aria-label="Resize square snip"
+                  title="Drag to resize"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    snipDragRef.current = {
+                      mode: "resize",
+                      pointerId: e.pointerId,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      initial: snipSelection,
+                    };
+                  }}
+                  className="absolute -bottom-3 -right-3 z-[2] h-7 w-7 rounded-full border-2 border-white bg-sky-400/90"
+                  style={{ boxShadow: "0 0 18px rgba(56,189,248,0.45)" }}
+                >
+                  <span className="sr-only">Resize square snip</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {isAiming &&
             level === 1 &&
@@ -5318,6 +6204,40 @@ export default function ArcadeAngleScreen() {
                   />
                 </svg>
               </button>
+              <button
+                onClick={toggleSnipMode}
+                title={snipMode ? "Hide square snip tool" : "Show square snip tool"}
+                className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+                style={
+                  snipMode
+                    ? {
+                        background: "linear-gradient(180deg,#0369a1,#075985)",
+                        borderColor: "#38bdf8",
+                      }
+                    : {}
+                }
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                  <rect
+                    x="4.5"
+                    y="4.5"
+                    width="15"
+                    height="15"
+                    rx="2"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeDasharray="2.5 2.5"
+                  />
+                  <path
+                    d="M8.5 9.5h1.3l.8-1.4h2.8l.8 1.4h1.3a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-7a1.5 1.5 0 0 1-1.5-1.5v-4a1.5 1.5 0 0 1 1.5-1.5Z"
+                    stroke="white"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="12" cy="13" r="1.9" stroke="white" strokeWidth="1.7" />
+                </svg>
+              </button>
               {!isRecording && (
                 <button
                   onClick={startRecording}
@@ -5550,6 +6470,40 @@ export default function ArcadeAngleScreen() {
                   />
                 </svg>
               </button>
+              <button
+                onClick={toggleSnipMode}
+                title={snipMode ? "Hide square snip tool" : "Show square snip tool"}
+                className="arcade-button w-10 h-10 flex items-center justify-center p-1.5"
+                style={
+                  snipMode
+                    ? {
+                        background: "linear-gradient(180deg,#0369a1,#075985)",
+                        borderColor: "#38bdf8",
+                      }
+                    : {}
+                }
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                  <rect
+                    x="4.5"
+                    y="4.5"
+                    width="15"
+                    height="15"
+                    rx="2"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeDasharray="2.5 2.5"
+                  />
+                  <path
+                    d="M8.5 9.5h1.3l.8-1.4h2.8l.8 1.4h1.3a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-7a1.5 1.5 0 0 1-1.5-1.5v-4a1.5 1.5 0 0 1 1.5-1.5Z"
+                    stroke="white"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="12" cy="13" r="1.9" stroke="white" strokeWidth="1.7" />
+                </svg>
+              </button>
               {!isRecording && (
                 <button
                   onClick={startRecording}
@@ -5575,6 +6529,17 @@ export default function ArcadeAngleScreen() {
             background: "#ef4444",
             boxShadow: "0 0 0 0 rgba(239,68,68,0.8)",
             animation: "demo-recording-pulse 1.4s ease-in-out infinite",
+          }}
+        />
+      )}
+
+      {captureFlashVisible && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[120]"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.7) 22%, rgba(255,255,255,0.18) 52%, rgba(255,255,255,0) 78%)",
           }}
         />
       )}
